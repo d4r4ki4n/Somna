@@ -1,0 +1,38 @@
+# ── Database (user data, session metrics, image tags) ──────────────────────────
+*.db
+*.db-wal
+*.db-shm
+
+# ── Personal / user data (PII) ────────────────────────────────────────────────
+user_profile.json
+user_settings.json
+panel_geometry.json
+
+# ── Runtime state (rewritten multiple times per second during sessions) ───────
+live_control.json
+
+# ── Python bytecode cache ─────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+
+# ── Session logs (user-specific telemetry) ────────────────────────────────────
+session_logs/*.jsonl
+
+# ── Generated images / large binaries ─────────────────────────────────────────
+sessions/*/images/
+
+# ── Agent transcripts ─────────────────────────────────────────────────────────
+agent-transcripts/
+
+# ── Tool caches ───────────────────────────────────────────────────────────────
+.ruff_cache/
+.kilo/
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+
+# ── Windows artifacts ─────────────────────────────────────────────────────────
+nul
+Thumbs.db
+Desktop.ini

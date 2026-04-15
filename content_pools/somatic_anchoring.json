@@ -1,0 +1,50 @@
+{
+  "pool_id": "somatic_anchoring",
+  "shadows_words": [
+    "breathe", "exhale", "soft", "warm", "heavy", "slow", "still", "release",
+    "ease", "settle", "melt", "sink", "rest", "open", "allow",
+    "let", "body", "chest", "belly", "arms", "spine", "pulse", "rhythm", "quiet", "deep"
+  ],
+  "centertext_templates": [
+    "slow breath moving through your {body_part}",
+    "warmth settling through your {body_part} completely",
+    "gentle rhythm of breath and {body_part}",
+    "every exhale releasing tension from your {body_part}",
+    "soft heaviness easing through your {body_part}",
+    "breath by breath your {body_part} relaxes further",
+    "the pulse in your {body_part} slow and steady",
+    "warmth and weight in your {body_part} releasing",
+    "each breath deepening the stillness in your {body_part}",
+    "your {body_part} heavy, warm, completely at ease"
+  ],
+  "tts_templates": [
+    "with each slow exhale, your {body_part} releases a little more tension, softening into the warmth and quiet that's already there",
+    "notice the rhythm of your {body_part} responding to each breath, and as you do, the tension already begins to ease without any effort at all",
+    "your {body_part} knows the rhythm of release, and each exhale is an invitation it accepts naturally, softening a little more each time",
+    "the warmth in your {body_part} and the rhythm of your breath are already working together, and with each cycle, the ease grows deeper",
+    "there is a natural heaviness that comes with each exhale, your {body_part} responding by settling deeper, releasing a little more of what it was holding"
+  ],
+  "synonym_rings": [
+    ["breathe", "breath", "exhale"],
+    ["warm", "warmth", "warming"],
+    ["settle", "settling", "settled"],
+    ["release", "releasing", "releasing"],
+    ["pulse", "rhythm", "heartbeat"]
+  ],
+  "pnd_scores": {
+    "breathe": 0.2, "exhale": 0.2, "soft": 0.2, "warm": 0.2,
+    "heavy": 0.3, "release": 0.3, "settle": 0.3, "pulse": 0.3
+  },
+  "frequency_band": {
+    "breathe": "high", "exhale": "moderate", "soft": "high", "warm": "high",
+    "heavy": "high", "slow": "high", "still": "high", "release": "high",
+    "ease": "high", "settle": "high", "melt": "moderate", "sink": "high",
+    "rest": "high", "open": "high", "allow": "moderate",
+    "let": "high", "body": "high", "chest": "high", "belly": "high",
+    "arms": "high", "spine": "moderate", "pulse": "moderate",
+    "rhythm": "moderate", "quiet": "high", "deep": "high"
+  },
+  "vocabulary": {
+    "body_part": ["chest", "belly", "arms", "legs", "spine", "shoulders", "hands", "jaw", "brow"]
+  }
+}

@@ -1,0 +1,135 @@
+name: "GENUS — 40 Hz Gamma Entrainment"
+description: >
+  One-hour 40 Hz GENUS protocol. Isochronic gamma stimulation at the
+  Alzheimer's research frequency. Sustained gamma power has been linked
+  to improved focus, working memory consolidation, and neuroprotective
+  effects. Eyes open or closed; display provides matched 40 Hz flicker
+  via center_flash timing.
+category: genus
+duration: 3600
+
+defaults:
+  beat_frequency: 40.0
+  beat_type: isochronic
+  carrier_frequency: 200.0
+  volume: 72.0
+  genus_active: true
+  noise_color: pink
+  noise_volume: 18.0
+  center_flash_sync_to_beat: true
+  spiral_color_mode: rainbow
+
+timeline:
+
+  # ── 0:00 · ONSET ─────────────────────────────────────────────────────────
+  # Ramp to 40 Hz over the first 2 minutes from an alpha anchor.
+  # Gives the brain time to engage rather than snapping straight to gamma.
+  - t: 0
+    label: onset
+    ease: linear
+    params:
+      beat_frequency: 10.0
+      carrier_frequency: 200.0
+      spiral_style: archimedean
+      spiral_count: 5
+      spiral_opacity: 72
+      spiral_speed_multiplier: 1.0
+      spiral_tightness: 6.0
+      spiral_chaos: 0.04
+      spiral_thickness: 12
+      veil_opacity: 10
+      veil_mode: scroll
+      shadow_opacity: 0
+      center_flash_on_time: 150
+      center_flash_off_time: 350
+
+  # ── 2:00 · ENGAGE ─────────────────────────────────────────────────────────
+  # 40 Hz locked in. Fermat spiral at higher speed matches gamma's alerting quality.
+  # Flash cadence locked to beat: 25 ms on, 0 ms off at 40 Hz.
+  - t: 120
+    label: engage
+    ease: ease_in_out
+    params:
+      beat_frequency: 40.0
+      carrier_frequency: 200.0
+      spiral_style: fermat
+      spiral_count: 6
+      spiral_opacity: 78
+      spiral_speed_multiplier: 1.6
+      spiral_tightness: 7.0
+      spiral_chaos: 0.06
+      spiral_thickness: 11
+      veil_opacity: 18
+      veil_mode: drift
+      shadow_opacity: 8
+      center_flash_on_time: 25
+      center_flash_off_time: 0
+
+  # ── 10:00 · SUSTAIN ───────────────────────────────────────────────────────
+  # Hold 40 Hz for the main working window. Galaxy gives the eye a focal spiral
+  # while gamma keeps the mind sharp. No change to beats or visuals — stability.
+  - t: 600
+    label: sustain
+    ease: linear
+    params:
+      beat_frequency: 40.0
+      spiral_style: galaxy
+      spiral_count: 5
+      spiral_opacity: 80
+      spiral_speed_multiplier: 1.4
+      spiral_chaos: 0.08
+      veil_opacity: 22
+      veil_mode: drift
+      shadow_opacity: 12
+
+  # ── 30:00 · MID ───────────────────────────────────────────────────────────
+  # Halfway mark. Tunnel dream — the most effective single spiral for sustained
+  # attention. Slight visual shift prevents adaptation fatigue.
+  - t: 1800
+    label: mid
+    ease: ease_in_out
+    params:
+      beat_frequency: 40.0
+      spiral_style: tunnel_dream
+      spiral_count: 5
+      spiral_opacity: 82
+      spiral_speed_multiplier: 1.5
+      spiral_chaos: 0.05
+      veil_opacity: 20
+      veil_mode: scroll
+
+  # ── 50:00 · CLOSE ─────────────────────────────────────────────────────────
+  # Begin tapering. Step down through beta toward alpha for a clean landing.
+  # Abrupt gamma cutoff can feel jarring — 10-minute ramp avoids this.
+  - t: 3000
+    label: close
+    ease: ease_out
+    params:
+      beat_frequency: 20.0
+      carrier_frequency: 200.0
+      spiral_style: archimedean
+      spiral_count: 5
+      spiral_opacity: 74
+      spiral_speed_multiplier: 1.0
+      spiral_chaos: 0.04
+      veil_opacity: 12
+      veil_mode: scroll
+      shadow_opacity: 0
+      center_flash_on_time: 150
+      center_flash_off_time: 350
+
+  # ── 58:00 · RETURN ────────────────────────────────────────────────────────
+  # Alpha landing. Same parameters as onset — bookends the session.
+  - t: 3480
+    label: return
+    ease: ease_out
+    params:
+      beat_frequency: 10.0
+      carrier_frequency: 200.0
+      spiral_style: archimedean
+      spiral_count: 5
+      spiral_opacity: 70
+      spiral_speed_multiplier: 0.9
+      veil_opacity: 8
+      center_flash_on_time: 150
+      center_flash_off_time: 350

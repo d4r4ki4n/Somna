@@ -1,0 +1,72 @@
+# Somna — root affirmations pool
+# Used as fallback when a session has no affirmations.txt of its own.
+# Lines starting with # are comments.  Separate alt phrases with |
+# Tag groups: # [tag_name] — timeline can activate a specific group.
+# Chain sequences: word >> word2 >> word3 — flashes consecutively.
+#
+# # [shadows] section: single words only — subliminal priming use.
+# Multi-word phrases shown subliminally have no priming effect.
+# (Chien et al. 2023)
+
+# [shadows]
+soft
+deep
+safe
+warm
+still
+open
+rest
+free
+yours
+down
+ease
+gone
+sink
+hold
+drift
+quiet
+heavy
+slow
+melt
+release
+empty
+fall
+true
+calm
+yield
+
+# [relax]
+let go >> soften >> drift
+breathe >> release >> rest
+you are safe
+sinking deeper now
+nothing to do but this
+the weight lifts
+melting into calm
+every breath carries you down
+
+# [focus]
+clear >> sharp >> present
+fully here
+precision and ease
+in the flow
+nothing else exists
+the mind settles
+alert and open
+
+# [affirm]
+you are enough >> already
+this is yours
+soft and capable
+belonging here
+nothing to prove
+you trust yourself
+growth is quiet
+
+# [open]
+open
+receiving
+all is well
+nothing to resist
+pure awareness
+already there

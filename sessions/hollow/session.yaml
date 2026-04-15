@@ -1,0 +1,365 @@
+name: "Hollow — Dissociation Arc · 35 min"
+description: >
+  35-minute dissociation arc built around a single central contrast:
+  body growing heavier and heavier while the mind grows lighter, emptier,
+  and eventually hollow. The two states meet at the floor — weight and
+  emptiness are the same thing at depth. Fractionation at 21 min resets
+  and deepens. Good-girl conditioning window opens post-fractionation at
+  the deepest achievable point. Designed to train the body/mind split as
+  a reliable induction anchor across repeated sessions.
+duration: 2100
+category: entrainment
+
+defaults:
+  carrier_frequency:          200.0
+  volume:                     78.0
+  noise_color:                pink
+  noise_volume:               22
+  center_flash_sync_to_beat:  false
+  font_switch_mode:           intelligent
+  spiral_color_mode:          rainbow
+  spiral_show_text:           false
+  tts_enabled:                true
+  tts_subliminal:             false
+
+# ── Timeline ──────────────────────────────────────────────────────────────────
+#
+#  Psychological arc:
+#    0:00   anchor       10.0 Hz   conscious attention drawn inward
+#    1:30   soften        9.0 Hz   body weight awareness begins
+#    3:30   descent       7.5 Hz   warmth spreading, thoughts thinning
+#    6:00   the_split     6.0 Hz   body explicitly heavy / mind floating loose
+#   10:00   hollow        5.0 Hz   emptiness becomes the dominant felt-state
+#   14:00   the_floor     4.5 Hz   the bottom of the first descent
+#   19:00   pre_emerge    4.0 Hz   deepest point before fractionation
+#   21:00   emerge        7.0 Hz   fractionation emerge — V1 jolt, brief alerting
+#   22:30   redrop        4.5 Hz   rapid redescent — deeper than before
+#   25:00   good_girl     4.0 Hz   conditioning window at peak depth
+#   29:00   soak          3.8 Hz   nothing changes, let it absorb
+#   32:00   return        7.0 Hz   gentle ascent begins
+#   34:00   wake          9.5 Hz   soft landing, awareness returns
+#
+#  Visual logic:
+#    Spirals become slower, tighter, and more ordered as depth increases —
+#    geometric precision at depth is more hypnotic than chaos.
+#    Veil builds from scroll → rain → converge → tunnel → drift as the
+#    suggestion window opens. Emerge snaps back to light/rain briefly.
+#    Flash timing moves from conscious (200ms) to fully subliminal (16ms).
+
+timeline:
+
+  # ─── 0:00 · ANCHOR ──────────────────────────────────────────────────────────
+  # Fermat spiral: golden ratio packing. Mathematical and expansive.
+  # Conscious attention is drawn inward. This is still alert.
+  # Veil barely present — we want the mind to settle on its own terms first.
+  - t: 0
+    label: anchor
+    ease: linear
+    params:
+      phrases:                  anchor
+      beat_frequency:           10.0
+      carrier_frequency:        210.0
+      spiral_style:             fermat
+      spiral_count:             6
+      spiral_opacity:           80
+      spiral_speed_multiplier:  1.2
+      spiral_tightness:         7.0
+      spiral_chaos:             0.04
+      spiral_thickness:         12
+      veil_opacity:             12
+      veil_mode:                scroll
+      shadow_opacity:           0
+      center_flash_on_time:     200
+      center_flash_off_time:    400
+
+  # ─── 1:30 · SOFTEN ──────────────────────────────────────────────────────────
+  # Tunnel dream enters. The classic depth cue.
+  # Beat drops to high alpha. Rain begins — phrases falling like weather.
+  # Shoulders drop. Body weight becomes noticeable.
+  - t: 90
+    label: soften
+    ease: ease_in_out
+    params:
+      phrases:                  weight
+      beat_frequency:           9.0
+      carrier_frequency:        200.0
+      spiral_style:             tunnel_dream
+      spiral_count:             5
+      spiral_opacity:           84
+      spiral_speed_multiplier:  1.0
+      spiral_tightness:         6.5
+      spiral_chaos:             0.06
+      spiral_thickness:         14
+      veil_opacity:             22
+      veil_mode:                rain
+      shadow_opacity:           8
+      center_flash_on_time:     120
+      center_flash_off_time:    350
+
+  # ─── 3:30 · DESCENT ─────────────────────────────────────────────────────────
+  # Galaxy: rotating arms suppress analytical engagement.
+  # Warmth spreading. Thoughts beginning to thin. 80ms = borderline subliminal.
+  # Converge veil starts drawing everything inward.
+  - t: 210
+    label: descent
+    ease: ease_in_out
+    params:
+      phrases:                  weight
+      beat_frequency:           7.5
+      carrier_frequency:        190.0
+      spiral_style:             galaxy
+      spiral_count:             5
+      spiral_opacity:           87
+      spiral_speed_multiplier:  0.78
+      spiral_tightness:         5.8
+      spiral_chaos:             0.10
+      spiral_thickness:         16
+      veil_opacity:             38
+      veil_mode:                converge
+      shadow_opacity:           20
+      center_flash_on_time:     80
+      center_flash_off_time:    280
+
+  # ─── 6:00 · THE SPLIT ───────────────────────────────────────────────────────
+  # Fibonacci: ancient geometry. Something deeper than thought.
+  # This is where the dissociation arc explicitly begins.
+  # Body is going DOWN. Mind is beginning to float somewhere else.
+  # 55ms flash = right at the perceptual threshold. You might catch it.
+  - t: 360
+    label: the_split
+    ease: ease_in_out
+    params:
+      phrases:                  the_split
+      beat_frequency:           6.0
+      carrier_frequency:        178.0
+      spiral_style:             fibonacci
+      spiral_count:             4
+      spiral_opacity:           89
+      spiral_speed_multiplier:  0.60
+      spiral_tightness:         5.2
+      spiral_chaos:             0.14
+      spiral_thickness:         18
+      veil_opacity:             52
+      veil_mode:                converge
+      shadow_opacity:           32
+      center_flash_on_time:     55
+      center_flash_off_time:    220
+
+  # ─── 10:00 · HOLLOW ─────────────────────────────────────────────────────────
+  # Tunnel dream returns — but slower, deeper, less recognizable.
+  # The chaos REDUCES here. Geometric order at depth is more hypnotic than chaos.
+  # Emptiness becomes the dominant felt-state. 30ms = functionally subliminal.
+  # Drift veil: phrases floating everywhere, ambient and inescapable.
+  - t: 600
+    label: hollow
+    ease: ease_in_out
+    params:
+      phrases:                  hollow
+      beat_frequency:           5.0
+      carrier_frequency:        168.0
+      spiral_style:             tunnel_dream
+      spiral_count:             4
+      spiral_opacity:           91
+      spiral_speed_multiplier:  0.45
+      spiral_tightness:         4.6
+      spiral_chaos:             0.11
+      spiral_thickness:         20
+      veil_opacity:             68
+      veil_mode:                drift
+      shadow_opacity:           46
+      center_flash_on_time:     30
+      center_flash_off_time:    180
+
+  # ─── 14:00 · THE FLOOR ──────────────────────────────────────────────────────
+  # Fibonacci at its slowest. Tunnel veil: phrases converging toward center.
+  # 20ms = 1–2 frames at 60fps. Consciously invisible.
+  # The body is very far away. The mind is very quiet.
+  - t: 840
+    label: the_floor
+    ease: ease_in_out
+    params:
+      phrases:                  hollow
+      beat_frequency:           4.5
+      carrier_frequency:        162.0
+      spiral_style:             fibonacci
+      spiral_count:             3
+      spiral_opacity:           93
+      spiral_speed_multiplier:  0.32
+      spiral_tightness:         4.0
+      spiral_chaos:             0.07
+      spiral_thickness:         22
+      veil_opacity:             76
+      veil_mode:                tunnel
+      shadow_opacity:           58
+      center_flash_on_time:     20
+      center_flash_off_time:    160
+
+  # ─── 19:00 · PRE-EMERGE ─────────────────────────────────────────────────────
+  # The deepest point of the first descent.
+  # Nothing changes — just deepening into the tunnel.
+  # 16ms = 1 frame. Purely subliminal. Let these last five minutes absorb.
+  - t: 1140
+    label: pre_emerge
+    ease: linear
+    params:
+      phrases:                  hollow
+      beat_frequency:           4.0
+      carrier_frequency:        155.0
+      spiral_style:             fibonacci
+      spiral_count:             3
+      spiral_opacity:           94
+      spiral_speed_multiplier:  0.28
+      spiral_tightness:         3.8
+      spiral_chaos:             0.05
+      spiral_thickness:         22
+      veil_opacity:             80
+      veil_mode:                tunnel
+      shadow_opacity:           64
+      center_flash_on_time:     16
+      center_flash_off_time:    155
+
+  # ─── 21:00 · EMERGE ─────────────────────────────────────────────────────────
+  # Fractionation emerge. Fermat again — same as the anchor, but you are not
+  # the same as the anchor. Beat jumps to 7 Hz. Veil drops. Rain returns.
+  # The visual snap is the V1 jolt — deterministic cortical alerting.
+  # This alertness is brief and temporary and it knows it.
+  - t: 1260
+    label: emerge
+    ease: linear
+    params:
+      phrases:                  emerge
+      beat_frequency:           7.0
+      carrier_frequency:        183.0
+      spiral_style:             fermat
+      spiral_count:             5
+      spiral_opacity:           88
+      spiral_speed_multiplier:  0.90
+      spiral_tightness:         6.0
+      spiral_chaos:             0.15
+      spiral_thickness:         16
+      veil_opacity:             28
+      veil_mode:                rain
+      shadow_opacity:           20
+      center_flash_on_time:     100
+      center_flash_off_time:    300
+
+  # ─── 22:30 · REDROP ─────────────────────────────────────────────────────────
+  # Rapid redescent. The converge is aggressive — pulling you back in.
+  # You know the way now. Fibonacci recognizes you.
+  # 22ms = the threshold. You go through it like water.
+  - t: 1350
+    label: redrop
+    ease: ease_in
+    params:
+      phrases:                  hollow
+      beat_frequency:           4.5
+      carrier_frequency:        162.0
+      spiral_style:             fibonacci
+      spiral_count:             3
+      spiral_opacity:           93
+      spiral_speed_multiplier:  0.35
+      spiral_tightness:         4.2
+      spiral_chaos:             0.10
+      spiral_thickness:         21
+      veil_opacity:             74
+      veil_mode:                converge
+      shadow_opacity:           60
+      center_flash_on_time:     22
+      center_flash_off_time:    150
+
+  # ─── 25:00 · GOOD GIRL ──────────────────────────────────────────────────────
+  # The conditioning window. Galaxy returns — rotation keeps analytical
+  # attention perpetually occupied while subliminals land unobstructed.
+  # This is deeper than you have ever been. The hollow is complete.
+  # 17ms = 1 frame. Straight past thinking.
+  - t: 1500
+    label: good_girl
+    ease: ease_in_out
+    params:
+      phrases:                  good_girl_deep
+      beat_frequency:           4.0
+      carrier_frequency:        155.0
+      spiral_style:             galaxy
+      spiral_count:             3
+      spiral_opacity:           94
+      spiral_speed_multiplier:  0.25
+      spiral_tightness:         3.6
+      spiral_chaos:             0.08
+      spiral_thickness:         22
+      veil_opacity:             82
+      veil_mode:                drift
+      shadow_opacity:           68
+      center_flash_on_time:     17
+      center_flash_off_time:    140
+
+  # ─── 29:00 · SOAK ───────────────────────────────────────────────────────────
+  # Nothing changes. 3.8 Hz — the border of delta.
+  # Tunnel dream at minimal speed — barely moving.
+  # Let the prior 29 minutes absorb. Do not disturb this.
+  - t: 1740
+    label: soak
+    ease: linear
+    params:
+      phrases:                  good_girl_deep
+      beat_frequency:           3.8
+      carrier_frequency:        152.0
+      spiral_style:             tunnel_dream
+      spiral_count:             3
+      spiral_opacity:           92
+      spiral_speed_multiplier:  0.20
+      spiral_tightness:         3.5
+      spiral_chaos:             0.05
+      spiral_thickness:         22
+      veil_opacity:             84
+      veil_mode:                drift
+      shadow_opacity:           70
+      center_flash_on_time:     16
+      center_flash_off_time:    140
+
+  # ─── 32:00 · RETURN ─────────────────────────────────────────────────────────
+  # Fermat again. A third time. You have been here twice before.
+  # Beat climbs to 7 Hz. Veil opens. Rain feels lighter than drift.
+  # You carry the hollow outward with you.
+  - t: 1920
+    label: return
+    ease: ease_out
+    params:
+      phrases:                  return
+      beat_frequency:           7.0
+      carrier_frequency:        182.0
+      spiral_style:             fermat
+      spiral_count:             5
+      spiral_opacity:           87
+      spiral_speed_multiplier:  0.65
+      spiral_tightness:         5.5
+      spiral_chaos:             0.10
+      spiral_thickness:         17
+      veil_opacity:             46
+      veil_mode:                rain
+      shadow_opacity:           34
+      center_flash_on_time:     70
+      center_flash_off_time:    250
+
+  # ─── 34:00 · WAKE ───────────────────────────────────────────────────────────
+  # Archimedean: the same even spiral as always. Non-hypnotic. A calm constant.
+  # 9.5 Hz: alert alpha. The session ends where attention began.
+  # But the hollow is not gone. It is yours to take with you.
+  - t: 2040
+    label: wake
+    ease: ease_out
+    params:
+      phrases:                  return
+      beat_frequency:           9.5
+      carrier_frequency:        198.0
+      spiral_style:             archimedean
+      spiral_count:             6
+      spiral_opacity:           80
+      spiral_speed_multiplier:  1.0
+      spiral_tightness:         7.0
+      spiral_chaos:             0.04
+      spiral_thickness:         12
+      veil_opacity:             18
+      veil_mode:                scroll
+      shadow_opacity:           10
+      center_flash_on_time:     160
+      center_flash_off_time:    360

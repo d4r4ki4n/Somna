@@ -1,0 +1,51 @@
+{
+  "pool_id": "dissolution",
+  "shadows_words": [
+    "dissolve", "melt", "sink", "deep", "drift", "fade", "still", "empty",
+    "soft", "fall", "down", "under", "beyond", "through", "gone",
+    "nothing", "quiet", "heavy", "weight", "breathe", "slow", "exhale",
+    "letting", "releasing", "deeper"
+  ],
+  "centertext_templates": [
+    "boundaries softly becoming less certain",
+    "body dissolving into quiet stillness",
+    "edges of self growing soft and uncertain",
+    "sinking slowly deeper with each exhale",
+    "warmth spreading until nothing remains separate",
+    "breath drawing you deeper into dissolution",
+    "the sense of holding slowly melting away",
+    "each exhale releasing another layer of form",
+    "gravity and warmth dissolving all resistance",
+    "deep stillness absorbing everything you were holding"
+  ],
+  "tts_templates": [
+    "with each exhale, the familiar boundaries of your {body_part} soften a little more, becoming less certain, less important, less held",
+    "somewhere in the slow warmth spreading through your {body_part}, the usual sense of where you end and the quiet begins has already started dissolving",
+    "there is a kind of melting happening with each breath, a gentle releasing of everything that was holding itself apart from this deep, still warmth",
+    "each exhale carries away a little more of whatever was keeping things separate, and the quiet grows deeper, warmer, more complete",
+    "the weight of your {body_part} settling deeper with each breath, and with it, the sense of effort and boundary dissolving into something much simpler"
+  ],
+  "synonym_rings": [
+    ["dissolve", "dissolving", "dissolution"],
+    ["melt", "melting", "melted"],
+    ["sink", "sinking", "sunk"],
+    ["deep", "deeper", "deeply"],
+    ["drift", "drifting", "drifted"]
+  ],
+  "pnd_scores": {
+    "dissolve": 0.4, "melt": 0.3, "sink": 0.3, "deep": 0.2,
+    "drift": 0.3, "fade": 0.3, "empty": 0.3, "breathe": 0.2
+  },
+  "frequency_band": {
+    "dissolve": "moderate", "melt": "moderate", "sink": "high", "deep": "high",
+    "drift": "moderate", "fade": "moderate", "still": "high", "empty": "moderate",
+    "soft": "high", "fall": "high", "down": "high", "under": "high",
+    "beyond": "moderate", "through": "high", "gone": "high",
+    "nothing": "high", "quiet": "high", "heavy": "high", "weight": "high",
+    "breathe": "high", "slow": "high", "exhale": "moderate",
+    "letting": "high", "releasing": "moderate", "deeper": "moderate"
+  },
+  "vocabulary": {
+    "body_part": ["body", "chest", "belly", "arms", "spine", "limbs", "hands", "shoulders"]
+  }
+}

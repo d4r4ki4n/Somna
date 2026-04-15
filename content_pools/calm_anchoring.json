@@ -1,0 +1,64 @@
+{
+  "pool_id": "calm_anchoring",
+  "shadows_words": [
+    "here", "ground", "hold", "still", "safe", "sure", "solid", "rooted",
+    "present", "anchor", "steady", "base", "core", "fixed", "known",
+    "certain", "whole", "clear", "now", "firm", "stable", "true",
+    "settled", "complete", "enough"
+  ],
+  "centertext_templates": [
+    "grounded in the steady presence of your {body_part}",
+    "anchored here in the weight of your {body_part}",
+    "nothing to change, just this steady {anchor_quality}",
+    "your {body_part} solid and present right now",
+    "here, stable, in the {anchor_quality} of this moment",
+    "present in your {body_part} exactly as it is",
+    "this quiet {anchor_quality} spreading through your {body_part}",
+    "your {body_part} certain and complete",
+    "the {anchor_quality} of this moment is enough",
+    "safe here in the steadiness of your {body_part}"
+  ],
+  "tts_templates": [
+    "you are present and stable, every part of you accounted for — your {body_part} here and solid and exactly as it should be in this moment, in this breath, in this quiet",
+    "there is a quality in your {body_part} right now that knows it is safe, that feels the ground of this moment, that doesn't need anything to change to feel completely and utterly settled",
+    "this is what anchoring feels like from the inside — not a grip or a hold, but a simple recognition that you are here, that you are whole, that nothing is missing and nothing is required",
+    "the {anchor_quality} you feel is not something I've given you — it was already in your {body_part}, waiting to be noticed, and now that you've found it, it deepens each time you return",
+    "you can always come back to this — the weight of your {body_part} against the surface beneath you, the steady rhythm of your breath, this calm that has no reason to go anywhere because it belongs to you",
+    "even as everything else changes — thought, sensation, sound — your {body_part} remains exactly where it is, grounded and present, and that constancy is the anchor you can always feel"
+  ],
+  "synonym_rings": [
+    ["ground", "grounded", "grounding"],
+    ["anchor", "anchored", "anchoring"],
+    ["steady", "steadiness", "steadied"],
+    ["stable", "stability", "stabilize"],
+    ["present", "presence", "presently"],
+    ["safe", "safety", "safely"],
+    ["certain", "certainty", "certainly"]
+  ],
+  "pnd_scores": {
+    "here": 0.1, "ground": 0.2, "hold": 0.2, "still": 0.2,
+    "safe": 0.2, "sure": 0.2, "solid": 0.3, "rooted": 0.4,
+    "present": 0.2, "anchor": 0.3, "steady": 0.3, "base": 0.2,
+    "core": 0.3, "fixed": 0.3, "known": 0.2, "certain": 0.3,
+    "whole": 0.2, "clear": 0.2, "now": 0.1, "firm": 0.2
+  },
+  "frequency_band": {
+    "here": "high", "ground": "high", "hold": "high", "still": "high",
+    "safe": "high", "sure": "high", "solid": "high", "rooted": "moderate",
+    "present": "high", "anchor": "moderate", "steady": "high", "base": "high",
+    "core": "high", "fixed": "moderate", "known": "high", "certain": "high",
+    "whole": "high", "clear": "high", "now": "high", "firm": "high",
+    "stable": "high", "true": "high", "settled": "high",
+    "complete": "high", "enough": "high"
+  },
+  "vocabulary": {
+    "body_part": [
+      "body", "chest", "belly", "back", "spine", "feet", "hands",
+      "shoulders", "legs", "arms", "core"
+    ],
+    "anchor_quality": [
+      "groundedness", "stillness", "presence", "steadiness", "certainty",
+      "safety", "solidity", "weight", "wholeness", "calm"
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+pygame>=2.6.0
+pyyaml
+pillow
+moderngl
+numpy
+opencv-python
+# TTS — core (free, no key required for edge backend)
+edge-tts
+# TTS — silent-subliminal processing (optional, only needed when tts_subliminal=true)
+scipy
+miniaudio
+# LLM session agent (optional, only needed when running somna_agent.py)
+openai
+# EEG / biofeedback (optional, only needed when using the EEG section)
+# Handles Muse 2/S via BLE and provides all signal processing (band powers, IAF, etc.)
+brainflow>=5.20.0
+# Haptic output — Lovense BLE vibrotactile devices (optional, requires Intiface central)
+buttplug-py>=0.3.0
+# taVNS output — DG Labs Coyote electrode stimulator (optional)
+pydglab-v3>=0.4.0

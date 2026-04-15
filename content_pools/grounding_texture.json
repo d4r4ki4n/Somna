@@ -1,0 +1,50 @@
+{
+  "pool_id": "grounding_texture",
+  "shadows_words": [
+    "ground", "stable", "solid", "weight", "press", "hold", "firm",
+    "steady", "breathe", "settle", "still", "heavy", "root", "anchor",
+    "rest", "support", "safe", "trust", "ease", "slow", "calm",
+    "contact", "warm", "here", "now"
+  ],
+  "centertext_templates": [
+    "weight of your {body_part} pressing gently downward",
+    "body supported and held completely still",
+    "breath steady and slow and grounding",
+    "solid warmth beneath and around your {body_part}",
+    "the ground holding your full weight easily",
+    "steady rhythm of breath anchoring you here",
+    "body heavy and still and completely supported",
+    "slow exhale releasing into solid stillness",
+    "warmth in your {body_part} grounding each breath",
+    "each breath settling deeper into solid quiet"
+  ],
+  "tts_templates": [
+    "the weight of your {body_part} settles fully into the surface beneath you, supported completely, every exhale releasing a little more into that solid stillness",
+    "there is a steadiness in the rhythm of your breath, and as you notice it, your {body_part} relaxes a little more into that grounded, supported weight",
+    "your body knows exactly how to rest here, and with each slow exhale, that sense of solid, supported stillness grows deeper and more complete",
+    "the warmth spreading through your {body_part} carries with it a kind of rootedness, a quiet certainty that you are held and supported fully",
+    "with each breath, your {body_part} releases a little more into the steady, grounded warmth beneath you, held completely, needing nothing at all"
+  ],
+  "synonym_rings": [
+    ["ground", "grounding", "grounded"],
+    ["steady", "steadiness", "stable"],
+    ["settle", "settling", "settled"],
+    ["support", "supported", "supporting"],
+    ["anchor", "anchored", "anchoring"]
+  ],
+  "pnd_scores": {
+    "ground": 0.2, "stable": 0.3, "solid": 0.3, "weight": 0.2,
+    "steady": 0.2, "settle": 0.3, "breathe": 0.2, "anchor": 0.3
+  },
+  "frequency_band": {
+    "ground": "high", "stable": "moderate", "solid": "moderate", "weight": "high",
+    "press": "moderate", "hold": "high", "firm": "moderate", "steady": "high",
+    "breathe": "high", "settle": "high", "still": "high", "heavy": "high",
+    "root": "moderate", "anchor": "moderate", "rest": "high", "support": "high",
+    "safe": "high", "trust": "moderate", "ease": "high", "slow": "high",
+    "calm": "high", "contact": "moderate", "warm": "high", "here": "high", "now": "high"
+  },
+  "vocabulary": {
+    "body_part": ["body", "back", "spine", "hips", "arms", "legs", "shoulders", "belly"]
+  }
+}

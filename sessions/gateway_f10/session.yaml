@@ -1,0 +1,289 @@
+name: "Gateway — Focus 10 Protocol"
+description: >
+  45-minute deep-trance induction modelled on the Monroe Institute's Focus 10
+  state ("Mind Awake / Body Asleep").  Designed for VR headset use.
+  Binaural beats follow the Hemi-Sync frequency map from the CIA-declassified
+  Gateway Process analysis: 10 Hz alpha anchor → 5.5 Hz Focus 10 hold →
+  4 Hz deep suggestion window → 3.5 Hz soak → alpha return.
+  Visual layers match the phosphene cascade model: each phase targets the
+  natural closed-eye visual phenomena characteristic of that depth of trance.
+  Best experienced with a VR headset (launch with --vr flag).  Works on
+  desktop too; just darker, slower, and denser than the default session.
+duration: 2700
+
+defaults:
+  carrier_frequency: 210.0
+  volume: 72.0
+  center_flash_sync_to_beat: false
+  font_switch_mode: intelligent
+  spiral_color_mode: rainbow
+  spiral_show_text: false
+
+# ── Timeline ──────────────────────────────────────────────────────────────────
+#
+#  Gateway Process focus-level progression:
+#
+#    0 s    c1_orient       10.0 Hz  alpha      — C1/Focus 3: settling, synchronising
+#  180 s    resonant         8.0 Hz  alpha      — Resonant Tuning: somatic relaxation
+#  480 s    threshold        7.0 Hz  alpha/θ   — Threshold: alpha-theta bridge
+#  900 s    focus10_entry    5.5 Hz  theta      — Focus 10 entry: body asleep
+# 1500 s    focus10_hold     4.5 Hz  theta      — Focus 10 hold: expanded awareness
+# 1920 s    work_window      4.0 Hz  theta      — Work window: full suggestion open
+# 2280 s    soak             3.5 Hz  theta/δ   — Soak: deepest absorption point
+# 2520 s    ascent           6.0 Hz  theta      — Ascent: gentle rise
+# 2640 s    return           9.0 Hz  alpha      — Return to C1: bright alert landing
+#
+#  Phosphene cascade alignment (VR):
+#    Level 1 — flickers/points:       c1_orient, resonant
+#    Level 2 — lattices/grids:        threshold
+#    Level 3 — spirals/tunnels:       focus10_entry, focus10_hold
+#    Level 4 — radial mandalas:       work_window, soak
+#    Level 5 — immersive light field: (naturally emergent at soak depth)
+
+timeline:
+
+  # ─── 0:00 · C1 ORIENT ──────────────────────────────────────────────────────
+  # Arrival.  10 Hz is the classic Hemi-Sync "Focus 3" alpha synchronisation
+  # tone — the very first beat Monroe's students heard.  The brain needs
+  # roughly 60 seconds to lock onto a new binaural beat; this phase gives it
+  # room to do that without fighting the listener's active attention.
+  # Fermat spiral: mathematical, expansive, non-threatening.
+  # Veil barely present — we want the conscious arrival first.
+  - t: 0
+    label: c1_orient
+    ease: linear
+    params:
+      phrases: orient
+      beat_frequency: 10.0
+      carrier_frequency: 210.0
+      spiral_style: fermat
+      spiral_count: 6
+      spiral_opacity: 78
+      spiral_speed_multiplier: 1.1
+      spiral_tightness: 7.5
+      spiral_chaos: 0.04
+      spiral_thickness: 11
+      veil_opacity: 10
+      veil_mode: drift
+      shadow_opacity: 0
+      center_flash_on_time: 200
+      center_flash_off_time: 400
+
+  # ─── 3:00 · RESONANT TUNING ────────────────────────────────────────────────
+  # The Monroe tapes call this phase "Resonant Tuning" — a deliberate body-scan
+  # sequence designed to release physical tension before deeper work begins.
+  # 8 Hz sits at the alpha-theta border.  Rain veil begins: phrases fall
+  # softly from above, passing through attention without demanding it.
+  # Tunnel dream introduces depth cue — in VR the tunnel recedes to infinity.
+  - t: 180
+    label: resonant
+    ease: ease_in_out
+    params:
+      phrases: relax
+      beat_frequency: 8.0
+      carrier_frequency: 200.0
+      spiral_style: tunnel_dream
+      spiral_count: 5
+      spiral_opacity: 83
+      spiral_speed_multiplier: 0.85
+      spiral_tightness: 6.5
+      spiral_chaos: 0.06
+      spiral_thickness: 13
+      veil_opacity: 22
+      veil_mode: rain
+      shadow_opacity: 8
+      center_flash_on_time: 150
+      center_flash_off_time: 340
+
+  # ─── 8:00 · THRESHOLD ──────────────────────────────────────────────────────
+  # The alpha-theta bridge.  7 Hz is the "Threshold" described in Gateway
+  # Wave I — the frequency where body relaxation deepens but mental clarity
+  # remains.  This is when spontaneous imagery begins (Level 2 phosphenes).
+  # The interference spiral creates a geometric lattice — the brain is being
+  # shown its own patterns.  Converge veil: phrases draw toward the centre,
+  # subtly training attention inward.
+  - t: 480
+    label: threshold
+    ease: ease_in_out
+    params:
+      phrases: relax
+      beat_frequency: 7.0
+      carrier_frequency: 192.0
+      spiral_style: interference
+      spiral_count: 5
+      spiral_opacity: 86
+      spiral_speed_multiplier: 0.65
+      spiral_tightness: 5.8
+      spiral_chaos: 0.09
+      spiral_thickness: 14
+      veil_opacity: 36
+      veil_mode: converge
+      shadow_opacity: 18
+      center_flash_on_time: 100
+      center_flash_off_time: 280
+
+  # ─── 15:00 · FOCUS 10 ENTRY ────────────────────────────────────────────────
+  # "Mind Awake / Body Asleep."  5.5 Hz is mid-theta — the classic Focus 10
+  # frequency band.  The tunnel_dream spiral is the primary VR induction
+  # tool: the receding tunnel creates genuine perceived depth in the headset
+  # that reinforces the sensation of "sinking" into trance.
+  # Spiral speed is now slow enough that the tunnel feels motionless except
+  # for an almost imperceptible drift.  Drift veil at 50%: messages float
+  # at the edge of attention, processed without conscious reading.
+  # Center text crosses below the conscious threshold (50 ms = ~3 frames).
+  - t: 900
+    label: focus10_entry
+    ease: ease_in_out
+    params:
+      phrases: focus10
+      beat_frequency: 5.5
+      carrier_frequency: 180.0
+      spiral_style: tunnel_dream
+      spiral_count: 4
+      spiral_opacity: 90
+      spiral_speed_multiplier: 0.45
+      spiral_tightness: 5.0
+      spiral_chaos: 0.07
+      spiral_thickness: 16
+      veil_opacity: 50
+      veil_mode: drift
+      shadow_opacity: 30
+      center_flash_on_time: 50
+      center_flash_off_time: 220
+
+  # ─── 25:00 · FOCUS 10 HOLD ──────────────────────────────────────────────────
+  # Deepen and stabilise.  4.5 Hz — moving toward the Focus 12 range.
+  # Fibonacci spiral: the golden ratio creates a pattern the eye cannot
+  # reject; it has appeared in meditative and psychedelic visual reports
+  # across every culture.  Converge mode pulls inward — in VR the phrases
+  # appear to be coming from inside the tunnel.
+  # 33 ms flash = 2 frames at 60 fps.  Fully subliminal at this depth.
+  - t: 1500
+    label: focus10_hold
+    ease: ease_in_out
+    params:
+      phrases: focus10
+      beat_frequency: 4.5
+      carrier_frequency: 168.0
+      spiral_style: fibonacci
+      spiral_count: 4
+      spiral_opacity: 92
+      spiral_speed_multiplier: 0.32
+      spiral_tightness: 4.4
+      spiral_chaos: 0.08
+      spiral_thickness: 18
+      veil_opacity: 64
+      veil_mode: converge
+      shadow_opacity: 42
+      center_flash_on_time: 33
+      center_flash_off_time: 190
+
+  # ─── 32:00 · WORK WINDOW ───────────────────────────────────────────────────
+  # The full suggestion window.  4 Hz is the theta floor — maximum
+  # suggestibility, minimal critical filtering.  Galaxy spiral: the rotating
+  # arms prevent the analytical mind from reasserting itself (it can't find a
+  # stable fixation point).  Core identity content begins delivery here.
+  # 22 ms = 1–2 frames.  Phrases are processed by the right hemisphere
+  # only; the left hemisphere has no access to block them.
+  - t: 1920
+    label: work_window
+    ease: ease_in_out
+    params:
+      phrases: deep
+      beat_frequency: 4.0
+      carrier_frequency: 158.0
+      spiral_style: galaxy
+      spiral_count: 3
+      spiral_opacity: 93
+      spiral_speed_multiplier: 0.26
+      spiral_tightness: 3.8
+      spiral_chaos: 0.10
+      spiral_thickness: 20
+      veil_opacity: 76
+      veil_mode: drift
+      shadow_opacity: 56
+      center_flash_on_time: 22
+      center_flash_off_time: 170
+
+  # ─── 38:00 · SOAK ──────────────────────────────────────────────────────────
+  # 3.5 Hz is the theta-delta border — the deepest accessible state before
+  # delta (sleep) takes over.  The Monroe Institute identifies this as the
+  # "absorption" phase where prior content integrates.  Nothing new is
+  # introduced; the existing impression deepens.
+  # Tunnel dream at near-zero speed.  In VR it looks frozen, like floating
+  # inside a still tunnel of light.  Veil at maximum: every surface is covered
+  # in drifting phrases, but none demand attention.
+  # 16 ms = 1 frame.  At this depth, 1-frame exposures have been demonstrated
+  # in fMRI studies to produce full semantic processing in limbic regions.
+  - t: 2280
+    label: soak
+    ease: linear
+    params:
+      phrases: good_girl
+      beat_frequency: 3.5
+      carrier_frequency: 150.0
+      spiral_style: tunnel_dream
+      spiral_count: 3
+      spiral_opacity: 91
+      spiral_speed_multiplier: 0.18
+      spiral_tightness: 3.6
+      spiral_chaos: 0.04
+      spiral_thickness: 19
+      veil_opacity: 82
+      veil_mode: drift
+      shadow_opacity: 62
+      center_flash_on_time: 16
+      center_flash_off_time: 155
+
+  # ─── 42:00 · ASCENT ──────────────────────────────────────────────────────
+  # The return journey begins.  Beat climbs back through theta.  Fermat
+  # spiral mirrors the opening — the same pattern the brain saw when it was
+  # fully alert.  Veil drops, rain replaces drift.  The light quality shifts.
+  # This is important: the session should not snap from deep theta to waking.
+  # A gradual 3-minute ascent prevents the "startle" that breaks integration.
+  - t: 2520
+    label: ascent
+    ease: ease_out
+    params:
+      phrases: return
+      beat_frequency: 6.0
+      carrier_frequency: 174.0
+      spiral_style: fermat
+      spiral_count: 5
+      spiral_opacity: 87
+      spiral_speed_multiplier: 0.62
+      spiral_tightness: 6.2
+      spiral_chaos: 0.07
+      spiral_thickness: 15
+      veil_opacity: 40
+      veil_mode: rain
+      shadow_opacity: 28
+      center_flash_on_time: 90
+      center_flash_off_time: 260
+
+  # ─── 44:00 · RETURN ────────────────────────────────────────────────────────
+  # 9 Hz — bright alert alpha.  Archimedean spiral: simple, even, no trance
+  # induction properties.  Veil is minimal.  Center text at fully conscious
+  # cadence.  The session ends on a clean landing.
+  # The one-minute duration is intentional: do not rush this phase.
+  # The user has been at 3.5 Hz for 4 minutes.  Give them a full minute
+  # of 9 Hz before they remove the headset.
+  - t: 2640
+    label: return
+    ease: ease_out
+    params:
+      phrases: return
+      beat_frequency: 9.0
+      carrier_frequency: 196.0
+      spiral_style: archimedean
+      spiral_count: 6
+      spiral_opacity: 80
+      spiral_speed_multiplier: 0.95
+      spiral_tightness: 7.0
+      spiral_chaos: 0.04
+      spiral_thickness: 11
+      veil_opacity: 16
+      veil_mode: scroll
+      shadow_opacity: 10
+      center_flash_on_time: 160
+      center_flash_off_time: 360

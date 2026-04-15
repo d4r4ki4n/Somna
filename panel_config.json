@@ -1,0 +1,2288 @@
+{
+  "version": 1,
+  "description": "Somna control panel widget configuration. Generated from Doc 51 Â§4 key inventory.",
+  "widgets": [
+    {
+      "key": "volume",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Essential",
+      "label": "Master Volume",
+      "section": "Audio",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Master binaural + carrier output level (0—100).",
+      "range": [
+        0,
+        100
+      ]
+    },
+    {
+      "key": "noise_volume",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Essential",
+      "label": "Noise Volume",
+      "section": "Audio",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Colored noise output level (0—100). Color set via buttons.",
+      "range": [
+        0,
+        100
+      ]
+    },
+    {
+      "key": "beat_frequency",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Essential",
+      "label": "Beat Frequency (Hz)",
+      "section": "Audio",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Binaural beat frequency. Agent and timeline may override.",
+      "range": [
+        0.5,
+        40.0
+      ]
+    },
+    {
+      "key": "carrier_frequency",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Carrier Freq (Hz)",
+      "section": "Audio",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Binaural carrier tone. Left ear = carrier, right = carrier+beat.",
+      "range": [
+        80.0,
+        500.0
+      ]
+    },
+    {
+      "key": "carrier_waveform",
+      "widget": "Dropdown",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Carrier Shape",
+      "section": "Audio",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Carrier waveform shape for isochronic and binaural tones.\nSquare has sharper onset/offset and is more perceptually salient.\nSine is smoothest. Triangle is a middle ground.",
+      "enum": [
+        "sine",
+        "square",
+        "triangle",
+        "sawtooth"
+      ]
+    },
+    {
+      "key": "entrainment_mode",
+      "widget": "Dropdown",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Entrainment Mode",
+      "section": "Audio",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Audio entrainment delivery method.",
+      "enum": [
+        "binaural",
+        "isochronic",
+        "hybrid"
+      ]
+    },
+    {
+      "key": "binaural_blend",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Binaural Blend",
+      "section": "Audio",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Mix between pure binaural (0) and AM-modulated isochronic (1).",
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "key": "breath_mod",
+      "widget": "Toggle",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Breath Modulation",
+      "section": "Audio",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Amplitude-modulate carrier at breath rate for pacing."
+    },
+    {
+      "key": "breath_rate",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Breath Rate (BPM)",
+      "section": "Audio",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Target breaths per minute for modulation pacing.",
+      "range": [
+        4.0,
+        20.0
+      ]
+    },
+    {
+      "key": "am_depth",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "AM Depth",
+      "section": "Audio",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Amplitude modulation depth for isochronic / breath pacing.",
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "key": "trance_score",
+      "widget": "Gauge+Sparkline",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Trance Score",
+      "section": "Session",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Composite trance depth estimate from EEG alpha/theta ratio, HRV, and stillness.",
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "key": "session_elapsed",
+      "widget": "Timer",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Session Time",
+      "section": "Session",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Total elapsed session time in HH:MM:SS."
+    },
+    {
+      "key": "sleep_stage",
+      "widget": "Badge",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Sleep Stage",
+      "section": "Sleep",
+      "modes": [
+        "SLEEP"
+      ],
+      "tooltip": "Current sleep stage classification from EEG spectral analysis.",
+      "enum": [
+        "WAKE",
+        "N1",
+        "N2",
+        "N3",
+        "REM"
+      ],
+      "badge_colors": {
+        "WAKE": "#ffd23f",
+        "N1": "#87cefa",
+        "N2": "#4682c8",
+        "N3": "#19328c",
+        "REM": "#9467bd"
+      }
+    },
+    {
+      "key": "sleep_stage_confidence",
+      "widget": "Indicator",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Stage Confidence",
+      "section": "Sleep",
+      "modes": [
+        "SLEEP"
+      ],
+      "tooltip": "Classifier confidence in current sleep stage label.",
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "key": "sleep_phase",
+      "widget": "Badge",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Sleep Phase",
+      "section": "Sleep",
+      "modes": [
+        "SLEEP"
+      ],
+      "tooltip": "Current sleep conductor phase.",
+      "enum": [
+        "SLEEP_APPROACH",
+        "SLEEP_ONSET",
+        "SLEEP_MAINTAIN",
+        "SLEEP_TRAINING",
+        "SLEEP_WAKE"
+      ],
+      "badge_colors": {
+        "SLEEP_APPROACH": "#6644aa",
+        "SLEEP_ONSET": "#553399",
+        "SLEEP_MAINTAIN": "#442288",
+        "SLEEP_TRAINING": "#9966cc",
+        "SLEEP_WAKE": "#ffcc44"
+      }
+    },
+    {
+      "key": "swe_frequency",
+      "widget": "Indicator",
+      "classification": "AGENT_TUNABLE",
+      "layer": "Advanced",
+      "label": "SWE Frequency (Hz)",
+      "section": "Sleep",
+      "modes": [
+        "SLEEP"
+      ],
+      "tooltip": "Slow-wave entrainment target frequency.",
+      "range": [
+        0.5,
+        2.0
+      ]
+    },
+    {
+      "key": "swe_amplitude",
+      "widget": "Indicator",
+      "classification": "AGENT_TUNABLE",
+      "layer": "Advanced",
+      "label": "SWE Amplitude",
+      "section": "Sleep",
+      "modes": [
+        "SLEEP"
+      ],
+      "tooltip": "Slow-wave entrainment modulation depth.",
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "key": "sleep_time_n2_n3",
+      "widget": "Timer",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Deep Sleep Time",
+      "section": "Sleep",
+      "modes": [
+        "SLEEP"
+      ],
+      "tooltip": "Cumulative time in N2+N3 stages (MM:SS)."
+    },
+    {
+      "key": "sleep_cycle_count",
+      "widget": "Counter",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Sleep Cycles",
+      "section": "Sleep",
+      "modes": [
+        "SLEEP"
+      ],
+      "tooltip": "Number of completed NREM-REM sleep cycles.",
+      "range": [
+        0,
+        10
+      ]
+    },
+    {
+      "key": "tmr_enabled",
+      "widget": "Toggle",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "TMR Enabled",
+      "section": "TMR",
+      "modes": [
+        "SLEEP"
+      ],
+      "tooltip": "Enable targeted memory reactivation during N2/N3."
+    },
+    {
+      "key": "tmr_active",
+      "widget": "Badge",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "TMR Active",
+      "section": "TMR",
+      "modes": [
+        "SLEEP"
+      ],
+      "tooltip": "Whether TMR cue delivery is currently active.",
+      "badge_colors": {
+        "true": "#44cc66",
+        "false": "#888888"
+      }
+    },
+    {
+      "key": "tmr_cue_volume",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "TMR Cue Volume",
+      "section": "TMR",
+      "modes": [
+        "SLEEP"
+      ],
+      "tooltip": "Volume ceiling for TMR cue playback during sleep.",
+      "range": [
+        0.0,
+        0.3
+      ]
+    },
+    {
+      "key": "tmr_target_pool",
+      "widget": "Badge",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "TMR Target Pool",
+      "section": "TMR",
+      "modes": [
+        "SLEEP"
+      ],
+      "tooltip": "Currently selected conditioning pool for TMR cueing."
+    },
+    {
+      "key": "tmr_phase_locked",
+      "widget": "Indicator",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Phase Locked",
+      "section": "TMR",
+      "modes": [
+        "SLEEP"
+      ],
+      "tooltip": "True when TMR cues are phase-locked to slow oscillation up-state."
+    },
+    {
+      "key": "tmr_spindle_gated",
+      "widget": "Indicator",
+      "classification": "TELEMETRY",
+      "layer": "Debug",
+      "label": "Spindle Gated",
+      "section": "TMR",
+      "modes": [
+        "SLEEP"
+      ],
+      "tooltip": "True when TMR delivery waits for sleep spindle detection."
+    },
+    {
+      "key": "tmr_cue_count",
+      "widget": "Counter",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "TMR Cues Delivered",
+      "section": "TMR",
+      "modes": [
+        "SLEEP"
+      ],
+      "tooltip": "Count of TMR cues delivered this session.",
+      "range": [
+        0,
+        9999
+      ]
+    },
+    {
+      "key": "tmr_consolidation_priority",
+      "widget": "Indicator",
+      "classification": "AGENT_TUNABLE",
+      "layer": "Debug",
+      "label": "Consolidation Priority",
+      "section": "TMR",
+      "modes": [
+        "SLEEP"
+      ],
+      "tooltip": "Agent-selected priority ordering for TMR pool items."
+    },
+    {
+      "key": "htw_enabled",
+      "widget": "Toggle",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "HTW Enabled",
+      "section": "HTW",
+      "modes": [
+        "SLEEP"
+      ],
+      "tooltip": "Enable hypnagogic training windows during natural N1 epochs."
+    },
+    {
+      "key": "htw_active",
+      "widget": "Badge",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "HTW Active",
+      "section": "HTW",
+      "modes": [
+        "SLEEP"
+      ],
+      "tooltip": "Whether a hypnagogic training window is currently active.",
+      "badge_colors": {
+        "true": "#9966cc",
+        "false": "#888888"
+      }
+    },
+    {
+      "key": "htw_eligible",
+      "widget": "Indicator",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "HTW Eligible",
+      "section": "HTW",
+      "modes": [
+        "SLEEP"
+      ],
+      "tooltip": "True when all HTW eligibility gates are satisfied (>60min N2/N3, >90min since last, count<3)."
+    },
+    {
+      "key": "htw_count",
+      "widget": "Counter",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "HTW Count",
+      "section": "HTW",
+      "modes": [
+        "SLEEP"
+      ],
+      "tooltip": "Number of HTW episodes completed this session (max 3).",
+      "range": [
+        0,
+        3
+      ]
+    },
+    {
+      "key": "htw_gain_tts",
+      "widget": "Indicator",
+      "classification": "AGENT_TUNABLE",
+      "layer": "Debug",
+      "label": "HTW TTS Gain",
+      "section": "HTW",
+      "modes": [
+        "SLEEP"
+      ],
+      "tooltip": "Agent-managed TTS gain during HTW (~6% whisper level).",
+      "range": [
+        0.0,
+        0.1
+      ]
+    },
+    {
+      "key": "htw_gain_ssb",
+      "widget": "Indicator",
+      "classification": "AGENT_TUNABLE",
+      "layer": "Debug",
+      "label": "HTW SSB Gain",
+      "section": "HTW",
+      "modes": [
+        "SLEEP"
+      ],
+      "tooltip": "Agent-managed subliminal gain during HTW (~14%).",
+      "range": [
+        0.0,
+        0.2
+      ]
+    },
+    {
+      "key": "ppg_available",
+      "widget": "Indicator",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "PPG Available",
+      "section": "EEG",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "True when PPG data stream is flowing and producing valid peaks."
+    },
+    {
+      "key": "ppg_heart_rate",
+      "widget": "Value+Sparkline",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Heart Rate (BPM)",
+      "section": "EEG",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Instantaneous heart rate from PPG peak detection (16s window).",
+      "range": [
+        40.0,
+        180.0
+      ]
+    },
+    {
+      "key": "ppg_hrv_rmssd",
+      "widget": "Value+Sparkline",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "HRV RMSSD (ms)",
+      "section": "EEG",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Root mean square of successive RR interval differences. Rises with parasympathetic (relaxation) dominance.",
+      "range": [
+        0.0,
+        200.0
+      ]
+    },
+    {
+      "key": "ppg_breath_rate",
+      "widget": "Value",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Breath Rate (Hz)",
+      "section": "EEG",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Respiratory rate derived from respiratory sinus arrhythmia (RSA) spectral peak.",
+      "range": [
+        0.1,
+        0.5
+      ]
+    },
+    {
+      "key": "ppg_breath_phase",
+      "widget": "Phase Ring",
+      "classification": "TELEMETRY",
+      "layer": "Debug",
+      "label": "Breath Phase",
+      "section": "EEG",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Current respiratory phase 0.0-1.0 from RSA-driven monotonic clock.",
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "key": "imu_motion_rms",
+      "widget": "Indicator",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Motion RMS (g)",
+      "section": "EEG",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "RMS deviation of accelerometer from 1g rest. Near-zero = perfectly still.",
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "key": "imu_head_nod_detected",
+      "widget": "Indicator",
+      "classification": "TELEMETRY",
+      "layer": "Debug",
+      "label": "Head Nod Detected",
+      "section": "EEG",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "True when Y-axis pitch shows sustained forward drop – behavioural N1 onset marker."
+    },
+    {
+      "key": "eeg_visual_coupling_enabled",
+      "widget": "Toggle",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "EEG→Visual Coupling",
+      "section": "EEG",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Route live EEG band powers into visual parameters. Alpha→spiral brightness, Theta→speed, Delta→veil depth, Beta→chaos."
+    },
+    {
+      "key": "eeg_visual_coupling_gain",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Coupling Gain",
+      "section": "EEG",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Master gain for the EEG→Visual coupling matrix. 0 = no effect, 2 = double sensitivity.",
+      "range": [
+        0.0,
+        2.0
+      ]
+    },
+    {
+      "key": "conditioning_cue_tone_pool",
+      "widget": "Badge",
+      "classification": "AGENT_TUNABLE",
+      "layer": "Advanced",
+      "label": "Cue Tone Pool",
+      "section": "Conditioning",
+      "modes": [
+        "TRANCE",
+        "CUE_TEST"
+      ],
+      "tooltip": "Currently targeted conditioning pool name."
+    },
+    {
+      "key": "conditioning_overall_strength",
+      "widget": "Gauge",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Association Strength",
+      "section": "Conditioning",
+      "modes": [
+        "TRANCE",
+        "CUE_TEST"
+      ],
+      "tooltip": "Current association strength for the active pool's target response.",
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "key": "conditioning_session_pairing_count",
+      "widget": "Counter",
+      "classification": "TELEMETRY",
+      "layer": "Debug",
+      "label": "Pairings This Session",
+      "section": "Conditioning",
+      "modes": [
+        "TRANCE",
+        "CUE_TEST"
+      ],
+      "tooltip": "Total conditioning trials delivered this session.",
+      "range": [
+        0,
+        9999
+      ]
+    },
+    {
+      "key": "habituation_mean_novelty",
+      "widget": "Gauge",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Novelty Score",
+      "section": "Habituation",
+      "modes": [
+        "TRANCE"
+      ],
+      "tooltip": "Current novelty budget utilization. Drops as stimuli habituate.",
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "key": "habituation_budget_remaining",
+      "widget": "Indicator",
+      "classification": "TELEMETRY",
+      "layer": "Debug",
+      "label": "Novelty Budget",
+      "section": "Habituation",
+      "modes": [
+        "TRANCE"
+      ],
+      "tooltip": "Remaining novelty budget for the current session phase.",
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "key": "habituation_active_count",
+      "widget": "Indicator",
+      "classification": "TELEMETRY",
+      "layer": "Debug",
+      "label": "Active Stimuli",
+      "section": "Habituation",
+      "modes": [
+        "TRANCE"
+      ],
+      "tooltip": "Short-term habituation level (seconds timescale).",
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "key": "habituation_cooling_count",
+      "widget": "Indicator",
+      "classification": "TELEMETRY",
+      "layer": "Debug",
+      "label": "Cooling Stimuli",
+      "section": "Habituation",
+      "modes": [
+        "TRANCE"
+      ],
+      "tooltip": "Medium-term habituation level (minutes timescale).",
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "key": "habituation_trigger_pending",
+      "widget": "Indicator",
+      "classification": "TELEMETRY",
+      "layer": "Debug",
+      "label": "Trigger Pending",
+      "section": "Habituation",
+      "modes": [
+        "TRANCE"
+      ],
+      "tooltip": "Long-term habituation level (cross-session timescale).",
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "key": "content_active_pool",
+      "widget": "Badge",
+      "classification": "AGENT_TUNABLE",
+      "layer": "Advanced",
+      "label": "Content Pool",
+      "section": "Content",
+      "modes": [
+        "TRANCE",
+        "SLEEP"
+      ],
+      "tooltip": "Currently active content pool for TTS/subliminal delivery."
+    },
+    {
+      "key": "content_semantic_density",
+      "widget": "Badge",
+      "classification": "AGENT_TUNABLE",
+      "layer": "Debug",
+      "label": "Semantic Density",
+      "section": "Content",
+      "modes": [
+        "TRANCE",
+        "SLEEP"
+      ],
+      "tooltip": "Content density tier: PRIME (simple, direct), BRIDGE (transitional), DEEPEN (complex, layered).",
+      "enum": [
+        "PRIME",
+        "BRIDGE",
+        "DEEPEN"
+      ],
+      "badge_colors": {
+        "PRIME": "#44cc66",
+        "BRIDGE": "#4a9eff",
+        "DEEPEN": "#0f3460"
+      }
+    },
+    {
+      "key": "content_syllable_rate",
+      "widget": "Indicator",
+      "classification": "AGENT_TUNABLE",
+      "layer": "Debug",
+      "label": "Syllable Rate (Hz)",
+      "section": "Content",
+      "modes": [
+        "TRANCE",
+        "SLEEP"
+      ],
+      "tooltip": "Target syllable delivery rate for TTS pacing.",
+      "range": [
+        3.0,
+        7.0
+      ]
+    },
+    {
+      "key": "content_milton_pattern",
+      "widget": "Badge",
+      "classification": "AGENT_TUNABLE",
+      "layer": "Debug",
+      "label": "Milton Pattern",
+      "section": "Content",
+      "modes": [
+        "TRANCE",
+        "SLEEP"
+      ],
+      "tooltip": "Currently active Milton Model language pattern type."
+    },
+    {
+      "key": "content_delivery_count",
+      "widget": "Counter",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Deliveries",
+      "section": "Content",
+      "modes": [
+        "TRANCE",
+        "SLEEP"
+      ],
+      "tooltip": "Total content items delivered this session.",
+      "range": [
+        0,
+        9999
+      ]
+    },
+    {
+      "key": "bg_ganzfeld_cct_k",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Color Temp (K)",
+      "section": "Visual/Audio",
+      "modes": [
+        "TRANCE"
+      ],
+      "tooltip": "Ganzfeld background color temperature. Lower = warmer/redder, aiding melatonin.",
+      "range": [
+        1800.0,
+        4500.0
+      ]
+    },
+    {
+      "key": "pp_blur_radius",
+      "widget": "Indicator",
+      "classification": "AGENT_TUNABLE",
+      "layer": "Advanced",
+      "label": "Blur Radius (px)",
+      "section": "Visual/Audio",
+      "modes": [
+        "TRANCE"
+      ],
+      "tooltip": "Gaussian blur radius applied to visual field.",
+      "range": [
+        0.0,
+        20.0
+      ]
+    },
+    {
+      "key": "pp_ca_strength",
+      "widget": "Indicator",
+      "classification": "AGENT_TUNABLE",
+      "layer": "Debug",
+      "label": "Chromatic Aberration (px)",
+      "section": "Visual/Audio",
+      "modes": [
+        "TRANCE"
+      ],
+      "tooltip": "Chromatic aberration offset for dreamlike visual quality.",
+      "range": [
+        0.0,
+        5.0
+      ]
+    },
+    {
+      "key": "pp_vignette_intensity",
+      "widget": "Indicator",
+      "classification": "AGENT_TUNABLE",
+      "layer": "Advanced",
+      "label": "Vignette Intensity",
+      "section": "Visual/Audio",
+      "modes": [
+        "TRANCE"
+      ],
+      "tooltip": "Edge darkening vignette strength. Draws attention to center.",
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "key": "pp_bloom_intensity",
+      "widget": "Indicator",
+      "classification": "AGENT_TUNABLE",
+      "layer": "Debug",
+      "label": "Bloom Intensity",
+      "section": "Visual/Audio",
+      "modes": [
+        "TRANCE"
+      ],
+      "tooltip": "Bloom/glow post-processing intensity.",
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "key": "pp_iaf_mod_amplitude",
+      "widget": "Indicator",
+      "classification": "AGENT_TUNABLE",
+      "layer": "Debug",
+      "label": "IAF Luminance Depth",
+      "section": "Visual/Audio",
+      "modes": [
+        "TRANCE"
+      ],
+      "tooltip": "Luminance modulation depth locked to individual alpha frequency.",
+      "range": [
+        0.0,
+        0.05
+      ]
+    },
+    {
+      "key": "spatial_asmr_gain",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "ASMR Gain",
+      "section": "Visual/Audio",
+      "modes": [
+        "TRANCE"
+      ],
+      "tooltip": "ASMR layer volume.",
+      "range": [
+        0.0,
+        0.3
+      ]
+    },
+    {
+      "key": "spatial_panning_gain",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Spatial Panning",
+      "section": "Visual/Audio",
+      "modes": [
+        "TRANCE",
+        "GENUS"
+      ],
+      "tooltip": "L/R slow spatial panning gain. 0 = off.",
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "key": "spatial_shepard_gain",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Shepard Tones",
+      "section": "Visual/Audio",
+      "modes": [
+        "TRANCE"
+      ],
+      "tooltip": "Shepard tone continuous-pitch illusion gain. 0 = off.",
+      "range": [
+        0.0,
+        0.3
+      ]
+    },
+    {
+      "key": "session_arc",
+      "widget": "Dropdown",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Session Arc",
+      "section": "Session",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "User-selected session shape/trajectory. Determines how intensity and phase progression are managed.",
+      "enum": [
+        "GENTLE_DESCENT",
+        "WAVE_PATTERN",
+        "DEEP_PLATEAU",
+        "CONDITIONING_FOCUS",
+        "SLEEP_BRIDGE"
+      ]
+    },
+    {
+      "key": "director_depth_target",
+      "widget": "Indicator",
+      "classification": "AGENT_TUNABLE",
+      "layer": "Advanced",
+      "label": "Target Depth",
+      "section": "Director",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Director's current target trance depth.",
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "key": "induction_strategy_id",
+      "widget": "Dropdown",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Induction Strategy",
+      "section": "Induction",
+      "modes": [
+        "TRANCE"
+      ],
+      "tooltip": "Selected induction technique. Promoted to Essential when strategy_auto_select is off.",
+      "enum": [
+        "ENTRAINMENT_HEAVY",
+        "SOMATIC_ANCHOR",
+        "BREATH_LEAD",
+        "PROGRESSIVE_RELAXATION",
+        "COGNITIVE_OVERLOAD",
+        "FRACTIONATION",
+        "FIXATION_FADE",
+        "PACE_AND_LEAD"
+      ]
+    },
+    {
+      "key": "induction_phase",
+      "widget": "Badge",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Induction Phase",
+      "section": "Induction",
+      "modes": [
+        "TRANCE"
+      ],
+      "tooltip": "Current micro-phase within the active induction strategy."
+    },
+    {
+      "key": "induction_phase_progress",
+      "widget": "Progress Bar",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Induction Progress",
+      "section": "Induction",
+      "modes": [
+        "TRANCE"
+      ],
+      "tooltip": "0-100% progress through the current induction strategy.",
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "key": "genus_enabled",
+      "widget": "Toggle",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "GENUS Enabled",
+      "section": "GENUS",
+      "modes": [
+        "GENUS"
+      ],
+      "tooltip": "Enable 40 Hz gamma entrainment (GENUS protocol)."
+    },
+    {
+      "key": "genus_active",
+      "widget": "Badge",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "GENUS Active",
+      "section": "GENUS",
+      "modes": [
+        "GENUS"
+      ],
+      "tooltip": "Whether GENUS protocol is currently running.",
+      "badge_colors": {
+        "true": "#44cc66",
+        "false": "#888888"
+      }
+    },
+    {
+      "key": "genus_phase",
+      "widget": "Badge",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "GENUS Phase",
+      "section": "GENUS",
+      "modes": [
+        "GENUS"
+      ],
+      "tooltip": "Current GENUS session phase.",
+      "enum": [
+        "RAMP_UP",
+        "ACTIVE",
+        "WIND_DOWN"
+      ],
+      "badge_colors": {
+        "RAMP_UP": "#ffaa33",
+        "ACTIVE": "#44cc66",
+        "WIND_DOWN": "#4a9eff"
+      }
+    },
+    {
+      "key": "genus_frequency",
+      "widget": "Indicator",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "GENUS Frequency (Hz)",
+      "section": "GENUS",
+      "modes": [
+        "GENUS"
+      ],
+      "tooltip": "GENUS entrainment frequency (fixed 40 Hz).",
+      "range": [
+        40.0,
+        40.0
+      ]
+    },
+    {
+      "key": "genus_gamma_verified",
+      "widget": "Indicator",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Gamma Verified",
+      "section": "GENUS",
+      "modes": [
+        "GENUS"
+      ],
+      "tooltip": "True when EEG confirms 40 Hz gamma entrainment is present."
+    },
+    {
+      "key": "genus_audio_only_window",
+      "widget": "Badge",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Audio-Only Window",
+      "section": "GENUS",
+      "modes": [
+        "GENUS"
+      ],
+      "tooltip": "True during the initial audio-only phase before visual 40 Hz is added."
+    },
+    {
+      "key": "genus_transition_remaining",
+      "widget": "Timer",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Transition Remaining",
+      "section": "GENUS",
+      "modes": [
+        "GENUS"
+      ],
+      "tooltip": "Seconds remaining in the current GENUS phase transition.",
+      "range": [
+        0.0,
+        180.0
+      ]
+    },
+    {
+      "key": "genus_arc",
+      "widget": "Dropdown",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "GENUS Arc",
+      "section": "GENUS",
+      "modes": [
+        "GENUS"
+      ],
+      "tooltip": "GENUS session shape: standalone, hybrid with trance, or neuroprotection-focused protocol.",
+      "enum": [
+        "GENUS_STANDALONE",
+        "GENUS_TRANCE_HYBRID",
+        "GENUS_NEUROPROTECTION"
+      ]
+    },
+    {
+      "key": "genus_session_minutes",
+      "widget": "Timer",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "GENUS Time",
+      "section": "GENUS",
+      "modes": [
+        "GENUS"
+      ],
+      "tooltip": "Total GENUS protocol time this session (minutes)."
+    },
+    {
+      "key": "veil_mode",
+      "widget": "Dropdown",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Veil Mode",
+      "section": "Veil & BG",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Particle veil animation style. 'auto' rotates through modes on a timer.",
+      "enum": [
+        "auto",
+        "scroll",
+        "rain",
+        "drift",
+        "converge",
+        "strobe",
+        "tunnel"
+      ]
+    },
+    {
+      "key": "veil_opacity",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Veil Opacity",
+      "section": "Veil & BG",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Veil particle layer opacity (0—100).",
+      "range": [
+        0,
+        100
+      ]
+    },
+    {
+      "key": "veil_density",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Veil Density",
+      "section": "Veil & BG",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Number of active veil particles (0—100).",
+      "range": [
+        0,
+        100
+      ]
+    },
+    {
+      "key": "veil_speed",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Veil Speed",
+      "section": "Veil & BG",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Veil particle speed multiplier.",
+      "range": [
+        0.1,
+        10.0
+      ]
+    },
+    {
+      "key": "bg_mode",
+      "widget": "Dropdown",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "BG Mode",
+      "section": "Veil & BG",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Background layer mode. 'none' makes the window transparent.",
+      "enum": [
+        "slideshow",
+        "ganzfeld",
+        "none"
+      ]
+    },
+    {
+      "key": "bg_opacity",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "BG Opacity",
+      "section": "Veil & BG",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Background image layer opacity.",
+      "range": [
+        0,
+        100
+      ]
+    },
+    {
+      "key": "bg_ganzfeld_freq",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Ganzfeld Freq (Hz)",
+      "section": "Veil & BG",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Ganzfeld flicker frequency in Hz.",
+      "range": [
+        0.5,
+        20.0
+      ]
+    },
+    {
+      "key": "bg_ganzfeld_duty",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Ganzfeld Duty",
+      "section": "Veil & BG",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Ganzfeld flicker on/off duty cycle.",
+      "range": [
+        0.1,
+        0.9
+      ]
+    },
+    {
+      "key": "spiral_style",
+      "widget": "Dropdown",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Spiral Style",
+      "section": "Spirals",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "GPU spiral pattern type.",
+      "enum": [
+        "tunnel_dream",
+        "galaxy",
+        "archimedean",
+        "kaleidoscope",
+        "interference",
+        "electric",
+        "vortex",
+        "dna",
+        "fibonacci",
+        "rose",
+        "moire",
+        "spirograph",
+        "fermat",
+        "superformula",
+        "liminal"
+      ]
+    },
+    {
+      "key": "spiral_geometry",
+      "widget": "Dropdown",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Spiral Geometry",
+      "section": "Spirals",
+      "modes": [
+        "TRANCE"
+      ],
+      "tooltip": "Spiral arm geometry. Archimedean = evenly spaced arms. Golden = phi-ratio spacing.",
+      "enum": [
+        "archimedean",
+        "golden"
+      ]
+    },
+    {
+      "key": "spiral_opacity",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Spiral Opacity",
+      "section": "Spirals",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Spiral layer opacity (0—100).",
+      "range": [
+        0,
+        100
+      ]
+    },
+    {
+      "key": "spiral_speed_multiplier",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Spiral Speed",
+      "section": "Spirals",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Spiral rotation speed multiplier.",
+      "range": [
+        0.05,
+        5.0
+      ]
+    },
+    {
+      "key": "spiral_chaos",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Spiral Chaos",
+      "section": "Spirals",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Adds stochastic noise to spiral geometry.",
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "key": "spiral_color_mode",
+      "widget": "Dropdown",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Color Mode",
+      "section": "Spirals",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Rainbow: full hue cycle. Solid: uses the base color picker below.",
+      "enum": [
+        "rainbow",
+        "solid"
+      ]
+    },
+    {
+      "key": "spiral_base_color",
+      "widget": "ColorPicker",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Base Color",
+      "section": "Spirals",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Spiral color used when Color Mode is set to Solid."
+    },
+    {
+      "key": "spiral_complexity",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Spiral Complexity",
+      "section": "Spirals",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Number of arms / density of spiral geometry.",
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "key": "spiral_thickness",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Arm Thickness",
+      "section": "Spirals",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Arm width multiplier (u_thickness uniform).",
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "key": "spiral_loom_enabled",
+      "widget": "Toggle",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Loom",
+      "section": "Spirals",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Rhythmically zoom the spiral in and out, creating a looming approach/recession effect."
+    },
+    {
+      "key": "spiral_loom_depth",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Loom Depth",
+      "section": "Spirals",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "How much the spiral zooms in and out (0 = subtle, 1 = dramatic Â±25% swing).",
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "key": "spiral_loom_rate",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Loom Rate",
+      "section": "Spirals",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Loom cycle frequency in Hz when sync is set to manual (0.02 = 50s cycle, 0.5 = 2s cycle).",
+      "range": [
+        0.02,
+        0.5
+      ]
+    },
+    {
+      "key": "spiral_loom_sync",
+      "widget": "Dropdown",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Loom Sync",
+      "section": "Spirals",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Sync loom rate to a biological or entrainment frequency instead of the manual rate slider.",
+      "enum": [
+        "manual",
+        "breath",
+        "beat_div4"
+      ]
+    },
+    {
+      "key": "font_switch_mode",
+      "widget": "Dropdown",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Font Mode",
+      "section": "Affirmations",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Affirmation font selection strategy.",
+      "enum": [
+        "intelligent",
+        "random",
+        "fixed"
+      ]
+    },
+    {
+      "key": "center_flash_sync_to_beat",
+      "widget": "Toggle",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Flash Sync to Beat",
+      "section": "Affirmations",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Sync center flash timing to the binaural beat phase."
+    },
+    {
+      "key": "shadow_opacity",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Shadow Opacity",
+      "section": "Affirmations",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Subliminal shadow text opacity (0 = hidden).",
+      "range": [
+        0,
+        100
+      ]
+    },
+    {
+      "key": "shadow_count",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Shadow Count",
+      "section": "Affirmations",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Number of simultaneous shadow text instances.",
+      "range": [
+        1,
+        20
+      ]
+    },
+    {
+      "key": "text_color",
+      "widget": "ColorPicker",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Text Color",
+      "section": "Affirmations",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Color of affirmation and veil text."
+    },
+    {
+      "key": "window_always_on_top",
+      "widget": "Toggle",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Always on Top",
+      "section": "Overlay",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Keep the display window above all other windows."
+    },
+    {
+      "key": "window_click_through",
+      "widget": "Toggle",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Click Through",
+      "section": "Overlay",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Make the display window transparent to mouse clicks (WS_EX_TRANSPARENT).",
+      "inline": true
+    },
+    {
+      "key": "window_opacity",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Window Opacity %",
+      "section": "Overlay",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Overall display window opacity (DWM alpha).",
+      "range": [
+        10,
+        100
+      ]
+    },
+    {
+      "key": "tts_enabled",
+      "widget": "Toggle",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "TTS Enabled",
+      "section": "TTS",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Enable text-to-speech voice affirmation delivery."
+    },
+    {
+      "key": "tts_subliminal",
+      "widget": "Toggle",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Subliminal Mode",
+      "section": "TTS",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Deliver TTS audio above hearing threshold as a subliminal carrier.",
+      "inline": true
+    },
+    {
+      "key": "tts_volume",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "TTS Volume",
+      "section": "TTS",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "TTS voice output level (0—100).",
+      "range": [
+        0,
+        100
+      ]
+    },
+    {
+      "key": "tts_subliminal_vol",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Subliminal Volume",
+      "section": "TTS",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Volume of the subliminal carrier.",
+      "range": [
+        0,
+        100
+      ]
+    },
+    {
+      "key": "tts_subliminal_hz",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Subliminal Freq (Hz)",
+      "section": "TTS",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Carrier frequency for subliminal encoding.",
+      "range": [
+        12000,
+        22000
+      ]
+    },
+    {
+      "key": "tts_backend",
+      "widget": "Dropdown",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "TTS Backend",
+      "section": "TTS",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "TTS synthesis provider. 'edge' uses Edge TTS (free).",
+      "enum": [
+        "edge",
+        "openai",
+        "local"
+      ]
+    },
+    {
+      "key": "tts_voice",
+      "widget": "Input",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Voice",
+      "section": "TTS",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Voice name for the selected backend (e.g. en-US-JennyNeural for Edge TTS, af_bella for local)."
+    },
+    {
+      "key": "tts_api_url",
+      "widget": "Input",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "API URL",
+      "section": "TTS",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Base URL for OpenAI-compatible or local TTS server."
+    },
+    {
+      "key": "tts_key",
+      "widget": "Input",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "API Key",
+      "section": "TTS",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "API key for the selected TTS provider.",
+      "password": true
+    },
+    {
+      "key": "vr_headset_active",
+      "widget": "Indicator",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "VR Active",
+      "section": "OpenXR",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "True when the VR headset subprocess is rendering frames."
+    },
+    {
+      "key": "vr_frame_count",
+      "widget": "Counter",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Frame Count",
+      "section": "OpenXR",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Total frames rendered by the VR headset this session.",
+      "range": [
+        0,
+        999999
+      ]
+    },
+    {
+      "key": "vr_safety_kill",
+      "widget": "Alert Badge",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Safety Kill",
+      "section": "OpenXR",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Set when the safety monitor detects a paroxysmal pattern and halts the headset."
+    },
+    {
+      "key": "ssvep_binocular_index",
+      "widget": "Indicator",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "SSVEP Index",
+      "section": "OpenXR",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Binocular rivalry SSVEP detection index (0=no response, 1=strong entrainment).",
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "key": "ssvep_switch_rate_hz",
+      "widget": "Indicator",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Switch Rate (Hz)",
+      "section": "OpenXR",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Measured binocular rivalry switch rate.",
+      "range": [
+        0.5,
+        20.0
+      ]
+    },
+    {
+      "key": "vr_rivalry_depth",
+      "widget": "Indicator",
+      "classification": "AGENT_TUNABLE",
+      "layer": "Advanced",
+      "label": "Rivalry Depth",
+      "section": "OpenXR",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Stimulus contrast depth for rivalry / dichoptic modes.",
+      "range": [
+        0.0,
+        0.4
+      ]
+    },
+    {
+      "key": "vr_background_lum",
+      "widget": "Indicator",
+      "classification": "AGENT_TUNABLE",
+      "layer": "Advanced",
+      "label": "BG Luminance",
+      "section": "OpenXR",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Background luminance of the VR ganzfeld / photic field.",
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "key": "vr_vection_enabled",
+      "widget": "Indicator",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Vection",
+      "section": "OpenXR",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Whether the optic flow vection illusion is active."
+    },
+    {
+      "key": "vr_render_mode",
+      "widget": "Indicator",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Render Mode",
+      "section": "OpenXR",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Current VR render mode: ganzfeld / photic / rivalry / dichoptic_ssvep."
+    },
+    {
+      "key": "haptic_connected",
+      "widget": "Badge",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Haptic Connected",
+      "section": "Haptic",
+      "modes": ["TRANCE", "GENUS", "SLEEP", "CUE_TEST"],
+      "tooltip": "Lovense device BLE connection status.",
+      "badge_colors": {"true": "#44cc66", "false": "#888888"}
+    },
+    {
+      "key": "haptic_intensity",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Haptic Intensity",
+      "section": "Haptic",
+      "modes": ["TRANCE", "GENUS", "CUE_TEST"],
+      "tooltip": "Vibration intensity 0-100. Safety-capped by unlock tier and comfort calibration.",
+      "range": [0, 100]
+    },
+    {
+      "key": "haptic_pattern",
+      "widget": "Dropdown",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Pattern",
+      "section": "Haptic",
+      "modes": ["TRANCE", "GENUS", "CUE_TEST"],
+      "tooltip": "Vibration pattern type. Continuous=steady, Pulse=on/off, Wave=sinusoidal, Fractionation=follows Conductor FSM.",
+      "enum": ["continuous", "pulse", "wave", "ramp", "fractionation", "tmr_cue", "conditioned_anchor"]
+    },
+    {
+      "key": "haptic_pattern_speed",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Pattern Speed",
+      "section": "Haptic",
+      "modes": ["TRANCE", "GENUS", "CUE_TEST"],
+      "tooltip": "Pattern cycle speed multiplier.",
+      "range": [0.1, 10.0]
+    },
+    {
+      "key": "haptic_actual_intensity",
+      "widget": "Indicator",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Actual Intensity",
+      "section": "Haptic",
+      "modes": ["TRANCE", "GENUS", "SLEEP", "CUE_TEST"],
+      "tooltip": "Safety-capped output intensity currently being sent to the device.",
+      "range": [0.0, 100.0]
+    },
+    {
+      "key": "haptic_device_name",
+      "widget": "Badge",
+      "classification": "TELEMETRY",
+      "layer": "Debug",
+      "label": "Device",
+      "section": "Haptic",
+      "modes": ["TRANCE", "GENUS", "SLEEP", "CUE_TEST"],
+      "tooltip": "Connected Lovense device model name."
+    },
+    {
+      "key": "haptic_sleep_enabled_n1n2",
+      "widget": "Toggle",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Sleep N1/N2 Haptic",
+      "section": "Haptic",
+      "modes": ["SLEEP"],
+      "tooltip": "Allow haptic TMR cues during N1/N2 sleep. N3/REM always disabled."
+    },
+    {
+      "key": "tavns_connected",
+      "widget": "Badge",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "taVNS Connected",
+      "section": "taVNS",
+      "modes": ["TRANCE", "GENUS", "SLEEP", "CUE_TEST"],
+      "tooltip": "DG Labs Coyote BLE connection status.",
+      "badge_colors": {"true": "#44cc66", "false": "#888888"}
+    },
+    {
+      "key": "tavns_intensity",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Stimulation Intensity",
+      "section": "taVNS",
+      "modes": ["TRANCE", "GENUS", "CUE_TEST"],
+      "tooltip": "taVNS stimulation intensity 0-100. Safety-capped by unlock tier, comfort calibration, and impedance.",
+      "range": [0, 100]
+    },
+    {
+      "key": "tavns_waveform",
+      "widget": "Dropdown",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Waveform",
+      "section": "taVNS",
+      "modes": ["TRANCE", "GENUS", "CUE_TEST"],
+      "tooltip": "Stimulation waveform shape.",
+      "enum": ["sine", "square", "biphasic"]
+    },
+    {
+      "key": "tavns_actual_current_ua",
+      "widget": "Indicator",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Actual Current (uA)",
+      "section": "taVNS",
+      "modes": ["TRANCE", "GENUS", "SLEEP", "CUE_TEST"],
+      "tooltip": "Safety-capped output current in microamps currently being delivered.",
+      "range": [0.0, 500.0]
+    },
+    {
+      "key": "tavns_impedance_ok",
+      "widget": "Indicator",
+      "classification": "TELEMETRY",
+      "layer": "Advanced",
+      "label": "Impedance OK",
+      "section": "taVNS",
+      "modes": ["TRANCE", "GENUS", "SLEEP", "CUE_TEST"],
+      "tooltip": "True when electrode contact impedance is below 5 kOhm threshold."
+    },
+    {
+      "key": "tavns_impedance_ohm",
+      "widget": "Indicator",
+      "classification": "TELEMETRY",
+      "layer": "Debug",
+      "label": "Impedance (Ohm)",
+      "section": "taVNS",
+      "modes": ["TRANCE", "GENUS", "SLEEP", "CUE_TEST"],
+      "tooltip": "Last measured electrode contact impedance.",
+      "range": [0.0, 50000.0]
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "pool_id": "depth_descent",
+  "shadows_words": [
+    "deep", "sink", "drop", "pull", "down", "under", "below", "heavy",
+    "low", "ground", "descend", "press", "weight", "settle", "slow",
+    "still", "blank", "bottom", "further", "through", "inward", "toward",
+    "past", "beyond"
+  ],
+  "centertext_templates": [
+    "sinking through every layer of {conscious_state}",
+    "each breath pulling you {direction} into {depth_quality}",
+    "the weight of your {body_part} drawing you deeper",
+    "every heartbeat settling {direction} into stillness",
+    "{depth_quality} spreading through each layer now",
+    "deeper with each slow exhale",
+    "dropping through {conscious_state} on your way down",
+    "your {body_part} leading you {direction}",
+    "each layer {direction} is softer than the last",
+    "settling through the {conscious_state} into quiet"
+  ],
+  "tts_templates": [
+    "with each breath you settle a little deeper, each exhale dropping you a little further through the layers, down through each comfortable layer into the next, and the next, without any need to count or track where you are",
+    "the pull is gentle and continuous, and your {body_part} knows how to follow it, sinking with each slow exhale, each heartbeat pressing you a little further into this quiet depth",
+    "there is always another layer below the one you're in, and each breath finds it, settles into it, and then finds the next — endlessly comfortable, endlessly deeper than you thought possible a moment ago",
+    "you've passed through the surface now, through the places you recognized, down into the softer anonymous layers where everything familiar has dissolved and what remains is only this quiet heaviness and depth",
+    "the weight of your {body_part} is your guide — it knows the direction, it knows the depth, and every exhale is another increment of that downward, inward, settling movement",
+    "each breath doesn't take you somewhere new — it takes you further into what was already here, already beneath the last layer, waiting for you to arrive and settle and rest"
+  ],
+  "synonym_rings": [
+    ["deep", "deeper", "deepening", "depth"],
+    ["sink", "sinking", "sunk"],
+    ["settle", "settling", "settled"],
+    ["drop", "dropping", "dropped"],
+    ["weight", "heavy", "heaviness"],
+    ["descend", "descent", "descending"]
+  ],
+  "pnd_scores": {
+    "deep": 0.2, "sink": 0.3, "drop": 0.2, "pull": 0.2,
+    "down": 0.1, "under": 0.2, "below": 0.2, "heavy": 0.3,
+    "low": 0.1, "ground": 0.2, "descend": 0.4, "press": 0.2,
+    "weight": 0.2, "settle": 0.3, "slow": 0.2, "still": 0.2
+  },
+  "frequency_band": {
+    "deep": "high", "sink": "high", "drop": "high", "pull": "high",
+    "down": "high", "under": "high", "below": "high", "heavy": "high",
+    "low": "high", "ground": "high", "descend": "moderate", "press": "high",
+    "weight": "high", "settle": "high", "slow": "high", "still": "high",
+    "blank": "moderate", "bottom": "high", "further": "high", "through": "high",
+    "inward": "moderate", "toward": "high", "past": "high", "beyond": "high"
+  },
+  "vocabulary": {
+    "body_part": [
+      "body", "chest", "belly", "shoulders", "spine", "limbs", "arms", "legs"
+    ],
+    "conscious_state": [
+      "waking awareness", "the surface", "ordinary thought", "knowing",
+      "recognition", "the familiar", "the ordinary mind", "alertness"
+    ],
+    "direction": [
+      "deeper", "lower", "further down", "further in", "inward", "downward"
+    ],
+    "depth_quality": [
+      "stillness", "quiet", "softness", "heaviness", "blankness",
+      "absence", "formlessness", "undifferentiated calm"
+    ]
+  }
+}

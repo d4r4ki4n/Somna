@@ -1,0 +1,29 @@
+name: "Edison Mode — Hypnagogic Creativity Capture"
+description: >
+  EEG-guided N1 interception protocol (Bible Ch.7 §29). The system monitors
+  alpha/theta ratio, detects N1 onset, holds for a configurable duration,
+  then wakes the user to capture hypnagogic content. Cycles repeat up to
+  max_cycles times. State-driven — not timeline-driven.
+category: edison
+type: edison
+duration: 1800
+
+defaults:
+  beat_frequency: 4.0
+  beat_type: binaural
+  carrier_frequency: 200.0
+  volume: 15.0
+  noise_color: "off"
+  noise_volume: 0
+  bg_mode: "none"
+  spiral_active: false
+  veil_active: false
+  center_text_active: false
+  eeg_monitoring: true
+  edison_mode: true
+  edison_seed_topic: null
+  edison_n1_hold_seconds: 60
+  edison_max_cycles: 5
+  edison_n2_wake_volume: 80
+
+keyframes: []

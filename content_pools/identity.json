@@ -1,0 +1,50 @@
+{
+  "pool_id": "identity",
+  "shadows_words": [
+    "empty", "hollow", "light", "open", "soft", "still", "quiet", "blank",
+    "release", "ease", "gone", "float", "clear", "loose", "melt",
+    "dissolve", "drift", "hollow", "fade", "letting", "give", "yield",
+    "surrender", "accept", "allow"
+  ],
+  "centertext_templates": [
+    "thoughts softly loosening their hold",
+    "that busy voice growing quieter now",
+    "the effort of thinking dissolving away",
+    "each breath releasing a little more weight",
+    "whatever you were carrying, easing now",
+    "mind growing still and beautifully empty",
+    "that sense of pressure gently releasing",
+    "the usual urgency settling into quiet",
+    "thoughts becoming soft and far away",
+    "body and breath doing all the work"
+  ],
+  "tts_templates": [
+    "you don't need to hold onto any particular thought right now, and each breath carries away just a little more of that familiar tension",
+    "the part of you that usually manages everything is already relaxing, already trusting the body to breathe and settle on its own",
+    "somewhere in the rhythm of each exhale, the usual sense of effort grows lighter, softer, more distant with each slow breath",
+    "your body knows how to breathe without any help, and as you notice that quiet rhythm, the need to direct or manage slowly fades",
+    "with each exhale, whatever was held in your {body_part} simply becomes a little less necessary, a little easier to release"
+  ],
+  "synonym_rings": [
+    ["empty", "emptiness", "hollow"],
+    ["release", "releasing", "let go"],
+    ["still", "stillness", "quiet"],
+    ["dissolve", "dissolving", "fade"]
+  ],
+  "pnd_scores": {
+    "empty": 0.3, "hollow": 0.4, "light": 0.2, "open": 0.2,
+    "still": 0.2, "release": 0.3, "dissolve": 0.4, "drift": 0.3
+  },
+  "frequency_band": {
+    "empty": "moderate", "hollow": "moderate", "light": "high", "open": "high",
+    "soft": "high", "still": "high", "quiet": "high", "blank": "moderate",
+    "release": "high", "ease": "high", "gone": "high", "float": "moderate",
+    "clear": "high", "loose": "moderate", "melt": "moderate",
+    "dissolve": "moderate", "drift": "moderate", "fade": "moderate",
+    "letting": "high", "give": "high", "yield": "moderate",
+    "surrender": "moderate", "accept": "moderate", "allow": "moderate"
+  },
+  "vocabulary": {
+    "body_part": ["chest", "belly", "shoulders", "hands", "jaw", "brow", "spine"]
+  }
+}

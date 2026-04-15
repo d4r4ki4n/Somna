@@ -1,0 +1,51 @@
+{
+  "pool_id": "warmth_comfort",
+  "shadows_words": [
+    "warm", "soft", "ease", "rest", "calm", "still", "heavy", "slow",
+    "deep", "sink", "melt", "soothe", "drift", "gentle", "steady",
+    "settle", "breathe", "exhale", "quiet", "hold", "open", "loose",
+    "flow", "trust", "hush"
+  ],
+  "centertext_templates": [
+    "warm weight settling through your {body_part}",
+    "soft heaviness spreading through your {body_part}",
+    "gentle warmth easing every {body_part}",
+    "breath slowly settling deeper now",
+    "your {body_part} heavy and warm",
+    "warmth moving slowly through your spine",
+    "body sinking softly into stillness",
+    "each breath releasing deeper tension",
+    "soft warmth dissolving any holding",
+    "heavy limbs melting into quiet"
+  ],
+  "tts_templates": [
+    "with each exhale your {body_part} grows a little heavier, a little warmer, settling deeper into this quiet comfort",
+    "allow that warmth to spread slowly through your {body_part}, each breath releasing a little more of what you're holding",
+    "there is nothing to do here except feel the soft weight of your {body_part} settling, breath by breath, deeper into ease",
+    "your {body_part} knows how to let go, and with each slow exhale, it's already happening, already softening",
+    "warmth moves gently through you, and with it, every held breath becomes a slow release into deeper stillness",
+    "the quiet grows heavier, more comfortable, and your {body_part} responds by releasing a little more with each breath"
+  ],
+  "synonym_rings": [
+    ["warm", "warmth", "warming"],
+    ["soft", "softly", "softness"],
+    ["heavy", "heaviness", "weight"],
+    ["settle", "settling", "settled"],
+    ["breathe", "breath", "exhale"]
+  ],
+  "pnd_scores": {
+    "warm": 0.2, "soft": 0.2, "ease": 0.2, "rest": 0.2,
+    "heavy": 0.3, "settle": 0.3, "breathe": 0.2, "exhale": 0.2
+  },
+  "frequency_band": {
+    "warm": "high", "soft": "high", "ease": "high", "rest": "high",
+    "calm": "high", "still": "high", "heavy": "high", "slow": "high",
+    "deep": "high", "sink": "high", "melt": "moderate", "soothe": "moderate",
+    "drift": "moderate", "gentle": "high", "steady": "high", "settle": "high",
+    "breathe": "high", "exhale": "moderate", "quiet": "high", "hold": "high",
+    "open": "high", "loose": "high", "flow": "high", "trust": "moderate", "hush": "moderate"
+  },
+  "vocabulary": {
+    "body_part": ["body", "chest", "belly", "arms", "shoulders", "spine", "limbs", "muscles"]
+  }
+}

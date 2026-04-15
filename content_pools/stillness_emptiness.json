@@ -1,0 +1,51 @@
+{
+  "pool_id": "stillness_emptiness",
+  "shadows_words": [
+    "still", "empty", "quiet", "slow", "heavy", "soft", "breathe", "deep",
+    "rest", "sink", "drift", "settle", "hollow", "open", "nothing",
+    "exhale", "release", "ease", "silence", "clear", "blank", "let",
+    "allow", "below", "beyond"
+  ],
+  "centertext_templates": [
+    "breath slowing into perfect quiet stillness",
+    "deep stillness absorbing all remaining tension",
+    "the quiet here growing deeper with each exhale",
+    "body settling into empty, complete stillness",
+    "each breath slower, quieter, more still",
+    "soft emptiness filling your {body_part} completely",
+    "silence settling through your {body_part}",
+    "the space between breaths growing slower and longer",
+    "heavy stillness spreading through your {body_part}",
+    "breath moving through a deep and empty quiet"
+  ],
+  "tts_templates": [
+    "the space between each exhale grows longer, quieter, and your {body_part} settles deeper into that expanding stillness with each breath",
+    "there is a quality to this quiet that goes beyond the absence of sound — a deep stillness spreading through your {body_part} with each slow exhale",
+    "with each breath, the emptiness grows a little more complete, your {body_part} sinking deeper into the kind of stillness that needs nothing at all",
+    "the natural rhythm of your breathing carries you further into this quiet, and each exhale releases a little more of what was keeping things busy",
+    "somewhere in the slow rhythm of each breath, your {body_part} finds the kind of stillness that simply is — deep, empty, completely at ease"
+  ],
+  "synonym_rings": [
+    ["still", "stillness", "stillness"],
+    ["empty", "emptiness", "hollow"],
+    ["quiet", "quietness", "silence"],
+    ["deep", "deeper", "deeply"],
+    ["settle", "settling", "settled"]
+  ],
+  "pnd_scores": {
+    "still": 0.2, "empty": 0.3, "quiet": 0.2, "slow": 0.2,
+    "heavy": 0.3, "deep": 0.2, "breathe": 0.2, "settle": 0.3
+  },
+  "frequency_band": {
+    "still": "high", "empty": "moderate", "quiet": "high", "slow": "high",
+    "heavy": "high", "soft": "high", "breathe": "high", "deep": "high",
+    "rest": "high", "sink": "high", "drift": "moderate", "settle": "high",
+    "hollow": "moderate", "open": "high", "nothing": "high",
+    "exhale": "moderate", "release": "high", "ease": "high",
+    "silence": "moderate", "clear": "high", "blank": "moderate",
+    "let": "high", "allow": "moderate", "below": "high", "beyond": "moderate"
+  },
+  "vocabulary": {
+    "body_part": ["body", "chest", "belly", "arms", "spine", "limbs", "hands", "shoulders"]
+  }
+}

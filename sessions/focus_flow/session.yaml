@@ -1,0 +1,119 @@
+name: "Focus Flow — Beta Drive"
+description: >
+  8-minute energising focus session.
+  Starts in low beta for alert attention, climbs to mid-beta peak,
+  then settles to a sustained alpha-beta boundary for deep work.
+  Fast spiral movement, bright electric veil, sharp flash timing.
+duration: 480
+
+defaults:
+  carrier_frequency: 220.0
+  volume: 70.0
+  center_flash_sync_to_beat: true
+  font_switch_mode: rapid
+  spiral_color_mode: rainbow
+
+timeline:
+
+  # ─── 0:00 · IGNITION ─────────────────────────────────────────────────────
+  # Electric spiral, converging veil — pull attention to centre.
+  - t: 0
+    label: ignition
+    ease: linear
+    beat_frequency: 14.0
+    carrier_frequency: 220.0
+    spiral_style: electric
+    spiral_speed_multiplier: 2.0
+    spiral_tightness: 6.0
+    spiral_thickness: 10
+    spiral_opacity: 90
+    spiral_chaos: 0.0
+    veil_mode: converge
+    veil_opacity: 30
+    veil_density: 18
+    shadow_opacity: 0
+    center_flash_on_time: 80
+    center_flash_off_time: 60
+    flash_duty_cycle: 0.55
+    flash_variance: 10
+    volume: 65.0
+
+  # ─── 60 s · RAMP ─────────────────────────────────────────────────────────
+  # Beat climbs toward mid-beta; veil brightens and accelerates.
+  - t: 60
+    label: ramp
+    ease: ease_in
+    beat_frequency: 18.0
+    carrier_frequency: 230.0
+    spiral_style: interference
+    spiral_speed_multiplier: 2.5
+    spiral_opacity: 100
+    veil_opacity: 45
+    shadow_opacity: 20
+    center_flash_on_time: 70
+    center_flash_off_time: 50
+    volume: 72.0
+
+  # ─── 150 s · PEAK ────────────────────────────────────────────────────────
+  # High beta: maximum alertness, fast flash, moire interference pattern.
+  - t: 150
+    label: peak
+    ease: ease_in
+    beat_frequency: 22.0
+    carrier_frequency: 240.0
+    spiral_style: moire
+    spiral_speed_multiplier: 3.0
+    spiral_tightness: 8.0
+    spiral_chaos: 0.15
+    veil_mode: drift
+    veil_opacity: 55
+    shadow_opacity: 35
+    shadow_flash_on_time: 30
+    shadow_flash_off_time: 90
+    center_flash_on_time: 55
+    center_flash_off_time: 45
+    flash_duty_cycle: 0.6
+    flash_variance: 15
+    volume: 78.0
+
+  # ─── 270 s · SUSTAIN ─────────────────────────────────────────────────────
+  # Hold mid-beta; suggestion window opens — core affirmations land here.
+  - t: 270
+    label: sustain
+    ease: linear
+    beat_frequency: 20.0
+    veil_opacity: 50
+    shadow_opacity: 45
+    center_flash_on_time: 65
+    center_flash_off_time: 55
+    spiral_chaos: 0.05
+
+  # ─── 360 s · LAND ────────────────────────────────────────────────────────
+  # Ease back to low beta / alpha boundary — relaxed, clear, productive.
+  - t: 360
+    label: land
+    ease: ease_out
+    beat_frequency: 13.0
+    carrier_frequency: 220.0
+    spiral_style: archimedean
+    spiral_speed_multiplier: 1.5
+    spiral_chaos: 0.0
+    veil_mode: scroll
+    veil_opacity: 35
+    shadow_opacity: 30
+    center_flash_on_time: 90
+    center_flash_off_time: 70
+    flash_duty_cycle: 0.5
+    volume: 65.0
+
+  # ─── 450 s · COAST ───────────────────────────────────────────────────────
+  # Alpha-beta boundary hold.  Let the state integrate.
+  - t: 450
+    label: coast
+    ease: linear
+    beat_frequency: 12.0
+    veil_opacity: 25
+    shadow_opacity: 20
+    center_flash_on_time: 110
+    center_flash_off_time: 90
+    volume: 60.0

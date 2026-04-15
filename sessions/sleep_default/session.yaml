@@ -1,0 +1,65 @@
+name: "Sleep Enhancement"
+description: >
+  Closed-loop sleep enhancement session. Guides the transition from relaxed
+  wakefulness through sleep onset into sustained slow-wave sleep with
+  phase-locked auditory stimulation. EEG-driven sleep staging adapts all
+  parameters in real time. Session ends automatically on natural wake detection.
+category: sleep
+duration: 28800  # 8 hours maximum; Conductor ends on natural wake
+
+defaults:
+  carrier_frequency: 200.0
+  volume: 50.0
+  beat_type: binaural
+  noise_color: pink
+  noise_volume: 30
+  breath_mod: true
+  breath_rate: 0.083   # 5 bpm — sleep breathing rate
+  breath_depth: 0.10
+  spiral_opacity: 30   # Conductor fades to 0 on SLEEP_APPROACH entry
+  veil_opacity: 0
+  center_flash_on_time: 0   # no subliminal flash during sleep
+  shadow_opacity_target: 0
+  tts_enabled: false   # TTS disabled throughout
+
+timeline:
+  - t: 0
+    label: pre_sleep_relaxation
+    ease: ease_in_out
+    params:
+      beat_frequency: 10.0   # alpha — relaxation baseline
+      volume: 50
+
+  - t: 300   # 5 minutes
+    label: alpha_descent
+    ease: ease_in_out
+    params:
+      beat_frequency: 8.0   # low alpha
+      volume: 45
+      noise_volume: 32
+
+  - t: 600   # 10 minutes — Conductor takes over via SLEEP_APPROACH
+    label: conductor_handoff
+    ease: linear
+    params:
+      beat_frequency: 6.0   # theta approach
+      volume: 40
+      noise_volume: 35
+      # Beyond this point Conductor drives parameters dynamically.
+      # Timeline provides fallback defaults only.
+
+  - t: 1200   # 20 minutes
+    label: deep_descent
+    ease: ease_in_out
+    params:
+      beat_frequency: 2.0   # delta
+      volume: 30
+      noise_volume: 28
+
+  - t: 1800   # 30 minutes
+    label: sleep_floor
+    ease: linear
+    params:
+      beat_frequency: 1.0   # deep delta
+      volume: 20
+      noise_volume: 25

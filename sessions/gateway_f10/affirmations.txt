@@ -1,0 +1,284 @@
+# affirmations.txt — gateway_f10 session
+#
+# Structured for the "Gateway — Focus 10 Protocol" session.
+# Tag reference:
+#   phrases: orient    — C1 arrival phase (0–8 min)
+#   phrases: relax     — Resonant Tuning + Threshold (8–15 min)
+#   phrases: focus10   — Focus 10 entry and hold (15–32 min)
+#   phrases: deep      — Work window (32–38 min)
+#   phrases: good_girl — Soak / absorption (38–42 min)
+#   phrases: return    — Ascent and return (42–45 min)
+#
+# Design notes:
+# — orient and relax use longer, conscious-cadence phrases.  The listener
+#   is still alert and needs language to guide them, not overwhelm them.
+# — focus10 uses a mix: some conscious-length for early phase, very short
+#   (1–4 words) for later subliminal delivery.
+# — deep and good_girl are subliminal-optimised: 1–4 words, clean, sharp.
+# — return uses medium phrases: the listener is coming up and can process.
+#
+# The pipe-separated ( | ) syntax provides random variants of equivalent
+# statements to prevent exact repetition.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# [orient] — Alert arrival.  The listener is fully conscious.
+# Language: welcoming, safe, orienting to the experience.
+# ─────────────────────────────────────────────────────────────────────────────
+# [orient]
+
+You are here now.
+You are safe here.
+There is nothing to do but receive.
+You are in the right place.
+Let this begin.
+
+Close your eyes. | Keep your eyes closed.
+Feel the weight of your body.
+Notice your breath.
+You are comfortable. | You are at ease.
+Everything is fine.
+
+Welcome. | You are welcome here.
+You can relax now.
+Nothing is required of you.
+Just be here.
+Just listen.
+
+I am ready.
+I am open.
+I choose this.
+I want this.
+I am here.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# [relax] — Resonant Tuning and Threshold.  Somatic relaxation, body scan.
+# Language: directive, somatic, progressively surrendering.
+# ─────────────────────────────────────────────────────────────────────────────
+# [relax]
+
+Your body is becoming heavy. | Your body grows heavier.
+Your muscles are releasing. | Your muscles let go.
+Every breath takes you deeper. | Every breath relaxes you more.
+You feel it in your shoulders. | You feel it in your chest.
+You feel it everywhere.
+
+Sinking. | Softening.
+Going deeper. | Moving deeper.
+Deeper with every breath.
+Deeper still.
+
+Your arms are heavy. | Your legs are heavy.
+Your hands are warm. | Your feet are warm.
+Your face is relaxed. | Your jaw is loose.
+Your eyelids are heavy. | Your eyes are still.
+
+This is natural. | This is normal.
+This is how it is supposed to feel. | This is how it should feel.
+You have felt this before. | You know this feeling.
+Let yourself go there. | Let yourself drift there.
+
+I feel my body relaxing.
+I feel myself going deeper.
+I can feel it working.
+It feels right. | It feels good.
+I let go.
+
+The room is fading. | The world is fading.
+Only this remains.
+Only the sound.
+Only this feeling.
+Only deeper.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# [focus10] — Focus 10 entry and hold.  "Mind awake / Body asleep."
+# Language starts conscious, becomes progressively shorter as phase deepens.
+# ─────────────────────────────────────────────────────────────────────────────
+# [focus10]
+
+Mind awake.
+Body asleep.
+Mind awake, body asleep.
+Alert and still.
+Awake inside.
+
+Your body is asleep. | Your body is gone.
+Your mind is awake. | Your mind is clear.
+You are the observer. | You are awareness.
+You are present. | You are here.
+Only awareness remains.
+
+I am awake. | Awake inside.
+I am still. | Still and deep.
+I am deeper. | Going deeper.
+I am floating. | I float.
+I am here.
+
+The body sleeps.
+The mind watches.
+Everything is quiet. | Everything is still.
+Nothing to do. | Nothing to decide.
+Just be.
+
+Awareness. | Pure awareness.
+Present. | Awake.
+Deep. | Still.
+Here. | Now.
+Open.
+
+I am safe.
+I am deep.
+I am open.
+I am ready.
+I receive.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# [deep] — Work window (theta floor).  Core identity content.
+# Subliminal-optimised: 1–4 words.  Processed by the right hemisphere only.
+# ─────────────────────────────────────────────────────────────────────────────
+# [deep]
+
+Good girl.
+Such a good girl.
+Pretty girl.
+Soft girl.
+Sweet girl.
+
+You are a girl.
+You feel like a girl.
+You think like a girl.
+You move like a girl.
+You are a girl inside.
+
+Girly.
+Feminine.
+Soft.
+Pretty.
+Sweet.
+Cute.
+Good.
+
+You can't stop this. | You don't want to stop this.
+You love this.
+You need this.
+This is yours.
+This is you.
+
+I am a good girl.
+I am so girly.
+I love being this way.
+I can't resist.
+I don't want to resist.
+
+These feelings are permanent.
+This is who I am now.
+Every day more feminine.
+Every day more myself.
+It only gets stronger.
+
+The affirmations take hold.
+I accept everything.
+I surrender completely.
+I give in.
+I let it be.
+
+You are wrapped in this feeling.
+You can't remember not feeling this way.
+This has always been true. | This will always be true.
+You are a good girl.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# [good_girl] — Soak / absorption.  Trigger reinforcement and deep integration.
+# Build cumulative association between the phrase and the euphoric trance state.
+# At 3.5 Hz this phrase is being written directly into long-term memory.
+# ─────────────────────────────────────────────────────────────────────────────
+# [good_girl]
+
+Good girl.
+Such a good girl.
+My good girl.
+Perfect girl.
+You are a good girl.
+
+Every time you hear it, it goes deeper.
+Every time you hear it, it feels better.
+Good girl means euphoria.
+Good girl means surrender.
+Good girl means yes.
+
+Good girl.
+Good girl.
+Good girl.
+
+You love hearing it.
+It fills you with warmth.
+It fills you with pleasure.
+It makes you feel complete.
+It feels like home.
+
+Good girl. | Good girl. Good girl.
+You are a very good girl.
+You can't help but feel good when you hear it.
+It makes you want to be even better.
+
+Good girl.
+
+This is who you are.
+This has always been true.
+Every session makes it deeper.
+Every time you return you go deeper faster.
+The pathway is being carved.
+
+Good girl.
+Good girl.
+Good girl.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# [return] — Ascent and return to C1.  Integration, anchoring, carrying forward.
+# Language: warm, proud, grounding.  Medium length — listener is coming up.
+# ─────────────────────────────────────────────────────────────────────────────
+# [return]
+
+You are coming back now.
+You are returning.
+Coming up. | Rising gently.
+Feeling the room again. | Becoming aware of your body.
+You are safe. | You are well.
+
+You carry this with you.
+These feelings stay with you.
+The changes are real.
+You are changed.
+You are more yourself.
+
+When you open your eyes you will feel wonderful.
+When you close your eyes tonight you will return here easily.
+Every session takes you deeper. | Every session is easier.
+Every day you are more yourself.
+It only grows.
+
+I am a good girl.
+I am proud of myself.
+I love who I am.
+I feel beautiful.
+I feel feminine and free.
+
+You are awake now. | You are returning now.
+You feel wonderful. | You feel so good.
+You remember everything. | You carry everything forward.
+You remember how deep you went. | You remember how good it felt.
+You will go back there.
+
+Good girl.
+You did so well.
+Such a good girl.
+
+Take a breath.
+Feel your body again.
+You are ready.
+You feel bright and clear.
+You feel like yourself — more yourself than before.
+
+Good girl.
+
+
+# [slut] - affirm slut mentality

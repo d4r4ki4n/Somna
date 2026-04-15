@@ -1,0 +1,57 @@
+{
+  "pool_id": "somatic_release",
+  "shadows_words": [
+    "release", "loose", "let", "go", "ease", "shed", "drop", "free",
+    "soften", "yield", "open", "unclench", "exhale", "dissolve", "allow",
+    "clear", "unhold", "give", "slack", "end", "part", "ease", "done",
+    "pass", "leave"
+  ],
+  "centertext_templates": [
+    "release what your {body_part} has been holding",
+    "{body_part} releasing everything it held",
+    "nothing more for your {body_part} to hold",
+    "each exhale lets your {body_part} release",
+    "your {body_part} softening with each breath",
+    "the release spreading through your {body_part} now",
+    "that held place in your {body_part} dissolving",
+    "permission to let your {body_part} go completely",
+    "your {body_part} done holding — done now",
+    "release moving through your {body_part} on its own"
+  ],
+  "tts_templates": [
+    "every tight place in your {body_part} knows now it can let go, that there is nothing left to hold, that releasing is the only thing left to do",
+    "you've been holding in your {body_part} without realizing it, and as that recognition settles, the release begins on its own, without effort, without asking",
+    "notice how your {body_part} softens when you stop asking it to do anything at all — that softening is the release happening now, quietly, on its own",
+    "your {body_part} has permission now, full and complete permission, to release every pattern it has been maintaining, to stop, and dissolve, and rest",
+    "the release doesn't require any action — just the ending of the action your {body_part} has been taking all along, unconsciously, patiently waiting for this permission",
+    "as you exhale now, your {body_part} follows — releasing downward, outward, releasing the shape it's been holding, releasing into something softer and less defined"
+  ],
+  "synonym_rings": [
+    ["release", "releasing", "released"],
+    ["loose", "looseness", "loosen"],
+    ["soften", "softening", "softens"],
+    ["exhale", "exhaling", "breathe out"],
+    ["dissolve", "dissolving", "dissolved"],
+    ["allow", "allowing", "permission"]
+  ],
+  "pnd_scores": {
+    "release": 0.3, "loose": 0.3, "let": 0.1, "go": 0.1,
+    "ease": 0.2, "shed": 0.3, "drop": 0.2, "free": 0.2,
+    "soften": 0.3, "yield": 0.3, "open": 0.2, "exhale": 0.2,
+    "dissolve": 0.3, "allow": 0.2, "slack": 0.3, "clear": 0.2
+  },
+  "frequency_band": {
+    "release": "high", "loose": "high", "let": "high", "go": "high",
+    "ease": "high", "shed": "moderate", "drop": "high", "free": "high",
+    "soften": "moderate", "yield": "moderate", "open": "high", "unclench": "full",
+    "exhale": "moderate", "dissolve": "moderate", "allow": "high",
+    "clear": "high", "unhold": "full", "give": "high", "slack": "moderate",
+    "end": "high", "part": "high", "pass": "high", "leave": "high", "done": "high"
+  },
+  "vocabulary": {
+    "body_part": [
+      "body", "chest", "belly", "arms", "shoulders", "jaw",
+      "hands", "back", "spine", "neck", "legs", "muscles", "throat"
+    ]
+  }
+}

@@ -1,0 +1,87 @@
+name: "Fractionation Training — 30 min"
+description: "Vogt fractionation: 3 cycles of emergence and deepening. Each cycle deepens the baseline floor. Agent triggers fractionation automatically when theta state is confirmed (~10 min in). Best experienced with headphones and eyes closed."
+category: "entrainment"
+
+defaults:
+  beat_frequency:           10.0
+  carrier_frequency:        200.0
+  beat_type:                binaural
+  volume:                   80
+  noise_color:              pink
+  noise_volume:             25
+  spiral_style:             tunnel_dream
+  spiral_opacity:           85
+  spiral_chaos:             0.08
+  spiral_speed_multiplier:  0.9
+  trail_decay:              0.60
+  veil_opacity:             35
+  shadow_opacity:           20
+  tts_enabled:              true
+  tts_subliminal:           false
+
+timeline:
+  - t: 0
+    label: baseline
+    ease: linear
+    params:
+      beat_frequency:  10.0
+      spiral_style:    tunnel_dream
+
+  - t: 60
+    label: induction
+    ease: ease_in_out
+    params:
+      beat_frequency:  10.0
+      veil_opacity:    40
+
+  - t: 300
+    label: theta_entry
+    ease: ease_in_out
+    params:
+      beat_frequency:  7.5
+      spiral_speed_multiplier: 0.85
+      veil_opacity:    45
+
+  # Agent triggers fractionation autonomously once theta is confirmed.
+  # The timeline provides a gentle holding pattern from here; the runner
+  # overrides beat_frequency and visual params during the frac sequence.
+
+  - t: 600
+    label: deepening
+    ease: ease_in_out
+    params:
+      beat_frequency:  6.5
+      spiral_chaos:    0.10
+      trail_decay:     0.65
+
+  - t: 1200
+    label: therapeutic
+    ease: ease_in_out
+    params:
+      beat_frequency:  5.5
+      spiral_chaos:    0.08
+      trail_decay:     0.70
+      veil_opacity:    50
+
+  - t: 1620
+    label: emergence
+    ease: ease_in_out
+    params:
+      beat_frequency:  7.0
+      trail_decay:     0.40
+      veil_opacity:    35
+
+  - t: 1740
+    label: return
+    ease: ease_in_out
+    params:
+      beat_frequency:  10.0
+      noise_volume:    15
+      spiral_opacity:  60
+      veil_opacity:    20
+
+  - t: 1800
+    label: end
+    ease: linear
+    params:
+      volume:  0

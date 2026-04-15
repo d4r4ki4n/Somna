@@ -1,0 +1,214 @@
+name: "First Light — Gentle Introduction · 17 min"
+description: >
+  17-minute first-session guide. Not a deep induction — an introduction to
+  what this tool does and what it feels like. The descent stops at 7 Hz
+  (the theta threshold) so the listener can experience the state change
+  clearly without being submerged. Affirmations observe rather than instruct.
+  Designed to be recommended by the agent to first-time users.
+duration: 1020
+category: entrainment
+
+defaults:
+  carrier_frequency:          200.0
+  volume:                     75.0
+  noise_color:                pink
+  noise_volume:               20
+  center_flash_sync_to_beat:  false
+  font_switch_mode:           intelligent
+  spiral_color_mode:          rainbow
+  spiral_show_text:           false
+  tts_enabled:                true
+  tts_subliminal:             false
+
+# ── Timeline ──────────────────────────────────────────────────────────────────
+#
+#  Psychological arc:
+#    0:00   arriving      10.5 Hz   Conscious attention drawn in. Still fully alert.
+#    2:00   settling       9.5 Hz   Body weight noticed. The sound begins to work.
+#    4:30   softer         8.5 Hz   Alpha midrange — clearly different, not alarming.
+#    8:00   the_change     7.5 Hz   Thoughts slow. The gap between them widens.
+#   11:00   threshold      7.0 Hz   The theta touch. First real shift in felt-state.
+#   13:30   returning      8.5 Hz   Coming back up, gently.
+#   16:00   open          10.0 Hz   Alert, refreshed. The session ends clean.
+#
+#  Visual logic:
+#    Fermat for arrival — expansive, mathematical, draws focus inward.
+#    Tunnel dream for descent — the classic depth cue, recognizable.
+#    Flash timing stays above subliminal throughout — this is a demo,
+#    the listener should be able to catch glimpses of the phrases.
+#    No tunnel veil, no drift — those are for deeper sessions.
+#    Return uses Archimedean: calm, non-hypnotic, a clear ending.
+
+timeline:
+
+  # ─── 0:00 · ARRIVING ─────────────────────────────────────────────────────────
+  # Fermat spiral: golden ratio packing. Expansive and mathematical.
+  # The listener is fully alert. The sound is starting to register.
+  # Veil barely present — let the attention settle on its own terms.
+  - t: 0
+    label: arriving
+    ease: linear
+    params:
+      phrases:                  arriving
+      beat_frequency:           10.5
+      carrier_frequency:        210.0
+      spiral_style:             fermat
+      spiral_count:             6
+      spiral_opacity:           78
+      spiral_speed_multiplier:  1.2
+      spiral_tightness:         7.0
+      spiral_chaos:             0.04
+      spiral_thickness:         11
+      veil_opacity:             10
+      veil_mode:                scroll
+      shadow_opacity:           0
+      center_flash_on_time:     200
+      center_flash_off_time:    420
+
+  # ─── 2:00 · SETTLING ─────────────────────────────────────────────────────────
+  # Tunnel dream enters. The classic depth cue — immediately recognizable.
+  # Beat drops to high alpha. Body weight begins to accumulate.
+  # Flash drops to 140ms — still conscious, but starting to feel like
+  # something you see rather than something you read.
+  - t: 120
+    label: settling
+    ease: ease_in_out
+    params:
+      phrases:                  settling
+      beat_frequency:           9.5
+      carrier_frequency:        202.0
+      spiral_style:             tunnel_dream
+      spiral_count:             5
+      spiral_opacity:           82
+      spiral_speed_multiplier:  1.0
+      spiral_tightness:         6.5
+      spiral_chaos:             0.06
+      spiral_thickness:         13
+      veil_opacity:             20
+      veil_mode:                rain
+      shadow_opacity:           6
+      center_flash_on_time:     140
+      center_flash_off_time:    360
+
+  # ─── 4:30 · SOFTER ───────────────────────────────────────────────────────────
+  # Galaxy enters: rotating arms suppress analytical engagement.
+  # 8.5 Hz is alpha midrange — clearly altered, not alarming.
+  # Shadows begin to appear. Converge veil draws attention inward.
+  - t: 270
+    label: softer
+    ease: ease_in_out
+    params:
+      phrases:                  settling
+      beat_frequency:           8.5
+      carrier_frequency:        195.0
+      spiral_style:             galaxy
+      spiral_count:             5
+      spiral_opacity:           85
+      spiral_speed_multiplier:  0.82
+      spiral_tightness:         6.0
+      spiral_chaos:             0.08
+      spiral_thickness:         14
+      veil_opacity:             32
+      veil_mode:                converge
+      shadow_opacity:           16
+      center_flash_on_time:     100
+      center_flash_off_time:    300
+
+  # ─── 8:00 · THE CHANGE ───────────────────────────────────────────────────────
+  # Fibonacci: ordered, ancient, meditative. 7.5 Hz crosses the alpha/theta
+  # border. Thoughts begin to move differently — slower, with gaps.
+  # The listener should notice this consciously. That noticing is the point.
+  # Flash at 70ms: quick but catchable. Not subliminal.
+  - t: 480
+    label: the_change
+    ease: ease_in_out
+    params:
+      phrases:                  the_change
+      beat_frequency:           7.5
+      carrier_frequency:        186.0
+      spiral_style:             fibonacci
+      spiral_count:             4
+      spiral_opacity:           88
+      spiral_speed_multiplier:  0.60
+      spiral_tightness:         5.4
+      spiral_chaos:             0.10
+      spiral_thickness:         17
+      veil_opacity:             46
+      veil_mode:                converge
+      shadow_opacity:           28
+      center_flash_on_time:     70
+      center_flash_off_time:    250
+
+  # ─── 11:00 · THRESHOLD ───────────────────────────────────────────────────────
+  # The theta touch. 7.0 Hz is the threshold where state change is unmistakable.
+  # This is as deep as first_light goes — intentionally. The listener should
+  # have a clear, unambiguous experience of "this is different" without being
+  # submerged before they know what's happening.
+  # Flash at 50ms = 3 frames at 60fps. Right at the perceptual edge.
+  - t: 660
+    label: threshold
+    ease: ease_in_out
+    params:
+      phrases:                  threshold
+      beat_frequency:           7.0
+      carrier_frequency:        179.0
+      spiral_style:             fibonacci
+      spiral_count:             4
+      spiral_opacity:           90
+      spiral_speed_multiplier:  0.46
+      spiral_tightness:         5.0
+      spiral_chaos:             0.08
+      spiral_thickness:         18
+      veil_opacity:             56
+      veil_mode:                drift
+      shadow_opacity:           38
+      center_flash_on_time:     50
+      center_flash_off_time:    220
+
+  # ─── 13:30 · RETURNING ───────────────────────────────────────────────────────
+  # Tunnel dream returns — but lighter, ascending. Beat climbs back to 8.5 Hz.
+  # Veil opens up. Rain feels lighter than drift. Shadows fade.
+  # The listener is being carried back up, gently and deliberately.
+  - t: 810
+    label: returning
+    ease: ease_out
+    params:
+      phrases:                  returning
+      beat_frequency:           8.5
+      carrier_frequency:        194.0
+      spiral_style:             tunnel_dream
+      spiral_count:             5
+      spiral_opacity:           84
+      spiral_speed_multiplier:  0.78
+      spiral_tightness:         6.2
+      spiral_chaos:             0.07
+      spiral_thickness:         14
+      veil_opacity:             34
+      veil_mode:                rain
+      shadow_opacity:           18
+      center_flash_on_time:     100
+      center_flash_off_time:    290
+
+  # ─── 16:00 · OPEN ────────────────────────────────────────────────────────────
+  # Archimedean: simple, even, non-hypnotic. A calm constant.
+  # 10.0 Hz: alert alpha. The session ends where attention began.
+  # The listener is fully back. The experience is theirs to keep.
+  - t: 960
+    label: open
+    ease: ease_out
+    params:
+      phrases:                  returning
+      beat_frequency:           10.0
+      carrier_frequency:        204.0
+      spiral_style:             archimedean
+      spiral_count:             6
+      spiral_opacity:           76
+      spiral_speed_multiplier:  1.1
+      spiral_tightness:         7.0
+      spiral_chaos:             0.04
+      spiral_thickness:         11
+      veil_opacity:             12
+      veil_mode:                scroll
+      shadow_opacity:           0
+      center_flash_on_time:     180
+      center_flash_off_time:    400

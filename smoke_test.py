@@ -329,6 +329,27 @@ def test_edison_mode():
             _result(f"EdisonState.{s}", hasattr(EdisonState, s))
 
 
+def test_ssild_engine():
+    m, e = _import("session.ssild_engine")
+    _result("session.ssild_engine imports", m is not None, e)
+    if m is None:
+        return
+    _result("session.SSILDEngine", *_has(m, "SSILDEngine"))
+    _result("session.SSILDPhase", *_has(m, "SSILDPhase"))
+    SSILDPhase = getattr(m, "SSILDPhase", None)
+    if SSILDPhase:
+        for s in (
+            "PRE_TECHNIQUE",
+            "QUICK_CYCLES",
+            "SLOW_CYCLES",
+            "POST_TECHNIQUE",
+            "REM_MONITORING",
+            "DREAM_JOURNAL",
+            "COMPLETE",
+        ):
+            _result(f"SSILDPhase.{s}", hasattr(SSILDPhase, s))
+
+
 def test_timeline_runner():
     m, e = _import("session.timeline_runner")
     _result("session.timeline_runner imports", m is not None, e)
@@ -709,6 +730,16 @@ def test_session_yamls():
             d.get("defaults", {}).get("edison_mode") is True,
         )
 
+    ssild = sessions_dir / "ssild_default" / "session.yaml"
+    if ssild.exists():
+        d = yaml.safe_load(ssild.read_text(encoding="utf-8"))
+        _result("ssild_default type=ssild", d.get("type") == "ssild")
+        _result("ssild_default keyframes=[]", d.get("keyframes") == [])
+        _result(
+            "ssild_default ssild_mode=true",
+            d.get("defaults", {}).get("ssild_mode") is True,
+        )
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 #  Knowledge base integrity
@@ -838,6 +869,7 @@ TESTS = [
         [
             test_conductor,
             test_edison_mode,
+            test_ssild_engine,
             test_timeline_runner,
             test_tmr_cue_manager,
             test_tmr_engine,

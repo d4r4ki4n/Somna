@@ -90,6 +90,12 @@ class Phase(Enum):
     EDISON_N1_HOLD = "edison_n1_hold"
     EDISON_CAPTURE = "edison_capture"
     EDISON_CYCLE_END = "edison_cycle_end"
+    SSILD_PRE_TECHNIQUE = "ssild_pre_technique"
+    SSILD_QUICK_CYCLES = "ssild_quick_cycles"
+    SSILD_SLOW_CYCLES = "ssild_slow_cycles"
+    SSILD_POST_TECHNIQUE = "ssild_post_technique"
+    SSILD_REM_MONITORING = "ssild_rem_monitoring"
+    SSILD_DREAM_JOURNAL = "ssild_dream_journal"
     SESSION_END = "session_end"
     # GENUS 40 Hz protocol (genus_protocol.md §5) — replaces normal depth phases
     GENUS_BLOCK = "genus_block"
@@ -144,6 +150,12 @@ HAPTIC_PHASE_PROFILES = {
     Phase.EDISON_N1_HOLD: {"intensity": 0, "pattern": "continuous"},
     Phase.EDISON_CAPTURE: {"intensity": 5, "pattern": "pulse"},
     Phase.EDISON_CYCLE_END: {"intensity": 0, "pattern": "continuous"},
+    Phase.SSILD_PRE_TECHNIQUE: {"intensity": 0, "pattern": "continuous"},
+    Phase.SSILD_QUICK_CYCLES: {"intensity": 0, "pattern": "continuous"},
+    Phase.SSILD_SLOW_CYCLES: {"intensity": 0, "pattern": "continuous"},
+    Phase.SSILD_POST_TECHNIQUE: {"intensity": 0, "pattern": "continuous"},
+    Phase.SSILD_REM_MONITORING: {"intensity": 0, "pattern": "continuous"},
+    Phase.SSILD_DREAM_JOURNAL: {"intensity": 0, "pattern": "continuous"},
     Phase.SESSION_END: {"intensity": 0, "pattern": "continuous"},
     Phase.GENUS_BLOCK: {"intensity": 20, "pattern": "pulse"},
 }
@@ -167,6 +179,12 @@ TAVNS_PHASE_PROFILES = {
     Phase.EDISON_N1_HOLD: {"intensity": 0, "waveform": "sine"},
     Phase.EDISON_CAPTURE: {"intensity": 5, "waveform": "sine"},
     Phase.EDISON_CYCLE_END: {"intensity": 0, "waveform": "sine"},
+    Phase.SSILD_PRE_TECHNIQUE: {"intensity": 0, "waveform": "sine"},
+    Phase.SSILD_QUICK_CYCLES: {"intensity": 0, "waveform": "sine"},
+    Phase.SSILD_SLOW_CYCLES: {"intensity": 0, "waveform": "sine"},
+    Phase.SSILD_POST_TECHNIQUE: {"intensity": 0, "waveform": "sine"},
+    Phase.SSILD_REM_MONITORING: {"intensity": 0, "waveform": "sine"},
+    Phase.SSILD_DREAM_JOURNAL: {"intensity": 0, "waveform": "sine"},
     Phase.SESSION_END: {"intensity": 0, "waveform": "sine"},
     Phase.GENUS_BLOCK: {"intensity": 10, "waveform": "biphasic"},
 }
@@ -191,6 +209,12 @@ _TICK_RATES: Dict[Phase, Optional[int]] = {
     Phase.EDISON_N1_HOLD: 5,
     Phase.EDISON_CAPTURE: 10,
     Phase.EDISON_CYCLE_END: 10,
+    Phase.SSILD_PRE_TECHNIQUE: 5,
+    Phase.SSILD_QUICK_CYCLES: 3,
+    Phase.SSILD_SLOW_CYCLES: 5,
+    Phase.SSILD_POST_TECHNIQUE: 15,
+    Phase.SSILD_REM_MONITORING: 15,
+    Phase.SSILD_DREAM_JOURNAL: 10,
     Phase.SESSION_END: None,
     Phase.GENUS_BLOCK: 30,  # check every 30 s; GENUS runs autonomously
 }
@@ -253,7 +277,9 @@ class Conductor:
         eeg_enabled: bool = True,
     ):
         self.session_id = session_id
-        self.session_type = session_type  # "standard" | "sleep" | "edison" | "genus"
+        self.session_type = (
+            session_type  # "standard" | "sleep" | "edison" | "ssild" | "genus"
+        )
         self.session_duration = session_duration_min * 60
         self.synthetic_board = synthetic_board
         self.eeg_enabled = eeg_enabled
@@ -405,6 +431,17 @@ class Conductor:
                 )
             except Exception as e:
                 print(f"[Conductor] EdisonModeManager unavailable: {e}")
+
+        # Bible Ch.7 §§30-31 — SSILD engine
+        self._ssild = None
+        self._is_ssild = session_type == "ssild"
+        if self._is_ssild:
+            try:
+                from session.ssild_engine import SSILDEngine
+
+                self._ssild = SSILDEngine()
+            except Exception as e:
+                print(f"[Conductor] SSILDEngine unavailable: {e}")
 
     # =========================================================================
     # PUBLIC API
@@ -664,6 +701,38 @@ class Conductor:
                 patch_live({"edison_continue": None})
             if live_snap_edison.get("edison_end_session"):
                 patch_live({"edison_end_session": None})
+            return
+
+        # ── SSILD: TTS-guided sensory cycling (Bible Ch.7 §§30-31) ─────────────────
+        if self._is_ssild and self._ssild is not None:
+            if self.phase == Phase.CALIBRATION:
+                self._transition(self.phase, Phase.SSILD_PRE_TECHNIQUE, {})
+                return
+
+            live_snap_ssild = {}
+            try:
+                live_snap_ssild = json.loads(_LIVE.read_text(encoding="utf-8"))
+            except Exception:
+                pass
+            ssild_updates = self._ssild.tick(live_snap_ssild)
+            if ssild_updates:
+                patch_live(ssild_updates)
+
+            from session.ssild_engine import SSILDPhase
+
+            ssild_phase = self._ssild.phase
+            ssild_map = {
+                SSILDPhase.PRE_TECHNIQUE: Phase.SSILD_PRE_TECHNIQUE,
+                SSILDPhase.QUICK_CYCLES: Phase.SSILD_QUICK_CYCLES,
+                SSILDPhase.SLOW_CYCLES: Phase.SSILD_SLOW_CYCLES,
+                SSILDPhase.POST_TECHNIQUE: Phase.SSILD_POST_TECHNIQUE,
+                SSILDPhase.REM_MONITORING: Phase.SSILD_REM_MONITORING,
+                SSILDPhase.DREAM_JOURNAL: Phase.SSILD_DREAM_JOURNAL,
+                SSILDPhase.COMPLETE: Phase.SESSION_END,
+            }
+            target_phase = ssild_map.get(ssild_phase)
+            if target_phase and target_phase != self.phase:
+                self._transition(self.phase, target_phase, {})
             return
 
         # ── Step 1: Read all metrics ──────────────────────────────────────────
@@ -1751,6 +1820,76 @@ class Conductor:
                 }
             )
 
+        elif new == Phase.SSILD_PRE_TECHNIQUE:
+            patch_live(
+                {
+                    "beat_frequency": 8.0,
+                    "beat_type": "binaural",
+                    "volume": 25,
+                    "bg_mode": "none",
+                    "spiral_chaos": 0.05,
+                    "trail_decay": 0.0,
+                    "veil_mode": "drift",
+                    "shadow_opacity_target": 0,
+                    "sr_noise_level": 0.0,
+                    "noise_color": "brown",
+                    "noise_volume": 10,
+                    "conductor_phase": new.value,
+                    "freq_lead_enabled": False,
+                }
+            )
+
+        elif new == Phase.SSILD_QUICK_CYCLES:
+            patch_live(
+                {
+                    "beat_frequency": 6.0,
+                    "volume": 20,
+                    "conductor_phase": new.value,
+                }
+            )
+
+        elif new == Phase.SSILD_SLOW_CYCLES:
+            patch_live(
+                {
+                    "beat_frequency": 5.5,
+                    "volume": 15,
+                    "veil_mode": "converge",
+                    "shadow_opacity_target": 10,
+                    "conductor_phase": new.value,
+                }
+            )
+
+        elif new == Phase.SSILD_POST_TECHNIQUE:
+            patch_live(
+                {
+                    "beat_frequency": 4.0,
+                    "volume": 10,
+                    "veil_mode": "null",
+                    "shadow_opacity_target": 0,
+                    "tts_enabled": False,
+                    "conductor_phase": new.value,
+                    "freq_lead_enabled": False,
+                }
+            )
+
+        elif new == Phase.SSILD_REM_MONITORING:
+            patch_live(
+                {
+                    "volume": 5,
+                    "conductor_phase": new.value,
+                }
+            )
+
+        elif new == Phase.SSILD_DREAM_JOURNAL:
+            patch_live(
+                {
+                    "beat_frequency": 10.0,
+                    "volume": 30,
+                    "tts_enabled": True,
+                    "conductor_phase": new.value,
+                }
+            )
+
         elif new == Phase.SESSION_END:
             patch_live(
                 {
@@ -1841,6 +1980,32 @@ class Conductor:
                     )
                 except Exception as e:
                     print(f"[Conductor] Edison capture DB error: {e}")
+
+            # SSILD: persist session journal to DB (Bible Ch.7 §§30-31)
+            if self._is_ssild and self._ssild is not None:
+                try:
+                    from content_tools.somna_db import log_ssild_session
+
+                    summary = self._ssild.finalize()
+                    log_ssild_session(
+                        session_id=self.session_id,
+                        quick_cycles_completed=summary["quick_cycles_completed"],
+                        slow_cycles_completed=summary["slow_cycles_completed"],
+                        rem_periods_detected=summary["rem_periods_detected"],
+                        tlr_cues_delivered=summary["tlr_cues_delivered"],
+                        lucidity_detected=summary["lucidity_detected"],
+                        user_reported_lucidity="",
+                        user_reported_dream="",
+                        user_reported_cue_awareness="",
+                        eeg_rem_summary="{}",
+                    )
+                    print(
+                        f"[Conductor] SSILD session saved: "
+                        f"{summary['rem_periods_detected']} REM periods, "
+                        f"{summary['tlr_cues_delivered']} TLR cues"
+                    )
+                except Exception as e:
+                    print(f"[Conductor] SSILD DB error: {e}")
 
             self._flush_log()
 
@@ -3172,5 +3337,11 @@ Conductor._AM_DEPTH_BY_PHASE = {
     Phase.EDISON_N1_HOLD: 0.00,
     Phase.EDISON_CAPTURE: 0.20,
     Phase.EDISON_CYCLE_END: 0.05,
+    Phase.SSILD_PRE_TECHNIQUE: 0.10,
+    Phase.SSILD_QUICK_CYCLES: 0.00,
+    Phase.SSILD_SLOW_CYCLES: 0.00,
+    Phase.SSILD_POST_TECHNIQUE: 0.00,
+    Phase.SSILD_REM_MONITORING: 0.00,
+    Phase.SSILD_DREAM_JOURNAL: 0.10,
     Phase.GENUS_BLOCK: 0.70,
 }

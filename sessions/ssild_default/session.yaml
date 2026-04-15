@@ -1,138 +1,31 @@
 name: "SSILD — Lucid Dreaming Protocol"
 description: >
-  25-minute WBTB (wake-back-to-bed) session for lucid dreaming induction
-  via Senses Initiated Lucid Dreaming. Designed for use after 4-6 hours
-  of sleep, during a deliberate middle-of-night awakening. The protocol
-  cycles attention through senses (sight, sound, body) without trying to
-  control or induce anything — passive observation only. The beats assist
-  state deepening between cycles. Return to sleep immediately after the
-  session ends.
+  EEG-guided SSILD (Senses-Initiated Lucid Dreaming) protocol (Bible Ch.7
+  §§30-31). TTS-guided sensory cycling through sight, hearing, and touch,
+  followed by REM monitoring with TLR subliminal cue delivery. Designed for
+  WBTB (wake-back-to-bed) use after 4-6 hours of initial sleep.
 category: ssild
-duration: 1500
+type: ssild
+duration: 1800
 
 defaults:
-  beat_frequency: 6.0
+  beat_frequency: 8.0
   beat_type: binaural
   carrier_frequency: 174.0
-  volume: 65.0
-  noise_color: brown
-  noise_volume: 20.0
-  spiral_color_mode: rainbow
+  volume: 25.0
+  noise_color: "brown"
+  noise_volume: 10
+  bg_mode: "none"
+  spiral_active: false
+  veil_active: false
+  center_text_active: false
+  eeg_monitoring: true
+  ssild_mode: true
+  ssild_quick_cycles: 4
+  ssild_slow_cycles: 3
+  ssild_quick_sense_duration_s: 4.0
+  ssild_slow_sense_duration_s: 20.0
+  ssild_tlr_max_cues_per_rem: 3
+  ssild_tlr_inter_cue_s: 60.0
 
-timeline:
-
-  # ── 0:00 · WAKE ANCHOR ───────────────────────────────────────────────────
-  # Brief wakefulness to establish the starting state. Keep eyes open,
-  # orient to the room, then close eyes for the protocol.
-  - t: 0
-    label: wake_anchor
-    ease: linear
-    params:
-      beat_frequency: 8.0
-      carrier_frequency: 190.0
-      spiral_style: archimedean
-      spiral_count: 4
-      spiral_opacity: 60
-      spiral_speed_multiplier: 0.7
-      spiral_tightness: 5.0
-      spiral_chaos: 0.04
-      spiral_thickness: 12
-      veil_opacity: 8
-      veil_mode: scroll
-      shadow_opacity: 0
-      center_flash_on_time: 120
-      center_flash_off_time: 300
-
-  # ── 2:00 · CYCLE 1 — RAPID ROUNDS ───────────────────────────────────────
-  # 4 rapid SSILD cycles: sight → sound → body, ~15 sec each sense.
-  # Passive observation only. Don't try to see, hear, or feel anything —
-  # just notice what's there without effort or expectation.
-  # Beat drops to theta to ease the passive observation state.
-  - t: 120
-    label: rapid_cycles
-    ease: ease_in_out
-    params:
-      beat_frequency: 6.0
-      carrier_frequency: 174.0
-      spiral_style: fibonacci
-      spiral_count: 3
-      spiral_opacity: 80
-      spiral_speed_multiplier: 0.40
-      spiral_tightness: 4.5
-      spiral_chaos: 0.05
-      spiral_thickness: 16
-      veil_opacity: 36
-      veil_mode: drift
-      shadow_opacity: 22
-      center_flash_on_time: 60
-      center_flash_off_time: 200
-
-  # ── 8:00 · SLOW CYCLES ───────────────────────────────────────────────────
-  # 2-3 slow SSILD cycles: ~1 minute per sense.
-  # Deepen passive observation. Alpha/theta border.
-  # The slow cycles are where SSILD does most of its work.
-  - t: 480
-    label: slow_cycles
-    ease: ease_in_out
-    params:
-      beat_frequency: 5.5
-      carrier_frequency: 168.0
-      spiral_style: tunnel_dream
-      spiral_count: 3
-      spiral_opacity: 84
-      spiral_speed_multiplier: 0.28
-      spiral_tightness: 4.0
-      spiral_chaos: 0.03
-      spiral_thickness: 18
-      veil_opacity: 50
-      veil_mode: converge
-      shadow_opacity: 34
-      center_flash_on_time: 40
-      center_flash_off_time: 180
-
-  # ── 15:00 · PRESLEEP ─────────────────────────────────────────────────────
-  # Final passive hold before returning to sleep. Drop deeper into theta.
-  # No agent prompts. Let the state settle. Spiral slows to near-stillness.
-  - t: 900
-    label: presleep
-    ease: ease_in_out
-    params:
-      beat_frequency: 4.5
-      carrier_frequency: 158.0
-      spiral_style: tunnel_dream
-      spiral_count: 3
-      spiral_opacity: 88
-      spiral_speed_multiplier: 0.20
-      spiral_chaos: 0.02
-      veil_opacity: 60
-      veil_mode: drift
-      shadow_opacity: 42
-      center_flash_on_time: 28
-      center_flash_off_time: 160
-
-  # ── 22:00 · FADE ─────────────────────────────────────────────────────────
-  # Begin fading all stimulation. Return to sleep should happen naturally.
-  # Display dims; noise persists as masking layer.
-  - t: 1320
-    label: fade
-    ease: ease_out
-    params:
-      beat_frequency: 4.0
-      carrier_frequency: 150.0
-      spiral_opacity: 40
-      spiral_speed_multiplier: 0.14
-      veil_opacity: 30
-      shadow_opacity: 20
-      center_flash_on_time: 20
-      center_flash_off_time: 300
-
-  # ── 25:00 · SLEEP ────────────────────────────────────────────────────────
-  # Session complete. Noise persists. Return to sleep immediately.
-  - t: 1500
-    label: sleep
-    ease: linear
-    params:
-      beat_frequency: 3.5
-      spiral_opacity: 0
-      veil_opacity: 0
-      shadow_opacity: 0
+keyframes: []

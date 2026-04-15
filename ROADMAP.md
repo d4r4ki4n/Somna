@@ -337,9 +337,9 @@ _Core sleep detection and TMR are built. These are the novel session types and a
 
 | **Item** | **Bible Spec** | **Notes** |
 | --- | --- | --- |
-| Edison Mode protocol | Ch.7 §29 | Hypnagogic creativity capture; 6-state N1-interception FSM; alpha/theta ratio fast-path; verbal report capture; cycle support; `edison_captures` DB table |
+| Edison Mode protocol | Ch.7 §29 | ✅ edison_mode.py — 6-state N1-interception FSM, alpha/theta ratio fast-path, verbal report capture, `edison_captures` DB table |
 | --- | --- | --- |
-| SSILD protocol | Ch.7 §30–§31 | Senses-Initiated Lucid Dreaming: 8-step guided sensory protocol; automated cueing; practice mode; readiness assessment |
+| SSILD protocol | Ch.7 §§30-31 | ✅ ssild_engine.py — 4-phase TTS-guided sensory cycling, REM monitoring with TLR subliminal cues, dream journal collection, `ssild_sessions` DB table |
 | --- | --- | --- |
 | Dream Engineering / DREAM mode | Ch.7 §23–§25 | Stage Gate architecture; dual persistence model; technique taxonomy; full dream session type |
 | --- | --- | --- |
@@ -366,6 +366,8 @@ _Tkinter panel is production-complete. ImGui migration is started but early-stag
 | --- | --- | --- |
 | Edison Mode capture log viewer | Ch.7 §14, Ch.9 §14 | Hypnagogic capture history with playback and annotation |
 | --- | --- | --- |
+
+> **Design decision (April 2026):** All log/data viewers (Edison captures, session logs, sleep hypnograms, conductor decisions, TMR replay logs) should be unified into a **single comprehensive log exploration tool** before any individual viewer is built. The data complexity deserves a viewing tool that complements it. Individual viewers are blocked until this unified design exists. Giga low priority — do not build until the rest of the stack is mature.
 | Training mode panel | Ch.6 §11, Ch.9 §11 | Conditioning status, habituation curves, active paradigm, rotation schedule |
 | --- | --- | --- |
 | live_control.json visual keys | Ch.8 §9, Ch.9 §9 | Visual parameter controls exposed as ImGui widgets |
@@ -443,7 +445,7 @@ Use this table to understand what must ship before what. Items in the same tier 
 | --- | --- | --- |
 | Tier 4 (ImGui migration) | Tier 5 (FTUE console walkthrough) | Can't build a walkthrough for a UI that's about to change |
 | --- | --- | --- |
-| Tier 4 (sleep telemetry panel) | Tier 3 (Edison Mode UI) | Edison Mode needs its capture log viewer |
+| Tier 4 (sleep telemetry panel) | ~~Tier 3 (Edison Mode UI)~~ | Blocked on unified log exploration tool design decision (April 2026) — all individual log viewers deferred |
 | --- | --- | --- |
 | ~~Tier 1 (haptic drivers)~~ | ~~Tier 5 (hardware discovery wizard)~~ | ✅ Shipped — discovery wizard can now scan for haptic/taVNS devices |
 | --- | --- | --- |

@@ -459,7 +459,24 @@ CREATE TABLE IF NOT EXISTS edison_captures (
 CREATE INDEX IF NOT EXISTS idx_edison_captures_session
     ON edison_captures(session_id);
 
--- ── TMR tables (Bible Ch.7 §7.5) ───────────────────────────────────────────────────
+-- ── SSILD dream journal (Bible Ch.7 §30-31) ─────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS ssild_sessions (
+    id                          INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id                  TEXT    NOT NULL,
+    quick_cycles_completed      INTEGER NOT NULL DEFAULT 0,
+    slow_cycles_completed       INTEGER NOT NULL DEFAULT 0,
+    rem_periods_detected        INTEGER NOT NULL DEFAULT 0,
+    tlr_cues_delivered          INTEGER NOT NULL DEFAULT 0,
+    lucidity_detected           INTEGER NOT NULL DEFAULT 0,
+    user_reported_lucidity      TEXT,
+    user_reported_dream         TEXT,
+    user_reported_cue_awareness TEXT,
+    eeg_rem_summary             TEXT    NOT NULL DEFAULT '{}',
+    created_at                  REAL    NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_ssild_sessions_session
+    ON ssild_sessions(session_id);
 
 CREATE TABLE IF NOT EXISTS tmr_cue_registry (
     session_id      TEXT    NOT NULL,
@@ -2356,6 +2373,54 @@ def get_edison_captures(session_id: str) -> list:
         rows = conn.execute(
             "SELECT * FROM edison_captures WHERE session_id=? ORDER BY capture_index",
             (session_id,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def log_ssild_session(
+    session_id: str,
+    quick_cycles_completed: int,
+    slow_cycles_completed: int,
+    rem_periods_detected: int,
+    tlr_cues_delivered: int,
+    lucidity_detected: int,
+    user_reported_lucidity: str,
+    user_reported_dream: str,
+    user_reported_cue_awareness: str,
+    eeg_rem_summary: str,
+) -> None:
+    """Insert one SSILD session dream journal row."""
+    with _connect() as conn:
+        conn.execute(
+            """INSERT INTO ssild_sessions
+               (session_id, quick_cycles_completed, slow_cycles_completed,
+                rem_periods_detected, tlr_cues_delivered, lucidity_detected,
+                user_reported_lucidity, user_reported_dream,
+                user_reported_cue_awareness, eeg_rem_summary, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                session_id,
+                quick_cycles_completed,
+                slow_cycles_completed,
+                rem_periods_detected,
+                tlr_cues_delivered,
+                lucidity_detected,
+                user_reported_lucidity,
+                user_reported_dream,
+                user_reported_cue_awareness,
+                eeg_rem_summary,
+                time.time(),
+            ),
+        )
+        conn.commit()
+
+
+def get_ssild_sessions(limit: int = 20) -> list:
+    """Return recent SSILD session journal entries."""
+    with _connect() as conn:
+        rows = conn.execute(
+            "SELECT * FROM ssild_sessions ORDER BY created_at DESC LIMIT ?",
+            (limit,),
         ).fetchall()
     return [dict(r) for r in rows]
 

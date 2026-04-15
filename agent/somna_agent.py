@@ -3138,6 +3138,31 @@ class SomnaAgent:
                 adj = self._apply(result)
                 self._record(state, prompt=None, response=None, adj=adj)
 
+    def _ssild_tick(self, state: dict) -> None:
+        """SSILD tick — minimal agent involvement during TTS-guided cycles.
+
+        The Conductor + SSILDEngine handle all phase transitions, cycle
+        counting, and TTS prompt delivery. The agent only acts during
+        DREAM_JOURNAL to collect the morning report.
+        """
+        ssild_phase = state.get("ssild_phase", "")
+
+        if ssild_phase == "DREAM_JOURNAL":
+            response = state.get("user_response")
+            if response:
+                instruction = (
+                    f"SSILD DREAM JOURNAL — the user just woke up and shared: '{response}'\n"
+                    "Acknowledge their report warmly. Ask one brief follow-up: "
+                    "did they notice any cues during the night? Then thank them "
+                    "and wish them a good day. Keep it short."
+                )
+                result = self._call_llm(
+                    state, prompt=response, response=None, extra_instruction=instruction
+                )
+                if result:
+                    adj = self._apply(result)
+                    self._record(state, prompt=None, response=response, adj=adj)
+
     def _deep_window_tick(self, state: dict, cycle_n: int) -> None:
         """Fractionation DEEP phase — therapeutic window tick.
 
@@ -3347,6 +3372,12 @@ class SomnaAgent:
         edison_state = state.get("edison_state")
         if edison_state and edison_state != "SESSION_END":
             self._edison_tick(state)
+            return
+
+        # Route to SSILD handler — cycle-guided TTS + REM monitoring (Bible Ch.7 §§30-31)
+        ssild_phase = state.get("ssild_phase")
+        if ssild_phase and ssild_phase not in ("COMPLETE", ""):
+            self._ssild_tick(state)
             return
 
         # Route to the dedicated DEEP-window handler during fractionation

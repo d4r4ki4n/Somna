@@ -146,6 +146,10 @@ The project is called \*\*Somna\*\*. The control panel entry point is \`main_img
 
 | `ui/biosignal_dashboard.py` | `BiosignalDashboard`; four-tab ImPlot telemetry window (EEG Overview, Alpha Detail, Cardiac, Respiratory); device status strip; 10-second rolling buffers at 10 Hz; reads `eeg_*` and `ppg_*` keys from `live_control.json`; registered as a hello_imgui `DockableWindow` in `control_panel_imgui.py` |
 
+| `control_panel_imgui.py` (Settings modal) | 5-tab modal popup opened by gear icon (⚙) in console bar: Profile (name, aphantasia, modality pref, notes, goals), Agent (LLM endpoint/key/model + test connection), Display (always-on-top, click-through, opacity), Audio (TTS voice), Advanced (reset onboarding, recalibrate IAF). Absorbs the old Memory modal. Agent tab edits `agent_config.yaml` via line-level replacement to preserve YAML comments |
+
+| `control_panel_imgui.py` (Welcome wizard) | 5-step first-run modal for new users: Welcome → Name + free-text goals → Hardware scan → LLM setup with test connection → Ready. Triggers when `engagement.onboarding_complete` is not set in `user_profile.json`. Writes profile + agent config on finish. Testable via Settings → Advanced → Reset Onboarding |
+
 | \`engines/device_safety.py\` | \`DeviceSafetyEnforcer\`; shared non-overridable safety layer for BLE output devices; intensity ceilings, ramp rates, sleep-stage gating, emergency stop, unlock tiers |
 
 | \`engines/haptic_engine.py\` | \`HapticEngine\`; Lovense BLE vibrotactile output; buttplug-py protocol; pattern generation (continuous/pulse/wave/ramp/fractionation/tmr_cue/conditioned_anchor); safety-capped output; comfort calibration; sleep gating; background thread |
@@ -153,6 +157,44 @@ The project is called \*\*Somna\*\*. The control panel entry point is \`main_img
 | \`engines/tavns_engine.py\` | \`TavnsEngine\`; DG Labs Coyote BLE taVNS output; pydglab-v3 protocol; impedance monitoring; waveform types (sine/square/biphasic); mandatory pre-session impedance check; instant shutoff on contact loss; sleep disable; background thread |
 
 \---
+
+## Onboarding architecture (Bible Ch.10 — implementation decisions)
+
+The Bible specifies a 33-state Master Onboarding State Machine, 8-page wizard, 12-step FTUE walkthrough, tutorial overlay system, and onboarding metrics. **The implemented design is a pragmatic subset** — agent-driven where possible, minimal new UI infrastructure.
+
+### What shipped
+
+**Static welcome wizard** (`control_panel_imgui.py` — `_render_welcome_wizard`). 5-step modal that runs without LLM:
+1. Welcome — brand intro
+2. Name + free-text goals (comma-separated, agent interprets)
+3. Hardware scan (checks BrainFlow availability; skippable)
+4. LLM setup — endpoint/key/model + test connection (skippable with deliberate "Skip for now")
+5. Ready — summary with pointers
+
+Sets `engagement.onboarding_complete: True` in `user_profile.json`. If LLM was configured, saves to `agent_config.yaml` via line-level replacement (preserves comments).
+
+**Settings modal** (`control_panel_imgui.py` — `_render_settings_modal`). Gear icon (⚙) in console bar, replaces old "Memory" button. 5 tabs: Profile, Agent, Display, Audio, Advanced. Absorbs the old Memory modal content into the Profile tab.
+
+### What didn't ship (intentionally)
+
+- **33-state MOSM** — over-engineered for a single-user desktop app. Session count from `engagement.total_sessions` handles progressive unlocks implicitly.
+- **Tutorial overlay system** — z-ordered ImGui windows with priority queues. Hundreds of lines of infrastructure for tooltips users click through once. The agent console handles "what does this do?" questions better.
+- **FTUE walkthrough** — 12-step guided tour. ImGui panel layout is self-explanatory.
+- **Widget tier gating** — `panel_config.json` already has Essential/Advanced/Debug layers. The Debug layer was accidentally lost in the ImGui overhaul and needs restoring separately.
+- **Onboarding metrics** — funnel analytics, TTFST tracking, satisfaction surveys. Product analytics for a single user.
+- **Wizard checkpoint/resume** — crash recovery for a 60-second flow. Just redo it.
+- **Multi-profile support** — not needed.
+- **Vesper onboarding personality** — scripted encouragement milestones. The agent adapts naturally.
+
+### What's next (agent-driven Session Zero)
+
+When the agent starts and `engagement.onboarding_complete` exists but no baselines are recorded, the agent should offer the full Session Zero through its console chat — EEG baselines (eyes-open/closed), relaxation response test, safety briefing, consent, test drive mini-session. This expands `_onboarding_flow()` in `somna_agent.py`.
+
+### YAML comment preservation
+
+Both the Settings Agent tab and the Welcome wizard step 4 edit `agent_config.yaml` via **line-level string replacement**, not `yaml.dump()`. PyYAML's dump strips all comments and reformats the entire file. The replacement pattern matches `base_url:`, `api_key:`, `model:` at the start of a line and replaces the value while leaving everything else intact.
+
+---
 
 \## Communication bus: \`live_control.json\`
 
@@ -1072,6 +1114,10 @@ Lives in \`agent/somna_agent.py\` (chord monitoring + selection + recording) and
 \- Do not add a second BrainFlow board connection for the VR subprocess — raw EEG reaches the VR process via \`eeg_raw_af7_last_256\` in \`live_control.json\`
 
 \- Do not pack \`agent_status_lbl\` — that widget was removed from the layout
+
+\- Do not reference the old "Memory" button or \`_memory_*\` state variables — they were replaced by the Settings modal (\`_settings_*\` state) with a gear icon (⚙) in the console bar
+
+\- Do not use \`yaml.dump()\` to write \`agent_config.yaml\` — it strips all comments. Use line-level string replacement matching \`base_url:\`, \`api_key:\`, \`model:\` at the start of a line
 
 \- Do not write any messaging key directly from agent code — always call \`SomnaAgent.\_say()\` so \`agent_message\` is written and all consumers stay in sync
 

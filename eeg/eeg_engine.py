@@ -806,7 +806,6 @@ class EEGEngine:
             self.board_id = self._BoardIds.SYNTHETIC_BOARD.value
         else:
             self.board_id = int(config.get("board_id", config.get("eeg_board_id", 38)))
-        print(
         self.params = self._BrainFlowInputParams()
         serial_port = config.get("serial_port")
         if serial_port:

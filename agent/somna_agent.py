@@ -314,6 +314,12 @@ def update_profile(updates: dict) -> None:
         profile["last_session"] = updates["last_session"]
     if "engagement" in updates:
         profile.setdefault("engagement", {}).update(updates["engagement"])
+    if "eeg_baselines" in updates:
+        profile["eeg_baselines"] = updates["eeg_baselines"]
+    if "safety_consent" in updates:
+        profile["safety_consent"] = updates["safety_consent"]
+    if "session_zero_status" in updates:
+        profile["session_zero_status"] = updates["session_zero_status"]
 
     # Retroactive dedup: prune near-duplicate notes and themes that accumulated
     # before per-item checks were in place. Runs on every write — cheap enough.
@@ -1348,6 +1354,11 @@ class SomnaAgent:
         self._session_best_cmplx: float = 1.0
         self._session_best_phase: str = ""
         self._session_notable: list = []
+        # Session Zero calibration-in-disguise state
+        self._sz_active: bool = False
+        self._sz_phase: str = ""
+        self._sz_phase_start: float = 0.0
+        self._sz_samples: list = []  # collected (ts, eeg_dict) snapshots
 
         # ── Idle / planning / nudge / console state ───────────────────────────
         self._idle_last_plan: float = time.time()  # wall time of last planning cycle; init to now so first cycle waits the full interval
@@ -3227,6 +3238,12 @@ class SomnaAgent:
         self._record(state, prompt=msg, response=None, adj=adj, affirmation=aff)
 
     def _interactive_tick(self, state: dict) -> None:
+        # ── Session Zero calibration-in-disguise ──────────────────────────────────
+        if self._sz_active:
+            self._session_zero_tick(state)
+            if self._sz_active:
+                return
+
         # ── Conductor FSM tick (Bible Ch.6 §6.5) ───────────────────────────────────────
         if self._conductor is not None:
             tick_rate = self._conductor.get_tick_rate() or 10
@@ -4367,6 +4384,31 @@ class SomnaAgent:
             self._record(state, prompt=greeting, response=None, adj={})
             return
 
+        # ── SESSION ZERO: first session, calibration-in-disguise ────────────────
+        if not self._profile.get("eeg_baselines") and state.get("eeg_connected"):
+            self._sz_active = True
+            self._sz_phase = "orient"
+            self._sz_phase_start = time.time()
+            self._sz_samples = []
+            print("[Agent] Session Zero active — calibration-in-disguise.")
+            sz_greeting = (
+                f"{'Good, ' + name + '. ' if name else ''}"
+                "Let's just take a moment to settle in. "
+                "Keep your eyes on the screen — I'm learning how your mind works "
+                "while you relax. Nothing you need to do."
+            )
+            self._say(
+                sz_greeting,
+                needs_response=False,
+                overlay=True,
+                console=True,
+                tts=True,
+                style={"zoom_speed": "slow", "intensity": "soft", "voice_mode": "tts"},
+                timeout_s=15,
+            )
+            self._record(state, prompt=sz_greeting, response=None, adj={})
+            return
+
         # ── FRESH tier: no history — true first use ───────────────────────────
         profile_ctx = self._profile_context()
         history_note = "This is the first session — no prior history."
@@ -4459,6 +4501,169 @@ class SomnaAgent:
         else:
             self._skip_streak += 1
         self._record(state, prompt=question, response=response, adj={})
+
+    def _session_zero_tick(self, state: dict) -> None:
+        if not self._sz_active:
+            return
+        if self._sz_phase == "complete":
+            return
+
+        elapsed = time.time() - self._sz_phase_start
+        eeg = {
+            "delta": float(state.get("eeg_delta") or 0),
+            "theta": float(state.get("eeg_theta") or 0),
+            "alpha": float(state.get("eeg_alpha") or 0),
+            "beta": float(state.get("eeg_beta") or 0),
+            "trance_score": float(state.get("eeg_trance_score") or 0),
+            "sef95": float(state.get("eeg_sef95") or 0),
+        }
+        self._sz_samples.append((time.time(), self._sz_phase, eeg))
+
+        if self._sz_phase == "orient" and elapsed >= 60:
+            self._sz_phase = "eyes_open"
+            self._sz_phase_start = time.time()
+            self._say(
+                "Good. Just keep looking at the screen — soft focus, nothing special. "
+                "I'm watching. You're doing fine.",
+                needs_response=False,
+                overlay=True,
+                console=True,
+                tts=True,
+                style={"zoom_speed": "slow", "intensity": "soft", "voice_mode": "tts"},
+                timeout_s=10,
+            )
+            self._clear_message()
+            print(f"[Agent] SZ phase: eyes_open  samples={len(self._sz_samples)}")
+
+        elif self._sz_phase == "eyes_open" and elapsed >= 60:
+            self._sz_phase = "eyes_closed"
+            self._sz_phase_start = time.time()
+            self._say(
+                "Now let your eyes close. Gently. Just let them fall shut and feel "
+                "what that's like. I'm still here.",
+                needs_response=False,
+                overlay=True,
+                console=True,
+                tts=True,
+                style={"zoom_speed": "slow", "intensity": "soft", "voice_mode": "tts"},
+                timeout_s=10,
+            )
+            self._clear_message()
+            print(f"[Agent] SZ phase: eyes_closed  samples={len(self._sz_samples)}")
+
+        elif self._sz_phase == "eyes_closed" and elapsed >= 60:
+            self._sz_phase = "breathing"
+            self._sz_phase_start = time.time()
+            self._say(
+                "Good. Now let's breathe together. In for four… and out for six. "
+                "Just follow my voice. In… and out. That's it.",
+                needs_response=False,
+                overlay=True,
+                console=True,
+                tts=True,
+                style={"zoom_speed": "slow", "intensity": "soft", "voice_mode": "tts"},
+                timeout_s=10,
+            )
+            self._clear_message()
+            self._write_live(
+                {
+                    "breath_mod_enabled": True,
+                    "breath_rate_bpm": 6.0,
+                    "breath_depth": 0.6,
+                }
+            )
+            print(f"[Agent] SZ phase: breathing  samples={len(self._sz_samples)}")
+
+        elif self._sz_phase == "breathing" and elapsed >= 90:
+            self._sz_phase = "complete"
+            self._finalize_session_zero()
+
+    def _finalize_session_zero(self) -> None:
+        print(f"[Agent] Session Zero baselines — {len(self._sz_samples)} samples.")
+
+        eo = [s for s in self._sz_samples if s[1] == "eyes_open"]
+        ec = [s for s in self._sz_samples if s[1] == "eyes_closed"]
+        br = [s for s in self._sz_samples if s[1] == "breathing"]
+
+        def _avg(samples, band):
+            vals = [s[2].get(band, 0) for s in samples]
+            return round(sum(vals) / max(len(vals), 1), 4)
+
+        baselines = {
+            "eyes_open": {
+                "duration_s": len(eo) * 5,
+                "band_power": {
+                    "delta": _avg(eo, "delta"),
+                    "theta": _avg(eo, "theta"),
+                    "alpha": _avg(eo, "alpha"),
+                    "beta": _avg(eo, "beta"),
+                },
+            },
+            "eyes_closed": {
+                "duration_s": len(ec) * 5,
+                "band_power": {
+                    "delta": _avg(ec, "delta"),
+                    "theta": _avg(ec, "theta"),
+                    "alpha": _avg(ec, "alpha"),
+                    "beta": _avg(ec, "beta"),
+                },
+            },
+            "breathing": {
+                "duration_s": len(br) * 5,
+                "band_power": {
+                    "delta": _avg(br, "delta"),
+                    "theta": _avg(br, "theta"),
+                    "alpha": _avg(br, "alpha"),
+                    "beta": _avg(br, "beta"),
+                },
+            },
+        }
+
+        eo_a = baselines["eyes_open"]["band_power"]["alpha"]
+        ec_a = baselines["eyes_closed"]["band_power"]["alpha"]
+        baselines["alpha_reactivity_ratio"] = round(ec_a / max(eo_a, 0.001), 4)
+
+        eo_b = baselines["eyes_open"]["band_power"]["beta"]
+        ec_t = baselines["eyes_closed"]["band_power"]["theta"]
+        br_t = baselines["breathing"]["band_power"]["theta"]
+        br_a = baselines["breathing"]["band_power"]["alpha"]
+        br_b = baselines["breathing"]["band_power"]["beta"]
+
+        td = (br_t - ec_t) / max(ec_t, 0.001)
+        ad = (br_a - ec_a) / max(ec_a, 0.001)
+        bd = (br_b - eo_b) / max(eo_b, 0.001)
+        rr = max(0.0, min(1.0, (td + ad - bd) / 3.0))
+        baselines["relaxation_response_score"] = round(rr, 4)
+
+        if rr > 0.65 and baselines["alpha_reactivity_ratio"] > 2.5:
+            baselines["trance_susceptibility"] = "high"
+        elif rr > 0.35:
+            baselines["trance_susceptibility"] = "moderate"
+        else:
+            baselines["trance_susceptibility"] = "low"
+
+        baselines["calibrated_utc"] = datetime.datetime.utcnow().isoformat(
+            timespec="seconds"
+        )
+        baselines["sample_count"] = len(self._sz_samples)
+
+        self._update_profile({"eeg_baselines": baselines})
+        self._write_live({"breath_mod_enabled": False})
+
+        self._say(
+            "Good. I have what I need. Let's continue.",
+            needs_response=False,
+            overlay=True,
+            console=True,
+            tts=True,
+            style={"zoom_speed": "slow", "intensity": "soft", "voice_mode": "tts"},
+            timeout_s=10,
+        )
+        self._clear_message()
+
+        self._sz_active = False
+        self._sz_phase = ""
+        self._sz_samples = []
 
     # ── Idle / planning / nudge helpers ───────────────────────────────────────
 

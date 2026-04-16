@@ -150,6 +150,8 @@ The project is called \*\*Somna\*\*. The control panel entry point is \`main_img
 
 | `control_panel_imgui.py` (Welcome wizard) | 5-step first-run modal for new users: Welcome → Name + free-text goals → Hardware scan → LLM setup with test connection → Ready. Triggers when `engagement.onboarding_complete` is not set in `user_profile.json`. Writes profile + agent config on finish. Testable via Settings → Advanced → Reset Onboarding |
 
+| `control_panel_imgui.py` (Session Zero modal) | Pre-first-session safety/consent ImGui modal. Photosensitive screening (checkbox + risk acceptance), SSB consent (opt-in), safety acknowledgment (mandatory). Triggers when `session_zero_status` absent from profile and session launch is attempted. Writes `session_zero_status: "complete_minimal"` + `safety_consent` dict to profile. If photosensitive risk accepted, writes `photic_driving_disabled: True` to `live_control.json` |
+
 | \`engines/device_safety.py\` | \`DeviceSafetyEnforcer\`; shared non-overridable safety layer for BLE output devices; intensity ceilings, ramp rates, sleep-stage gating, emergency stop, unlock tiers |
 
 | \`engines/haptic_engine.py\` | \`HapticEngine\`; Lovense BLE vibrotactile output; buttplug-py protocol; pattern generation (continuous/pulse/wave/ramp/fractionation/tmr_cue/conditioned_anchor); safety-capped output; comfort calibration; sleep gating; background thread |
@@ -186,9 +188,40 @@ Sets `engagement.onboarding_complete: True` in `user_profile.json`. If LLM was c
 - **Multi-profile support** — not needed.
 - **Vesper onboarding personality** — scripted encouragement milestones. The agent adapts naturally.
 
-### What's next (agent-driven Session Zero)
+### Session Zero — calibration-in-disguise (IMPLEMENTED)
 
-When the agent starts and `engagement.onboarding_complete` exists but no baselines are recorded, the agent should offer the full Session Zero through its console chat — EEG baselines (eyes-open/closed), relaxation response test, safety briefing, consent, test drive mini-session. This expands `_onboarding_flow()` in `somna_agent.py`.
+Session Zero is the first real session — the user experiences a normal induction while the agent silently collects EEG baselines. There is no separate calibration step.
+
+**Pre-session gate (ImGui modal)** — `control_panel_imgui.py`:
+- `_render_session_zero_modal()` — one-time safety/consent popup triggered before first session launch
+- Intercepted in `_launch_display()` and `_agent_launch_display` path via `_needs_session_zero()`
+- Three sections: photosensitive screening (checkbox + risk acceptance), SSB consent (opt-in), safety acknowledgment (mandatory)
+- On accept, writes `session_zero_status: "complete_minimal"` and `safety_consent` dict to `user_profile.json`
+- If photosensitive risk accepted, writes `photic_driving_disabled: True` to `live_control.json`
+- Re-checks profile on each launch; skips modal once `session_zero_status` is present
+
+**Agent calibration-in-disguise** — `somna_agent.py`:
+- `_startup_sequence()` detects no `eeg_baselines` in profile + EEG connected → activates `_sz_active`
+- `_session_zero_tick()` runs during `_interactive_tick` instead of normal LLM probe
+- Phase sequence (timed, invisible to user):
+  - `orient` (0:00–1:00) — eyes open, relaxed, agent narrates settling in
+  - `eyes_open` (1:00–2:00) — quiet, agent says "soft focus, just looking"
+  - `eyes_closed` (2:00–3:00) — agent guides eyes closed, records alpha spike
+  - `breathing` (3:00–4:30) — 6 BPM breath modulation enabled, records relaxation response
+  - `complete` — `_finalize_session_zero()` writes baselines, normal session resumes
+- Each phase collects EEG snapshots (delta/theta/alpha/beta/trance_score/sef95) from `live_control.json` every tick
+- Output: `eeg_baselines` dict in profile with per-phase band powers, alpha reactivity ratio, relaxation response score, trance susceptibility classification
+- Breathing phase enables `breath_mod_enabled` with `breath_rate_bpm: 6.0`; cleared on finalize
+
+**What was cut** (intentionally):
+- SessionZeroController sub-FSM — agent tracks phase with simple string state
+- Dedicated session YAML — test drive IS the default session with agent-controlled params
+- Full audio stimulus survey — deferred to Settings modal or agent observation over sessions
+- Visual calibration — display detection is self-evident from whether it works
+- NWI baseline — deferred to first real session's natural TTS delivery
+- Hardware discovery — already handled by welcome wizard step 3
+- Checkpoint/resume — redo the 5-minute flow if interrupted; no crash recovery needed
+- Separate test drive phase — the entire first session IS the test drive
 
 ### YAML comment preservation
 
@@ -662,6 +695,18 @@ All three agent scripts read and write this file. \*\*Always use \`update_profil
 "delta": \[0.5, 3.7\], "theta": \[3.7, 7.7\], "alpha": \[7.7, 11.7\],
 
 "beta": \[11.7, 30.0\], "gamma": \[30.0, 100.0\]
+
+},
+
+"session_zero_status": "complete_minimal",
+
+"session_zero_completed_utc": "2026-04-16T18:00:00",
+
+"safety_consent": {"photosensitive_risk": "normal", "ssb_enabled": true, "safety_acknowledged": true, "acknowledged_utc": "2026-04-16T18:00:00"},
+
+"eeg_baselines": {"eyes_open": {"band_power": {...}}, "eyes_closed": {...}, "breathing": {...}, "alpha_reactivity_ratio": 2.76, "relaxation_response_score": 0.58, "trance_susceptibility": "moderate", "calibrated_utc": "...", "sample_count": 54}
+
+}
 
 }
 
@@ -1200,6 +1245,10 @@ Lives in \`agent/somna_agent.py\` (chord monitoring + selection + recording) and
 \- Do not re-add \`\_check_pending_nudge()\` to \`control_panel_imgui.py\` — the nudge popup that showed raw LLM reasoning verbatim has been intentionally removed. The ghost nudge mechanism in \`somna_agent.py\` still works; only the confusing raw-text dialog is gone.
 
 \- Do not use \`ease: step\` in session YAML — it is not a valid easing mode and silently falls through to \`linear\`. The correct instant-switch value is \`ease: instant\`.
+
+\- Do not trigger Session Zero calibration from a separate sub-FSM or session YAML — it runs inside \`_session_zero_tick()\` in \`somna_agent.py\` as part of the normal first session. The agent manages phase transitions with a simple string state (\`_sz_phase\`).
+
+\- Do not show a TTS-read safety script during Session Zero — the pre-session safety/consent modal is an on-screen ImGui popup (\`_render_session_zero_modal()\`), not a spoken narration. Users tune out long TTS safety briefings.
 
 \---
 

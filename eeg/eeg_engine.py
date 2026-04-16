@@ -801,13 +801,16 @@ class EEGEngine:
                 "brainflow is not installed. Run: pip install brainflow"
             ) from e
 
-        synthetic = bool(config.get("eeg_synthetic", True))
+        synthetic = bool(config.get("synthetic", config.get("eeg_synthetic", True)))
         if synthetic:
             self.board_id = self._BoardIds.SYNTHETIC_BOARD.value
         else:
-            self.board_id = int(config.get("eeg_board_id", 38))
-
+            self.board_id = int(config.get("board_id", config.get("eeg_board_id", 38)))
+        print(
         self.params = self._BrainFlowInputParams()
+        serial_port = config.get("serial_port")
+        if serial_port:
+            self.params.serial_port = str(serial_port)
         self.board = None
         self._stop = threading.Event()
         self._thread = None  # type: threading.Thread

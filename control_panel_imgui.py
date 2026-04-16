@@ -325,6 +325,15 @@ class ControlPanelImGui:
         self._welcome_active: bool = False
         self._welcome_checked: bool = False
 
+        # Session Zero safety modal (pre-first-session)
+        self._sz_safety_open: bool = False
+        self._sz_safety_checked: bool = False
+        self._sz_photo_check: bool = False
+        self._sz_photo_risk: bool = False
+        self._sz_ssb_check: bool = False
+        self._sz_safety_ack: bool = False
+        self._sz_pending_launch: bool = False
+
         # User settings (persisted window/TTS prefs)
         self._user_settings: dict = self._load_user_settings()
 
@@ -571,7 +580,11 @@ class ControlPanelImGui:
         # Agent-commanded display launch / stop
         if live.get("_agent_launch_display"):
             patch_live({"_agent_launch_display": None})
-            self._launch_display()
+            if self._needs_session_zero():
+                self._sz_pending_launch = True
+                self._sz_safety_open = True
+            else:
+                self._launch_display()
         if live.get("_agent_stop_display"):
             patch_live({"_agent_stop_display": None})
             if self._display_proc is not None:
@@ -1126,6 +1139,7 @@ class ControlPanelImGui:
         avail_h = imgui.get_content_region_avail().y
         self._render_console_bar(avail_w, avail_h)
         self._render_welcome_wizard()
+        self._render_session_zero_modal()
 
     def _render_essential_window(self) -> None:
         self._poll_live()
@@ -1681,6 +1695,10 @@ class ControlPanelImGui:
 
     def _launch_display(self) -> None:
         if self._is_running():
+            return
+        if self._needs_session_zero():
+            self._sz_pending_launch = True
+            self._sz_safety_open = True
             return
         # Zero stale session_time, unmute beats, push selected session + window prefs
         try:
@@ -2727,6 +2745,177 @@ class ControlPanelImGui:
         if imgui.button("Let's Go##w4done", imgui.ImVec2(120, 0)):
             self._finish_welcome()
 
+    # ── Session Zero safety/consent modal ────────────────────────────────────────
+
+    def _needs_session_zero(self) -> bool:
+        if self._sz_safety_checked:
+            return False
+        try:
+            p = json.loads(
+                (self._root / "user_profile.json").read_text(encoding="utf-8")
+            )
+        except Exception:
+            return True
+        if p.get("session_zero_status") in ("complete", "complete_minimal"):
+            self._sz_safety_checked = True
+            return False
+        eng = p.get("engagement", {})
+        if not eng.get("onboarding_complete"):
+            return False
+        return True
+
+    def _render_session_zero_modal(self) -> None:
+        if not self._sz_safety_open:
+            return
+
+        from ui.panel_theme import token_rgba as _trga
+
+        imgui.open_popup("Session Zero##sz")
+
+        centre = imgui.get_main_viewport().get_center()
+        imgui.set_next_window_pos(centre, imgui.Cond_.appearing, imgui.ImVec2(0.5, 0.5))
+        imgui.set_next_window_size(imgui.ImVec2(520, 420))
+
+        opened, _ = imgui.begin_popup_modal(
+            "Session Zero##sz",
+            flags=imgui.WindowFlags_.no_resize,
+        )
+        if not opened:
+            return
+
+        muted = imgui.ImVec4(*_trga("text_muted"))
+        val = imgui.ImVec4(*_trga("text_value"))
+        iris = imgui.ImVec4(*_trga("source_agent"))
+        love = imgui.ImVec4(*_trga("alert_red"))
+        green = imgui.ImVec4(*_trga("success_green"))
+        avail_w = imgui.get_content_region_avail().x
+
+        imgui.text_colored(iris, "Before your first session")
+        imgui.spacing()
+        imgui.push_text_wrap_pos(avail_w)
+        imgui.text_colored(
+            muted, "A few quick safety items to acknowledge. This only appears once."
+        )
+        imgui.pop_text_wrap_pos()
+        imgui.spacing()
+        imgui.separator()
+        imgui.spacing()
+
+        imgui.text_colored(val, "Photosensitive screening")
+        imgui.push_text_wrap_pos(avail_w - 10)
+        imgui.text_colored(
+            muted,
+            "Somna uses rhythmic visual effects (spirals, flicker, color washes). "
+            "Have you ever had seizures, migraines, or strong discomfort triggered by "
+            "flashing lights?",
+        )
+        imgui.pop_text_wrap_pos()
+        _, self._sz_photo_check = imgui.checkbox(
+            "I do not have photosensitive epilepsy or related conditions##sz_photo",
+            self._sz_photo_check,
+        )
+        if not self._sz_photo_check:
+            _, self._sz_photo_risk = imgui.checkbox(
+                "I have a history of photosensitivity but accept the risk##sz_photorisk",
+                self._sz_photo_risk,
+            )
+        else:
+            self._sz_photo_risk = False
+        imgui.spacing()
+        imgui.separator()
+        imgui.spacing()
+
+        imgui.text_colored(val, "Subliminal content (SSB)")
+        imgui.push_text_wrap_pos(avail_w - 10)
+        imgui.text_colored(
+            muted,
+            "Somna can display affirmation text below your threshold of conscious "
+            "perception, reinforcing your chosen content. You will not consciously see "
+            "these messages. This is entirely optional and can be changed in Settings.",
+        )
+        imgui.pop_text_wrap_pos()
+        _, self._sz_ssb_check = imgui.checkbox(
+            "Enable subliminal text blending (optional)##sz_ssb",
+            self._sz_ssb_check,
+        )
+        imgui.spacing()
+        imgui.separator()
+        imgui.spacing()
+
+        imgui.text_colored(val, "Safety acknowledgment")
+        imgui.push_text_wrap_pos(avail_w - 10)
+        imgui.text_colored(
+            muted,
+            "You can stop any session at any time by closing the display window or "
+            "pressing the stop button. If you have a VR headset, do not use it if you "
+            "feel disoriented. Binaural beats work best with headphones. Do not use "
+            "while driving or operating machinery.",
+        )
+        imgui.pop_text_wrap_pos()
+        _, self._sz_safety_ack = imgui.checkbox(
+            "I understand and accept##sz_ack",
+            self._sz_safety_ack,
+        )
+        imgui.spacing()
+
+        can_proceed = self._sz_safety_ack and (
+            self._sz_photo_check or self._sz_photo_risk
+        )
+
+        btn_w = 120.0
+        imgui.set_cursor_pos_x((avail_w - btn_w) * 0.5)
+        if not can_proceed:
+            imgui.begin_disabled(True)
+        if imgui.button("Begin##sz_begin", imgui.ImVec2(btn_w, 0)):
+            self._finish_session_zero()
+        if not can_proceed:
+            imgui.end_disabled()
+
+        if not self._sz_safety_ack:
+            imgui.spacing()
+            imgui.text_colored(
+                muted, "Please acknowledge the safety information above."
+            )
+
+        imgui.end_popup()
+
+    def _finish_session_zero(self) -> None:
+        import datetime
+
+        try:
+            profile_path = self._root / "user_profile.json"
+            profile = json.loads(profile_path.read_text(encoding="utf-8"))
+        except Exception:
+            profile = {}
+
+        profile["session_zero_status"] = "complete_minimal"
+        profile["session_zero_completed_utc"] = datetime.datetime.utcnow().isoformat(
+            timespec="seconds"
+        )
+        profile["safety_consent"] = {
+            "photosensitive_risk": "elevated" if self._sz_photo_risk else "normal",
+            "ssb_enabled": self._sz_ssb_check,
+            "safety_acknowledged": True,
+            "acknowledged_utc": datetime.datetime.utcnow().isoformat(
+                timespec="seconds"
+            ),
+        }
+
+        profile_path.write_text(
+            json.dumps(profile, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+
+        if self._sz_photo_risk:
+            patch_live({"photic_driving_disabled": True})
+
+        self._sz_safety_open = False
+        self._sz_safety_checked = True
+        imgui.close_current_popup()
+
+        if self._sz_pending_launch:
+            self._sz_pending_launch = False
+            self._launch_display()
+
     # ── EEG device control panel ──────────────────────────────────────────────
 
     def _render_eeg_controls(self, avail_w: float) -> None:
@@ -2736,7 +2925,9 @@ class ControlPanelImGui:
         avail_w = imgui.get_content_region_avail().x
         live = dict(self._live)
         connected = bool(live.get("eeg_connected"))
-        synthetic = bool(self._eeg_cfg.get("eeg_synthetic", True))
+        synthetic = bool(
+            self._eeg_cfg.get("synthetic", self._eeg_cfg.get("eeg_synthetic", True))
+        )
         engine_up = self._eeg_engine is not None
 
         # Status dot + label
@@ -2785,7 +2976,7 @@ class ControlPanelImGui:
                 imgui.set_tooltip("Connect a real Muse headset to run IAF calibration.")
 
         # Board type indicator + last IAF result
-        board_id = self._eeg_cfg.get("eeg_board_id", 38)
+        board_id = self._eeg_cfg.get("board_id", self._eeg_cfg.get("eeg_board_id", 38))
         board_name = {38: "Muse 2", 39: "Muse S"}.get(board_id, f"Board {board_id}")
         iaf_hz = live.get("eeg_iaf_hz") or live.get("iaf_hz")
 

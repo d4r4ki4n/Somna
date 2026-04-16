@@ -49,6 +49,7 @@ from ui.console import SpectrogramConsole
 from ui.session_player import SessionPlayer, SessionEntry, SessionState
 from ui.session_editor_imgui import SessionEditorModal
 from ui.interference_graph_integration import install_interference_graph
+from ui.biosignal_dashboard import BiosignalDashboard
 
 PANEL_WIDTH = 420
 
@@ -61,6 +62,27 @@ _USER_SETTINGS_KEYS = {
     "tts_api_url",
     "tts_api_key",
 }
+
+_PANEL_GROUPS = [
+    {
+        "label": "Session",
+        "sections": {"Session", "Induction", "Content", "Affirmations"},
+    },
+    {"label": "Audio", "sections": {"Audio", "TTS", "Spirals"}, "cols": 3},
+    {
+        "label": "Visual",
+        "sections": {"Veil & BG", "Overlay", "Visual/Audio"},
+        "cols": 3,
+    },
+    {"label": "Biosignal", "sections": {"EEG", "Director", "Biosignal"}, "cols": 3},
+    {"label": "Sleep", "sections": {"Sleep", "TMR", "HTW"}, "cols": 3},
+    {"label": "Hardware", "sections": {"Haptic", "taVNS", "OpenXR"}, "cols": 3},
+    {
+        "label": "Conditioning",
+        "sections": {"Conditioning", "Habituation", "GENUS"},
+        "cols": 3,
+    },
+]
 
 
 class ControlPanelImGui:
@@ -312,6 +334,9 @@ class ControlPanelImGui:
             "Edison Mode", self._render_edison_controls
         )
         self._ig, self._ig_panel = install_interference_graph(self._panel_manager)
+
+        self._biosignal_dashboard = BiosignalDashboard()
+        self._last_poll_frame: int = -1
 
         # Restore persisted UI state
         if "debug_mode" in _geom0:
@@ -876,18 +901,260 @@ class ControlPanelImGui:
 
         runner.callbacks.setup_imgui_style = self._setup_style
         runner.callbacks.load_additional_fonts = self._load_fonts
-        runner.callbacks.show_gui = self._render
         runner.callbacks.before_exit = self._cleanup
 
-        # Keep idling on so we don't burn CPU at full rate, but run at least
-        # 40 fps so wave animations in the console stay smooth.
         runner.fps_idling.enable_idling = True
         runner.fps_idling.fps_idle = 40.0
         runner.fps_idling.fps_max = 60.0
 
-        runner.ini_disable = True
+        runner.docking_params.layout_name = "Default"
+        runner.ini_filename = "somna_dock_layout.ini"
+        runner.ini_filename_use_app_window_title = False
+        runner.imgui_window_params.default_imgui_window_type = (
+            hello_imgui.DefaultImGuiWindowType.provide_full_screen_dock_space
+        )
+
+        windows: list = []
+        splits: list = []
+
+        # MainDockSpace
+        #   ├── LeftCol (25% left)
+        #   │     ├── Sessions (top half)
+        #   │     └── Panels (bottom half) — toggle checkboxes
+        #   ├── ConsoleSpace (top 25%)
+        #   │     └── Console
+        #   ├── ControlsSpace (strip below console)
+        #   │     └── Controls
+        #   └── MainDockSpace remainder — blank workspace for section windows
+
+        split_left = hello_imgui.DockingSplit()
+        split_left.initial_dock = "MainDockSpace"
+        split_left.new_dock = "LeftCol"
+        split_left.direction = imgui.Dir_.left
+        split_left.ratio = 0.33
+        split_left.node_flags = imgui.DockNodeFlags_.auto_hide_tab_bar
+        splits.append(split_left)
+
+        split_panels = hello_imgui.DockingSplit()
+        split_panels.initial_dock = "LeftCol"
+        split_panels.new_dock = "PanelSpace"
+        split_panels.direction = imgui.Dir_.down
+        split_panels.ratio = 0.20
+        split_panels.node_flags = imgui.DockNodeFlags_.auto_hide_tab_bar
+        splits.append(split_panels)
+
+        split_console = hello_imgui.DockingSplit()
+        split_console.initial_dock = "MainDockSpace"
+        split_console.new_dock = "ConsoleSpace"
+        split_console.direction = imgui.Dir_.up
+        split_console.ratio = 0.25
+        split_console.node_flags = imgui.DockNodeFlags_.auto_hide_tab_bar
+        splits.append(split_console)
+
+        split_controls = hello_imgui.DockingSplit()
+        split_controls.initial_dock = "MainDockSpace"
+        split_controls.new_dock = "ControlsSpace"
+        split_controls.direction = imgui.Dir_.up
+        split_controls.ratio = 0.18
+        split_controls.node_flags = imgui.DockNodeFlags_.auto_hide_tab_bar
+        splits.append(split_controls)
+
+        runner.docking_params.docking_splits = splits
+
+        # ── Windows ────────────────────────────────────────────────────────
+
+        dw_player = hello_imgui.DockableWindow()
+        dw_player.label = "Sessions"
+        dw_player.dock_space_name = "LeftCol"
+        dw_player.gui_function = self._render_session_player
+        dw_player.is_visible = True
+        dw_player.remember_is_visible = True
+        dw_player.can_be_closed = False
+        windows.append(dw_player)
+
+        dw_panels = hello_imgui.DockableWindow()
+        dw_panels.label = "Panels"
+        dw_panels.dock_space_name = "PanelSpace"
+        dw_panels.gui_function = self._render_panel_toggles
+        dw_panels.is_visible = True
+        dw_panels.remember_is_visible = True
+        dw_panels.can_be_closed = False
+        windows.append(dw_panels)
+
+        dw_console = hello_imgui.DockableWindow()
+        dw_console.label = "Console"
+        dw_console.dock_space_name = "ConsoleSpace"
+        dw_console.gui_function = self._render_console_window
+        dw_console.is_visible = True
+        dw_console.remember_is_visible = True
+        dw_console.can_be_closed = False
+        windows.append(dw_console)
+
+        pm = self._panel_manager
+
+        dw_ess = hello_imgui.DockableWindow()
+        dw_ess.label = "Controls"
+        dw_ess.dock_space_name = "ControlsSpace"
+        dw_ess.gui_function = self._render_essential_window
+        dw_ess.is_visible = True
+        dw_ess.remember_is_visible = True
+        dw_ess.can_be_closed = False
+        windows.append(dw_ess)
+
+        dw_dash = hello_imgui.DockableWindow()
+        dw_dash.label = "Biosignal"
+        dw_dash.dock_space_name = "MainDockSpace"
+        dw_dash.gui_function = self._render_dashboard
+        dw_dash.is_visible = True
+        dw_dash.remember_is_visible = True
+        dw_dash.can_be_closed = False
+        dw_dash.include_in_view_menu = True
+        windows.append(dw_dash)
+
+        dw_welcome = hello_imgui.DockableWindow()
+        dw_welcome.label = "Welcome"
+        dw_welcome.dock_space_name = "MainDockSpace"
+        dw_welcome.gui_function = self._render_welcome
+        dw_welcome.is_visible = False
+        dw_welcome.remember_is_visible = True
+        dw_welcome.can_be_closed = False
+        dw_welcome.include_in_view_menu = False
+        windows.append(dw_welcome)
+
+        for sec_name in pm.section_names():
+            dw = hello_imgui.DockableWindow()
+            dw.label = sec_name
+            dw.dock_space_name = "MainDockSpace"
+            dw.gui_function = self._make_section_renderer(sec_name)
+            dw.is_visible = False
+            dw.remember_is_visible = True
+            dw.can_be_closed = False
+            dw.include_in_view_menu = True
+            windows.append(dw)
+
+        runner.docking_params.dockable_windows = windows
 
         hello_imgui.run(runner)
+
+    def _poll_live(self) -> None:
+        frame = imgui.get_frame_count()
+        if frame == self._last_poll_frame:
+            return
+        self._last_poll_frame = frame
+        try:
+            self._live = self._cfg.update()
+        except Exception:
+            pass
+        self._player.agent_running = self._is_agent_running()
+        self._panel_manager.update(self._live)
+
+    def _render_session_player(self) -> None:
+        self._poll_live()
+        imgui.push_style_var(imgui.StyleVar_.window_padding, imgui.ImVec2(0, 0))
+        avail = imgui.get_content_region_avail()
+        self._player.render(width=avail.x, height=avail.y)
+        imgui.pop_style_var()
+
+    def _render_welcome(self) -> None:
+        from ui.panel_theme import token_rgba
+
+        avail = imgui.get_content_region_avail()
+        imgui.set_cursor_pos(
+            imgui.ImVec2(
+                (avail.x - imgui.calc_text_size("Somna").x) * 0.5,
+                avail.y * 0.3,
+            )
+        )
+        imgui.text_colored(imgui.ImVec4(*token_rgba("text_muted")), "Somna")
+        imgui.set_cursor_pos(
+            imgui.ImVec2(
+                avail.x * 0.5 - 80,
+                avail.y * 0.3 + 28,
+            )
+        )
+        imgui.text_colored(
+            imgui.ImVec4(*token_rgba("text_disabled")), "Enable panels from the sidebar"
+        )
+
+    def _render_console_window(self) -> None:
+        self._poll_live()
+        avail_w = imgui.get_content_region_avail().x
+        avail_h = imgui.get_content_region_avail().y
+        self._render_console_bar(avail_w, avail_h)
+
+    def _render_essential_window(self) -> None:
+        self._poll_live()
+        self._panel_manager.render_essential()
+        self._session_editor.render(self._live)
+
+    def _render_panel_toggles(self) -> None:
+        imgui.push_style_var(imgui.StyleVar_.window_padding, imgui.ImVec2(4, 0))
+        pm = self._panel_manager
+        sec_names = pm.section_names()
+        runner = hello_imgui.get_runner_params()
+
+        all_toggles = set(sec_names)
+        _mandatory = {"Sessions", "Console", "Controls", "Panels", "Welcome"}
+        for dw in runner.docking_params.dockable_windows:
+            if dw.include_in_view_menu and dw.label not in _mandatory:
+                all_toggles.add(dw.label)
+
+        imgui.text_disabled("Panels")
+        imgui.spacing()
+
+        for group in _PANEL_GROUPS:
+            label = group["label"]
+            cols = group.get("cols", 2)
+            members = sorted(s for s in all_toggles if s in group["sections"])
+            if not members:
+                continue
+
+            imgui.text_colored(imgui.ImVec4(*token_rgba("text_muted")), label)
+
+            col_w = imgui.get_content_region_avail().x / cols
+            for i, sec_name in enumerate(members):
+                col = i % cols
+                if col > 0:
+                    imgui.same_line(col * col_w + 4)
+                dw = runner.docking_params.dockable_window_of_name(sec_name)
+                if dw is None:
+                    imgui.text(sec_name)
+                    continue
+                visible = dw.is_visible
+                _changed, visible = imgui.checkbox(f"{sec_name}##toggle", visible)
+                if _changed:
+                    dw.is_visible = visible
+                    dw.remember_is_visible = visible
+
+            imgui.spacing()
+
+        uncategorized = sorted(
+            s for s in all_toggles if not any(s in g["sections"] for g in _PANEL_GROUPS)
+        )
+        if uncategorized:
+            imgui.text_colored(imgui.ImVec4(*token_rgba("text_muted")), "Other")
+            col_w = imgui.get_content_region_avail().x / 2
+            for i, sec_name in enumerate(uncategorized):
+                col = i % 2
+                if col > 0:
+                    imgui.same_line(col * col_w + 4)
+                dw = runner.docking_params.dockable_window_of_name(sec_name)
+                if dw is None:
+                    continue
+                visible = dw.is_visible
+                _changed, visible = imgui.checkbox(f"{sec_name}##toggle", visible)
+                if _changed:
+                    dw.is_visible = visible
+                    dw.remember_is_visible = visible
+
+        imgui.pop_style_var()
+
+    def _make_section_renderer(self, name: str):
+        def _render():
+            self._poll_live()
+            self._panel_manager.render_section_docked(name)
+
+        return _render
 
     # ── hello_imgui callbacks ─────────────────────────────────────────────────
 
@@ -913,18 +1180,10 @@ class ControlPanelImGui:
         if self._state_server:
             self._state_server.stop()
 
-    def _render(self) -> None:
-        try:
-            self._live = self._cfg.update()
-            self._player.agent_running = self._is_agent_running()
-            self._panel_manager.update(self._live)
-            self._panel_manager.render()
-            self._session_editor.render(self._live)
-        except Exception:
-            import traceback
-
-            traceback.print_exc()
-            raise
+    def _render_dashboard(self) -> None:
+        self._poll_live()
+        self._biosignal_dashboard.update(self._live)
+        self._biosignal_dashboard.render()
 
     # ── Transport / session controls ─────────────────────────────────────────
 

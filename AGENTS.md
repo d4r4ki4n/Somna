@@ -142,7 +142,9 @@ The project is called \*\*Somna\*\*. There are two control panel entry points: \
 
 | \`ui/interference_graph_panel.py\` | \`InterferenceGraphPanel\`; ImGui canvas renderer for the Somatic Palette Mixer; draggable nodes, bezier tethers, glow effects, band axis, preset row, hardware-dimming |
 
-| \`ui/interference_graph_integration.py\` | \`install_interference_graph(panel_manager)\`; single entry point that wires the graph into \`ControlPanelManager\` via \`set_section_extra("SomaticPalette", ...)\`; no panel_config.json edits required |
+| `ui/interference_graph_integration.py` | `install_interference_graph(panel_manager)`; single entry point that wires the graph into `ControlPanelManager` via `set_section_extra("SomaticPalette", ...)`; no panel_config.json edits required |
+
+| `ui/biosignal_dashboard.py` | `BiosignalDashboard`; four-tab ImPlot telemetry window (EEG Overview, Alpha Detail, Cardiac, Respiratory); device status strip; 10-second rolling buffers at 10 Hz; reads `eeg_*` and `ppg_*` keys from `live_control.json`; registered as a hello_imgui `DockableWindow` in `control_panel_imgui.py` |
 
 | \`engines/device_safety.py\` | \`DeviceSafetyEnforcer\`; shared non-overridable safety layer for BLE output devices; intensity ceilings, ramp rates, sleep-stage gating, emergency stop, unlock tiers |
 

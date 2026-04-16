@@ -378,6 +378,112 @@ class ControlPanelManager:
             if isinstance(locked, list):
                 self._locked_params = set(locked)
 
+    # ── Dockable-window support ────────────────────────────────────────────
+
+    def section_names(self) -> list[str]:
+        """Return ordered list of all Advanced section names."""
+        with self._live_lock:
+            live = dict(self._live)
+        mode = self._mode
+        visible = self._visible_widgets(mode)
+        depth = [
+            w
+            for w in visible
+            if w.layer == "Advanced" or (w.layer == "Debug" and self._debug_mode)
+        ]
+        sections = self._group_by_section(depth)
+        for _sec in self._section_extra_fns:
+            sections.setdefault(_sec, [])
+        known = set(sections.keys())
+        self._section_order = [s for s in self._section_order if s in known]
+        for s in sections:
+            if s not in self._section_order:
+                self._section_order.append(s)
+        return [n for n in self._section_order if n in sections]
+
+    def render_section(self, name: str) -> None:
+        """Render a single section (header + extra + widgets) for dockable window use."""
+        self._handle_keyboard()
+        self._detect_mode()
+
+        with self._live_lock:
+            live = dict(self._live)
+        mode = self._mode
+        visible = self._visible_widgets(mode)
+        depth = [
+            w
+            for w in visible
+            if w.layer == "Advanced" or (w.layer == "Debug" and self._debug_mode)
+        ]
+        sections = self._group_by_section(depth)
+        for _sec in self._section_extra_fns:
+            sections.setdefault(_sec, [])
+
+        widgets = sections.get(name, [])
+        if self._render_section_header(name, live):
+            if name in self._section_extra_fns:
+                self._section_extra_fns[name](self._content_width())
+            self._render_widget_list(widgets, live)
+
+    def render_section_docked(self, name: str) -> None:
+        """Render section content only (no drag header) for dockable window use."""
+        self._handle_keyboard()
+        self._detect_mode()
+
+        with self._live_lock:
+            live = dict(self._live)
+        mode = self._mode
+        visible = self._visible_widgets(mode)
+        depth = [
+            w
+            for w in visible
+            if w.layer == "Advanced" or (w.layer == "Debug" and self._debug_mode)
+        ]
+        sections = self._group_by_section(depth)
+        for _sec in self._section_extra_fns:
+            sections.setdefault(_sec, [])
+
+        widgets = sections.get(name, [])
+        if name in self._section_extra_fns:
+            self._section_extra_fns[name](self._content_width())
+        self._render_widget_list(widgets, live)
+
+    def render_essential(self) -> None:
+        """Render Essential-layer controls + badges + extras."""
+        self._handle_keyboard()
+        self._detect_mode()
+
+        with self._live_lock:
+            live = dict(self._live)
+        mode = self._mode
+        visible = self._visible_widgets(mode)
+        cw = self._content_width()
+
+        ess_controls = [
+            w
+            for w in visible
+            if w.layer == "Essential" and w.widget in ("Slider", "Toggle", "Dropdown")
+        ]
+        ess_badges = [
+            w
+            for w in visible
+            if w.layer == "Essential"
+            and w.widget not in ("Slider", "Toggle", "Dropdown")
+        ]
+
+        self._render_widget_list(ess_controls, live)
+
+        if ess_badges:
+            self._render_essential_badge_row(ess_badges, live)
+
+        if self._essential_extra_fn is not None:
+            imgui.spacing()
+            self._essential_extra_fn(cw)
+
+    def render_status_strip(self) -> None:
+        """Public wrapper for the status strip."""
+        self._render_status_strip()
+
     def render(self) -> None:
         """Main render entry point. Call every frame."""
         self._handle_keyboard()
@@ -657,6 +763,7 @@ class ControlPanelManager:
             imgui.text_colored(imgui.ImVec4(*token_rgba("text_muted")), t_str)
 
         imgui.set_cursor_screen_pos(imgui.ImVec2(pos.x, pos.y + h + 2))
+        imgui.dummy(imgui.ImVec2(0, 0))
 
     # ── Essential badge row ──────────────────────────────────────────────
 

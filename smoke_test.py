@@ -675,6 +675,7 @@ def test_ui_modules():
         ("ui.console", "SpectrogramConsole"),
         ("ui.session_player", "SessionPlayer"),
         ("ui.viz_registry", "VisualizationRegistry"),
+        ("ui.biosignal_dashboard", "BiosignalDashboard"),
     ]:
         m, e = _import(mod)
         _result(f"{mod}.{name}", m is not None and hasattr(m, name), e)
@@ -687,6 +688,27 @@ def test_interference_graph_channels():
         return
     for name in ("Band", "Channel", "ChordNode", "Tether", "update_hardware_state"):
         _result(f"interference_graph.{name}", *_has(m, name))
+
+
+def test_biosignal_dashboard():
+    m, e = _import("ui.biosignal_dashboard")
+    _result("ui.biosignal_dashboard imports", m is not None, e)
+    if m is None:
+        return
+    _result("BiosignalDashboard class", *_has(m, "BiosignalDashboard"))
+    _result("BAND_COLORS_RGBA", *_has(m, "BAND_COLORS_RGBA"))
+    _result("BAND_NAMES (5 bands)", len(m.BAND_NAMES) == 5)
+    _result("BAND_KEYS (5 keys)", len(m.BAND_KEYS) == 5)
+    _result("ROLLING_SECONDS", *_has(m, "ROLLING_SECONDS"))
+    _result("ROLLING_N", *_has(m, "ROLLING_N"))
+    _result("ROLLING_SECONDS == 10", m.ROLLING_SECONDS == 10.0)
+    try:
+        dash = m.BiosignalDashboard()
+        _result("BiosignalDashboard()", True)
+        _result("BiosignalDashboard.update", *_has(dash, "update"))
+        _result("BiosignalDashboard.render", *_has(dash, "render"))
+    except Exception as ex:
+        _result("BiosignalDashboard()", False, str(ex))
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -904,7 +926,10 @@ TESTS = [
         "Hardware Output Channels",
         [test_device_safety, test_haptic_engine, test_tavns_engine],
     ),
-    ("Ch.9 — Console UI", [test_ui_modules, test_interference_graph_channels]),
+    (
+        "Ch.9 — Console UI",
+        [test_ui_modules, test_interference_graph_channels, test_biosignal_dashboard],
+    ),
     ("Session YAMLs", [test_session_yamls]),
     ("Knowledge Base", [test_knowledge_files]),
     ("Structure", [test_requirements, test_agents_md, test_shaders, test_gitignore]),

@@ -294,14 +294,36 @@ class ControlPanelImGui:
         # ImGui session editor modal
         self._session_editor = SessionEditorModal(self._root)
 
-        # Agent memory modal
-        self._memory_open: bool = False
-        self._memory_profile: dict = {}
-        self._memory_sel_note: int = -1
-        self._memory_sel_goal: int = -1
-        self._memory_name_buf: str = ""
-        self._memory_aph_idx: int = 0
-        self._memory_sel_modality: int = -1
+        # Settings modal (absorbs old memory modal)
+        self._settings_open: bool = False
+        self._settings_tab: int = 0
+        self._settings_profile: dict = {}
+        self._settings_sel_note: int = -1
+        self._settings_sel_goal: int = -1
+        self._settings_name_buf: str = ""
+        self._settings_aph_idx: int = 0
+        self._settings_sel_modality: int = -1
+        # Agent tab state
+        self._agent_cfg_buf: dict = {}
+        self._agent_url_buf: str = ""
+        self._agent_key_buf: str = ""
+        self._agent_model_buf: str = ""
+        self._agent_test_status: str = ""
+        self._agent_test_running: bool = False
+
+        # Welcome wizard (5-step first-run modal)
+        self._welcome_step: int = 0
+        self._welcome_name_buf: str = ""
+        self._welcome_goals_buf: str = ""
+        self._welcome_hw_status: str = ""
+        self._welcome_hw_scanned: bool = False
+        self._welcome_llm_url_buf: str = ""
+        self._welcome_llm_key_buf: str = ""
+        self._welcome_llm_model_buf: str = ""
+        self._welcome_llm_test_status: str = ""
+        self._welcome_llm_test_running: bool = False
+        self._welcome_active: bool = False
+        self._welcome_checked: bool = False
 
         # User settings (persisted window/TTS prefs)
         self._user_settings: dict = self._load_user_settings()
@@ -1103,6 +1125,7 @@ class ControlPanelImGui:
         avail_w = imgui.get_content_region_avail().x
         avail_h = imgui.get_content_region_avail().y
         self._render_console_bar(avail_w, avail_h)
+        self._render_welcome_wizard()
 
     def _render_essential_window(self) -> None:
         self._poll_live()
@@ -1289,15 +1312,15 @@ class ControlPanelImGui:
             status = "phase: —  |  frac —  |  IAF —  |  trance —"
             status_col = imgui.ImVec4(*token_rgba("text_muted"))
 
-        # ── Right-side buttons: status | Memory | [E A D] ────────────────────
+        # ── Right-side buttons: status | ⚙ | [E A D] ────────────────────
         btn_h = imgui.get_frame_height()
-        mem_w = imgui.calc_text_size("Memory").x + 16
+        gear_w = imgui.calc_text_size("\u2699").x + 14
 
         dbg_btn_w = imgui.calc_text_size("Debug").x + 16
         if debug_mode is not None:
-            right_reserved = mem_w + 6 + dbg_btn_w + 2
+            right_reserved = gear_w + 6 + dbg_btn_w + 2
         else:
-            right_reserved = mem_w + 2
+            right_reserved = gear_w + 2
 
         pad = (
             bar_w
@@ -1310,8 +1333,10 @@ class ControlPanelImGui:
         imgui.text_colored(status_col, status)
         imgui.same_line(spacing=12)
 
-        if imgui.button("Memory##openmem", imgui.ImVec2(mem_w, btn_h)):
-            self._open_memory_modal()
+        if imgui.button("\u2699##opensettings", imgui.ImVec2(gear_w, btn_h)):
+            self._open_settings_modal()
+        if imgui.is_item_hovered(imgui.HoveredFlags_.delay_short):
+            imgui.set_tooltip("Settings")
 
         if debug_mode is not None:
             imgui.same_line(spacing=4)
@@ -1355,7 +1380,7 @@ class ControlPanelImGui:
             patch_live({"user_console_input": msg, "user_console_ts": time.time()})
             self._console_input = ""
 
-        self._render_memory_modal()
+        self._render_settings_modal()
 
     def _render_timeline_strip(self) -> None:
         """Thin strip: seek bar + pause/restart, visible only when a session is running."""
@@ -1793,51 +1818,173 @@ class ControlPanelImGui:
             self._eeg_stop_thread.start()
         print("[Panel] EEG engine stopping.")
 
-    # ── Agent memory modal ────────────────────────────────────────────────────
+    # ── Settings modal (gear button in console bar) ─────────────────────────
 
-    def _open_memory_modal(self) -> None:
-        self._memory_profile = {}
+    _SETTINGS_TABS = ["Profile", "Agent", "Display", "Audio", "Advanced"]
+    _AOPH_OPTIONS = ["none", "minimal", "moderate", "vivid"]
+
+    def _open_settings_modal(self) -> None:
+        self._settings_profile = {}
         try:
-            self._memory_profile = json.loads(
+            self._settings_profile = json.loads(
                 (self._root / "user_profile.json").read_text(encoding="utf-8")
             )
         except Exception:
             pass
-        _AOPH = ["none", "minimal", "moderate", "vivid"]
-        self._memory_name_buf = (
-            self._memory_profile.get("name")
-            or self._memory_profile.get("user_name")
+        self._settings_name_buf = (
+            self._settings_profile.get("name")
+            or self._settings_profile.get("user_name")
             or ""
         )
-        aph = self._memory_profile.get("aphantasia") or "none"
-        self._memory_aph_idx = _AOPH.index(aph) if aph in _AOPH else 0
-        self._memory_sel_modality = -1
-        self._memory_open = True
+        aph = self._settings_profile.get("aphantasia") or "none"
+        self._settings_aph_idx = (
+            self._AOPH_OPTIONS.index(aph) if aph in self._AOPH_OPTIONS else 0
+        )
+        self._settings_sel_modality = -1
+        self._settings_sel_note = -1
+        self._settings_sel_goal = -1
+        self._load_agent_cfg_buf()
+        self._settings_open = True
 
-    def _render_memory_modal(self) -> None:
-        """ImGui modal for viewing and pruning agent memory (notes, goals, designations)."""
+    def _load_agent_cfg_buf(self) -> None:
+        self._agent_cfg_buf = {}
+        try:
+            import yaml
+
+            raw = (self._root / "agent_config.yaml").read_text(encoding="utf-8")
+            self._agent_cfg_buf = yaml.safe_load(raw) or {}
+        except Exception:
+            pass
+        self._agent_url_buf = str(self._agent_cfg_buf.get("base_url", ""))
+        self._agent_key_buf = str(self._agent_cfg_buf.get("api_key", ""))
+        self._agent_model_buf = str(self._agent_cfg_buf.get("model", ""))
+        self._agent_test_status = ""
+        self._agent_test_running = False
+
+    def _save_agent_cfg_buf(self) -> None:
+        try:
+            import yaml
+
+            path = self._root / "agent_config.yaml"
+            raw = path.read_text(encoding="utf-8")
+            cfg = yaml.safe_load(raw) or {}
+            cfg["base_url"] = self._agent_url_buf
+            cfg["api_key"] = self._agent_key_buf
+            cfg["model"] = self._agent_model_buf
+            out_lines = []
+            for line in raw.splitlines():
+                stripped = line.lstrip()
+                if stripped.startswith("base_url:") or stripped.startswith("base_url "):
+                    out_lines.append(f'base_url: "{self._agent_url_buf}"')
+                elif stripped.startswith("api_key:") or stripped.startswith("api_key "):
+                    if self._agent_key_buf:
+                        out_lines.append(f'api_key: "{self._agent_key_buf}"')
+                    else:
+                        out_lines.append('api_key: ""')
+                elif stripped.startswith("model:") or stripped.startswith("model "):
+                    out_lines.append(f'model:    "{self._agent_model_buf}"')
+                else:
+                    out_lines.append(line)
+            path.write_text("\n".join(out_lines) + "\n", encoding="utf-8")
+            self._console.info(
+                "Agent config saved. Restart agent to apply.", src="settings"
+            )
+        except Exception as e:
+            self._console.error(f"Failed to save agent config: {e}")
+
+    def _test_agent_connection(self) -> None:
+        import urllib.request
+        import urllib.error
+
+        self._agent_test_running = True
+        self._agent_test_status = "Testing..."
+        url = self._agent_url_buf.rstrip("/")
+        if "/v1" not in url:
+            url += "/v1"
+        endpoint = f"{url}/models"
+        api_key = self._agent_key_buf or None
+        try:
+            req = urllib.request.Request(
+                endpoint, headers={"Content-Type": "application/json"}
+            )
+            if api_key:
+                req.add_header("Authorization", f"Bearer {api_key}")
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                if resp.status == 200:
+                    self._agent_test_status = "OK — connected"
+                else:
+                    self._agent_test_status = f"HTTP {resp.status}"
+        except urllib.error.HTTPError as e:
+            self._agent_test_status = f"HTTP {e.code}"
+        except Exception as e:
+            self._agent_test_status = f"Failed: {e}"
+        self._agent_test_running = False
+
+    def _render_settings_modal(self) -> None:
         from ui.panel_theme import token_rgba as _trga
 
-        if self._memory_open:
-            imgui.open_popup("Agent Memory##mem")
-            self._memory_open = False
+        if self._settings_open:
+            imgui.open_popup("Settings##settings")
+            self._settings_open = False
 
         centre = imgui.get_main_viewport().get_center()
         imgui.set_next_window_pos(centre, imgui.Cond_.appearing, imgui.ImVec2(0.5, 0.5))
         imgui.set_next_window_size_constraints(
-            imgui.ImVec2(480, 0), imgui.ImVec2(640, 9999)
+            imgui.ImVec2(520, 300), imgui.ImVec2(680, 9999)
         )
 
         opened, _ = imgui.begin_popup_modal(
-            "Agent Memory##mem",
+            "Settings##settings",
             flags=imgui.WindowFlags_.always_auto_resize,
         )
         if not opened:
             return
 
-        p = self._memory_profile
+        muted = imgui.ImVec4(*_trga("text_muted"))
+        val = imgui.ImVec4(*_trga("text_value"))
+        iris = imgui.ImVec4(*_trga("source_agent"))
+        foam = imgui.ImVec4(*_trga("button_bg"))
+        love = imgui.ImVec4(*_trga("alert_red"))
+        green = imgui.ImVec4(*_trga("success_green"))
+        avail_w = imgui.get_content_region_avail().x
 
-        def _read() -> dict:
+        if imgui.begin_tab_bar("##settings_tabs"):
+            for i, tab_name in enumerate(self._SETTINGS_TABS):
+                selected, _ = imgui.begin_tab_item(f"{tab_name}##stab{i}")
+                if selected:
+                    self._settings_tab = i
+                    if i == 0:
+                        self._render_settings_profile(avail_w, muted, val, iris, _trga)
+                    elif i == 1:
+                        self._render_settings_agent(
+                            avail_w, muted, val, iris, foam, green
+                        )
+                    elif i == 2:
+                        self._render_settings_display(avail_w, muted, val)
+                    elif i == 3:
+                        self._render_settings_audio(avail_w, muted, val)
+                    elif i == 4:
+                        self._render_settings_advanced(avail_w, muted, val, love)
+                    imgui.end_tab_item()
+            imgui.end_tab_bar()
+
+        imgui.spacing()
+        imgui.separator()
+        btn_w = 90.0
+        imgui.set_cursor_pos_x((avail_w - btn_w) * 0.5)
+        if imgui.button("Close##settingsclose", imgui.ImVec2(btn_w, 0)):
+            imgui.close_current_popup()
+            self._settings_sel_note = -1
+            self._settings_sel_goal = -1
+
+        imgui.end_popup()
+
+    # ── Profile tab ──────────────────────────────────────────────────────────
+
+    def _render_settings_profile(self, avail_w, muted, val, iris, _trga):
+        p = self._settings_profile
+
+        def _read():
             try:
                 return json.loads(
                     (self._root / "user_profile.json").read_text(encoding="utf-8")
@@ -1845,79 +1992,67 @@ class ControlPanelImGui:
             except Exception:
                 return {}
 
-        def _write(updated: dict) -> None:
+        def _write(updated):
             try:
                 (self._root / "user_profile.json").write_text(
                     json.dumps(updated, indent=2, ensure_ascii=False), encoding="utf-8"
                 )
-                self._memory_profile = updated
+                self._settings_profile = updated
             except Exception as e:
                 self._console.error(f"Profile write failed: {e}")
 
-        _AOPH = ["none", "minimal", "moderate", "vivid"]
-
-        avail_w = imgui.get_content_region_avail().x
-        muted = imgui.ImVec4(*_trga("text_muted"))
-        val = imgui.ImVec4(*_trga("text_value"))
-        iris = imgui.ImVec4(*_trga("source_agent"))
-
-        # ── Editable identity ─────────────────────────────────────────────────
         iaf = p.get("iaf_hz")
         sessions = p.get("total_sessions") or 0
 
-        # Name
         imgui.text_colored(muted, "Name")
         imgui.same_line(spacing=8)
         imgui.set_next_item_width(160)
-        name_changed, new_name = imgui.input_text("##memname", self._memory_name_buf)
+        name_changed, new_name = imgui.input_text("##setname", self._settings_name_buf)
         if name_changed:
-            self._memory_name_buf = new_name
+            self._settings_name_buf = new_name
             updated = _read()
             updated["name"] = new_name
             updated["user_name"] = new_name
             _write(updated)
 
         imgui.same_line(spacing=16)
-
-        # Aphantasia
         imgui.text_colored(muted, "Aphantasia")
         imgui.same_line(spacing=8)
         imgui.set_next_item_width(110)
-        aph_changed, new_aph_idx = imgui.combo("##memaph", self._memory_aph_idx, _AOPH)
+        aph_changed, new_aph_idx = imgui.combo(
+            "##setaph", self._settings_aph_idx, self._AOPH_OPTIONS
+        )
         if aph_changed:
-            self._memory_aph_idx = new_aph_idx
+            self._settings_aph_idx = new_aph_idx
             updated = _read()
-            updated["aphantasia"] = _AOPH[new_aph_idx]
+            updated["aphantasia"] = self._AOPH_OPTIONS[new_aph_idx]
             _write(updated)
 
-        # IAF + session count (read-only; calibrated by EEG)
         imgui.same_line(spacing=16)
         if iaf:
             imgui.text_colored(muted, f"IAF {float(iaf):.1f} Hz")
             imgui.same_line(spacing=16)
         imgui.text_colored(muted, f"Sessions {sessions}")
-
         imgui.spacing()
 
-        # ── Modality preference (ordered; reorderable) ────────────────────────
-        modalities: list = list(p.get("modality_preference") or [])
+        modalities = list(p.get("modality_preference") or [])
         if modalities:
             imgui.text_colored(iris, "Modality preference")
             if imgui.is_item_hovered(imgui.HoveredFlags_.delay_short):
                 imgui.set_tooltip(
                     "Order the agent uses when choosing language and sensory anchors.\n"
-                    "Drag with ↑ ↓ to prioritise."
+                    "Drag with \u2191 \u2193 to prioritise."
                 )
             btn_w = 22.0
             swap_a, swap_b = -1, -1
             for i, mod in enumerate(modalities):
-                selected = self._memory_sel_modality == i
+                selected = self._settings_sel_modality == i
                 if selected:
                     imgui.push_style_color(
                         imgui.Col_.text, imgui.ImVec4(*_trga("success_green"))
                     )
                 clicked, _ = imgui.selectable(
-                    f"  {i + 1}. {mod}##mod{i}",
+                    f"  {i + 1}. {mod}##smod{i}",
                     selected,
                     imgui.SelectableFlags_.none,
                     imgui.ImVec2(avail_w - btn_w * 2 - 16, 0),
@@ -1925,35 +2060,31 @@ class ControlPanelImGui:
                 if selected:
                     imgui.pop_style_color()
                 if clicked:
-                    self._memory_sel_modality = i if not selected else -1
+                    self._settings_sel_modality = i if not selected else -1
                 imgui.same_line()
                 imgui.begin_disabled(i == 0)
-                if imgui.button(f"↑##mu{i}", imgui.ImVec2(btn_w, 0)):
+                if imgui.button(f"\u2191##su{i}", imgui.ImVec2(btn_w, 0)):
                     swap_a, swap_b = i - 1, i
                 imgui.end_disabled()
                 imgui.same_line(spacing=2)
                 imgui.begin_disabled(i == len(modalities) - 1)
-                if imgui.button(f"↓##md{i}", imgui.ImVec2(btn_w, 0)):
+                if imgui.button(f"\u2193##sd{i}", imgui.ImVec2(btn_w, 0)):
                     swap_a, swap_b = i, i + 1
                 imgui.end_disabled()
-
             if swap_a >= 0:
                 updated = _read()
                 mods = list(updated.get("modality_preference") or modalities)
                 mods[swap_a], mods[swap_b] = mods[swap_b], mods[swap_a]
                 updated["modality_preference"] = mods
                 _write(updated)
-                self._memory_sel_modality = (
+                self._settings_sel_modality = (
                     swap_b
-                    if swap_a == self._memory_sel_modality
-                    else (
-                        swap_a
-                        if swap_b == self._memory_sel_modality
-                        else self._memory_sel_modality
-                    )
+                    if swap_a == self._settings_sel_modality
+                    else swap_a
+                    if swap_b == self._settings_sel_modality
+                    else self._settings_sel_modality
                 )
 
-        # ── Designations (read-only — assigned by agent) ──────────────────────
         designations = p.get("designations") or []
         if designations:
             imgui.spacing()
@@ -1971,7 +2102,6 @@ class ControlPanelImGui:
         imgui.separator()
         imgui.spacing()
 
-        # ── Notes ─────────────────────────────────────────────────────────────
         imgui.text_colored(iris, "Notes")
         imgui.same_line(
             spacing=avail_w
@@ -1979,45 +2109,42 @@ class ControlPanelImGui:
             - imgui.calc_text_size("Clear All").x
             - 24
         )
-        if imgui.small_button("Clear All##clrnotes"):
+        if imgui.small_button("Clear All##sclrnotes"):
             updated = _read()
             updated["notes"] = []
             _write(updated)
-            self._memory_sel_note = -1
-
-        notes: list = list(p.get("notes") or [])
+            self._settings_sel_note = -1
+        notes = list(p.get("notes") or [])
         imgui.begin_child(
-            "##notes_list",
-            imgui.ImVec2(avail_w, 130),
+            "##snotes_list",
+            imgui.ImVec2(avail_w, 100),
             child_flags=imgui.ChildFlags_.borders,
         )
         for i, note in enumerate(notes):
             text = note if isinstance(note, str) else str(note)
-            selected = self._memory_sel_note == i
+            selected = self._settings_sel_note == i
             clicked, _ = imgui.selectable(
-                f"{text}##n{i}",
+                f"{text}##sn{i}",
                 selected,
                 imgui.SelectableFlags_.none,
                 imgui.ImVec2(0, 0),
             )
             if clicked:
-                self._memory_sel_note = i if not selected else -1
+                self._settings_sel_note = i if not selected else -1
         imgui.end_child()
-
-        if imgui.button("Delete Selected##delnote"):
-            if 0 <= self._memory_sel_note < len(notes):
+        if imgui.button("Delete Selected##sdelnote"):
+            if 0 <= self._settings_sel_note < len(notes):
                 updated = _read()
                 ns = list(updated.get("notes") or [])
-                ns.pop(self._memory_sel_note)
+                ns.pop(self._settings_sel_note)
                 updated["notes"] = ns
                 _write(updated)
-                self._memory_sel_note = -1
+                self._settings_sel_note = -1
 
         imgui.spacing()
         imgui.separator()
         imgui.spacing()
 
-        # ── Goals ─────────────────────────────────────────────────────────────
         imgui.text_colored(iris, "Goals")
         imgui.same_line(
             spacing=avail_w
@@ -2025,16 +2152,15 @@ class ControlPanelImGui:
             - imgui.calc_text_size("Clear All").x
             - 24
         )
-        if imgui.small_button("Clear All##clrgoals"):
+        if imgui.small_button("Clear All##sclrgoals"):
             updated = _read()
             updated["goals"] = []
             _write(updated)
-            self._memory_sel_goal = -1
-
-        goals: list = list(p.get("goals") or [])
+            self._settings_sel_goal = -1
+        goals = list(p.get("goals") or [])
         imgui.begin_child(
-            "##goals_list",
-            imgui.ImVec2(avail_w, 100),
+            "##sgoals_list",
+            imgui.ImVec2(avail_w, 80),
             child_flags=imgui.ChildFlags_.borders,
         )
         for i, goal in enumerate(goals):
@@ -2043,56 +2169,563 @@ class ControlPanelImGui:
                 if isinstance(goal, dict)
                 else str(goal)
             )
-            notes_count = (
-                len(goal.get("progress_notes", [])) if isinstance(goal, dict) else 0
-            )
-            if notes_count:
-                label = f"{label}  ({notes_count} notes)"
-            selected = self._memory_sel_goal == i
+            nc = len(goal.get("progress_notes", [])) if isinstance(goal, dict) else 0
+            if nc:
+                label = f"{label}  ({nc} notes)"
+            selected = self._settings_sel_goal == i
             clicked, _ = imgui.selectable(
-                f"{label}##g{i}",
+                f"{label}##sg{i}",
                 selected,
                 imgui.SelectableFlags_.none,
                 imgui.ImVec2(0, 0),
             )
             if clicked:
-                self._memory_sel_goal = i if not selected else -1
+                self._settings_sel_goal = i if not selected else -1
             if isinstance(goal, dict) and goal.get("description"):
                 if imgui.is_item_hovered(imgui.HoveredFlags_.delay_short):
                     imgui.set_tooltip(goal["description"])
         imgui.end_child()
-
-        if imgui.button("Delete Selected##delgoal"):
-            if 0 <= self._memory_sel_goal < len(goals):
+        if imgui.button("Delete Selected##sdelgoal"):
+            if 0 <= self._settings_sel_goal < len(goals):
                 updated = _read()
                 gs = list(updated.get("goals") or [])
-                gs.pop(self._memory_sel_goal)
+                gs.pop(self._settings_sel_goal)
                 updated["goals"] = gs
                 _write(updated)
-                self._memory_sel_goal = -1
+                self._settings_sel_goal = -1
+
+        themes = p.get("responsive_themes") or []
+        if themes:
+            imgui.spacing()
+            imgui.text_colored(iris, "Responsive themes")
+            imgui.push_text_wrap_pos(0.0)
+            imgui.text_colored(muted, "  ".join(themes))
+            imgui.pop_text_wrap_pos()
+
+    # ── Agent tab ────────────────────────────────────────────────────────────
+
+    def _render_settings_agent(self, avail_w, muted, val, iris, foam, green):
+        imgui.text_colored(iris, "LLM Configuration")
+        imgui.spacing()
+
+        imgui.set_next_item_width(avail_w - 8)
+        imgui.text_colored(muted, "Endpoint URL")
+        imgui.set_next_item_width(avail_w - 8)
+        url_changed, new_url = imgui.input_text("##agenturl", self._agent_url_buf)
+        if url_changed:
+            self._agent_url_buf = new_url
+
+        imgui.spacing()
+        imgui.text_colored(muted, "API Key")
+        imgui.set_next_item_width(avail_w - 8)
+        key_changed, new_key = imgui.input_text(
+            "##agentkey", self._agent_key_buf, flags=imgui.InputTextFlags_.password
+        )
+        if key_changed:
+            self._agent_key_buf = new_key
+
+        imgui.spacing()
+        imgui.text_colored(muted, "Model")
+        imgui.set_next_item_width(avail_w - 8)
+        model_changed, new_model = imgui.input_text(
+            "##agentmodel", self._agent_model_buf
+        )
+        if model_changed:
+            self._agent_model_buf = new_model
 
         imgui.spacing()
         imgui.separator()
         imgui.spacing()
 
-        # ── Responsive themes ─────────────────────────────────────────────────
-        themes = p.get("responsive_themes") or []
-        if themes:
-            imgui.text_colored(iris, "Responsive themes")
-            imgui.push_text_wrap_pos(0.0)
-            imgui.text_colored(muted, "  ".join(themes))
-            imgui.pop_text_wrap_pos()
-            imgui.spacing()
+        btn_w = 120.0
+        if imgui.button("Test Connection##agenttest", imgui.ImVec2(btn_w, 0)):
+            threading.Thread(
+                target=self._test_agent_connection, daemon=True, name="AgentTestConn"
+            ).start()
+        imgui.same_line(spacing=8)
+        if self._agent_test_status:
+            is_ok = self._agent_test_status.startswith("OK")
+            col = green if is_ok else imgui.ImVec4(*token_rgba("alert_red"))
+            imgui.text_colored(col, self._agent_test_status)
 
-        # ── Close ─────────────────────────────────────────────────────────────
-        btn_w = 90.0
-        imgui.set_cursor_pos_x((avail_w - btn_w) * 0.5)
-        if imgui.button("Close##memclose", imgui.ImVec2(btn_w, 0)):
-            imgui.close_current_popup()
-            self._memory_sel_note = -1
-            self._memory_sel_goal = -1
+        imgui.spacing()
+        imgui.spacing()
+
+        save_w = 100.0
+        if imgui.button("Save##agentsave", imgui.ImVec2(save_w, 0)):
+            self._save_agent_cfg_buf()
+        imgui.same_line(spacing=8)
+        imgui.text_colored(muted, "Restart agent to apply changes.")
+
+        imgui.spacing()
+        imgui.separator()
+        imgui.spacing()
+
+        imgui.text_colored(muted, "Agent config: agent_config.yaml")
+        if imgui.is_item_hovered(imgui.HoveredFlags_.delay_short):
+            imgui.set_tooltip(
+                "Edit this file directly for advanced settings\n(sampling params, knowledge files, idle planning)."
+            )
+
+    # ── Display tab ──────────────────────────────────────────────────────────
+
+    def _render_settings_display(self, avail_w, muted, val):
+        settings = self._user_settings
+        live = self._live or {}
+
+        imgui.text_colored(imgui.ImVec4(*token_rgba("source_agent")), "Window")
+        imgui.spacing()
+
+        aot = bool(settings.get("window_always_on_top", True))
+        changed, new_aot = imgui.checkbox("Always on top##saot", aot)
+        if changed:
+            self._user_settings["window_always_on_top"] = new_aot
+            patch_live({"window_always_on_top": new_aot})
+            self._save_user_settings()
+
+        ct = bool(settings.get("window_click_through", True))
+        changed, new_ct = imgui.checkbox("Click-through##sct", ct)
+        if changed:
+            self._user_settings["window_click_through"] = new_ct
+            patch_live({"window_click_through": new_ct})
+            self._save_user_settings()
+
+        opacity = float(settings.get("window_opacity", 100))
+        imgui.set_next_item_width(200)
+        changed, new_opacity = imgui.slider_float(
+            "Opacity##sopac", opacity, 10, 100, "%.0f%%"
+        )
+        if changed:
+            self._user_settings["window_opacity"] = new_opacity
+            patch_live({"window_opacity": new_opacity})
+            self._save_user_settings()
+
+    # ── Audio tab ────────────────────────────────────────────────────────────
+
+    def _render_settings_audio(self, avail_w, muted, val):
+        settings = self._user_settings
+
+        imgui.text_colored(imgui.ImVec4(*token_rgba("source_agent")), "TTS")
+        imgui.spacing()
+
+        voice = str(settings.get("tts_voice", ""))
+        imgui.text_colored(muted, "Voice")
+        imgui.same_line(spacing=8)
+        imgui.set_next_item_width(avail_w - 80)
+        changed, new_voice = imgui.input_text("##sttsvoice", voice)
+        if changed:
+            self._user_settings["tts_voice"] = new_voice
+            patch_live({"tts_voice": new_voice})
+            self._save_user_settings()
+
+        if imgui.is_item_hovered(imgui.HoveredFlags_.delay_short):
+            imgui.set_tooltip(
+                "Edge TTS voice name (e.g. en-US-AriaNeural).\nList voices: edge-tts --list-voices"
+            )
+
+    # ── Advanced tab ─────────────────────────────────────────────────────────
+
+    def _render_settings_advanced(self, avail_w, muted, val, love):
+        imgui.text_colored(imgui.ImVec4(*token_rgba("source_agent")), "Danger Zone")
+        imgui.spacing()
+
+        if imgui.button("Reset Onboarding##resetonboard", imgui.ImVec2(180, 0)):
+            try:
+                p = json.loads(
+                    (self._root / "user_profile.json").read_text(encoding="utf-8")
+                )
+                p["onboarding_complete"] = False
+                p.pop("engagement", None)
+                (self._root / "user_profile.json").write_text(
+                    json.dumps(p, indent=2, ensure_ascii=False), encoding="utf-8"
+                )
+                self._console.warn(
+                    "Onboarding reset. Restart agent to re-run.", src="settings"
+                )
+            except Exception as e:
+                self._console.error(f"Failed to reset onboarding: {e}")
+        if imgui.is_item_hovered(imgui.HoveredFlags_.delay_short):
+            imgui.set_tooltip(
+                "Clears onboarding_complete flag and engagement data.\nAgent will re-run onboarding on next start."
+            )
+
+        imgui.spacing()
+
+        if imgui.button("Recalibrate IAF##recaliaf", imgui.ImVec2(180, 0)):
+            live = self._live or {}
+            if live.get("eeg_connected"):
+                patch_live({"eeg_needs_iaf_calibration": True})
+                self._console.info("IAF recalibration requested.", src="settings")
+            else:
+                self._console.warn("Connect EEG first.", src="settings")
+        if imgui.is_item_hovered(imgui.HoveredFlags_.delay_short):
+            imgui.set_tooltip(
+                "Re-run Individual Alpha Frequency calibration.\nRequires connected EEG headset."
+            )
+
+    # ── Welcome wizard (first-run modal) ─────────────────────────────────────
+
+    def _check_welcome(self) -> None:
+        if self._welcome_checked:
+            return
+        self._welcome_checked = True
+        try:
+            p = json.loads(
+                (self._root / "user_profile.json").read_text(encoding="utf-8")
+            )
+        except Exception:
+            p = {}
+        eng = p.get("engagement", {})
+        if eng.get("onboarding_complete"):
+            return
+        self._welcome_active = True
+        self._welcome_step = 0
+        self._welcome_name_buf = ""
+        self._welcome_goals_buf = ""
+        self._welcome_hw_status = ""
+        self._welcome_hw_scanned = False
+        try:
+            import yaml
+
+            cfg = (
+                yaml.safe_load(
+                    (self._root / "agent_config.yaml").read_text(encoding="utf-8")
+                )
+                or {}
+            )
+        except Exception:
+            cfg = {}
+        self._welcome_llm_url_buf = str(cfg.get("base_url", ""))
+        self._welcome_llm_key_buf = str(cfg.get("api_key", ""))
+        self._welcome_llm_model_buf = str(cfg.get("model", ""))
+
+    def _render_welcome_wizard(self) -> None:
+        self._check_welcome()
+        if not self._welcome_active:
+            return
+
+        from ui.panel_theme import token_rgba as _trga
+
+        imgui.open_popup("Welcome to Somna##welcome")
+
+        centre = imgui.get_main_viewport().get_center()
+        imgui.set_next_window_pos(centre, imgui.Cond_.appearing, imgui.ImVec2(0.5, 0.5))
+        imgui.set_next_window_size(imgui.ImVec2(520, 400))
+
+        opened, _ = imgui.begin_popup_modal(
+            "Welcome to Somna##welcome",
+            flags=imgui.WindowFlags_.no_resize | imgui.WindowFlags_.no_move,
+        )
+        if not opened:
+            return
+
+        muted = imgui.ImVec4(*_trga("text_muted"))
+        val = imgui.ImVec4(*_trga("text_value"))
+        iris = imgui.ImVec4(*_trga("source_agent"))
+        foam = imgui.ImVec4(*_trga("text_value"))
+        avail_w = imgui.get_content_region_avail().x
+        step = self._welcome_step
+        total_steps = 5
+
+        # Progress dots
+        for i in range(total_steps):
+            if i > 0:
+                imgui.same_line(spacing=4)
+            col = iris if i <= step else muted
+            filled = "\u25cf" if i <= step else "\u25cb"
+            imgui.text_colored(col, filled)
+        imgui.spacing()
+        imgui.separator()
+        imgui.spacing()
+
+        if step == 0:
+            self._render_welcome_0(avail_w, muted, val, iris)
+        elif step == 1:
+            self._render_welcome_1(avail_w, muted, val, iris)
+        elif step == 2:
+            self._render_welcome_2(avail_w, muted, val, iris)
+        elif step == 3:
+            self._render_welcome_3(avail_w, muted, val, iris)
+        elif step == 4:
+            self._render_welcome_4(avail_w, muted, val, iris)
 
         imgui.end_popup()
+
+    def _finish_welcome(self) -> None:
+        try:
+            p = json.loads(
+                (self._root / "user_profile.json").read_text(encoding="utf-8")
+            )
+        except Exception:
+            p = {}
+        goals = [g.strip() for g in self._welcome_goals_buf.split(",") if g.strip()]
+        p["name"] = self._welcome_name_buf or "friend"
+        p["user_name"] = p["name"]
+        p.setdefault("engagement", {})["onboarding_complete"] = True
+        p.setdefault("engagement", {})["total_sessions"] = 0
+        if goals:
+            p["goals"] = [
+                {"id": g.lower(), "title": g, "description": "", "progress_notes": []}
+                for g in goals
+            ]
+        (self._root / "user_profile.json").write_text(
+            json.dumps(p, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+        self._welcome_active = False
+        imgui.close_current_popup()
+
+    # Step 0: Welcome
+    def _render_welcome_0(self, avail_w, muted, val, iris):
+        imgui.spacing()
+        imgui.spacing()
+        imgui.text_colored(iris, "Welcome to Somna.")
+        imgui.spacing()
+        imgui.push_text_wrap_pos(avail_w)
+        imgui.text_colored(
+            muted,
+            "Somna is a neurofeedback and hypnosis platform that uses binaural beats, "
+            "visual entrainment, and an AI companion to guide you into deep relaxation "
+            "and altered states.",
+        )
+        imgui.spacing()
+        imgui.text_colored(muted, "Let's get you set up. This takes about a minute.")
+        imgui.pop_text_wrap_pos()
+        imgui.spacing()
+        imgui.spacing()
+        imgui.spacing()
+        imgui.set_cursor_pos_x((avail_w - 120) * 0.5)
+        if imgui.button("Get Started##w0next", imgui.ImVec2(120, 0)):
+            self._welcome_step = 1
+
+    # Step 1: Name + Goals
+    def _render_welcome_1(self, avail_w, muted, val, iris):
+        imgui.text_colored(iris, "About You")
+        imgui.spacing()
+
+        imgui.text_colored(muted, "What should I call you?")
+        imgui.set_next_item_width(avail_w - 16)
+        _, self._welcome_name_buf = imgui.input_text("##wname", self._welcome_name_buf)
+
+        imgui.spacing()
+        imgui.spacing()
+        imgui.text_colored(muted, "What brings you here?")
+        imgui.set_next_item_width(avail_w - 16)
+        _, self._welcome_goals_buf = imgui.input_text(
+            "##wgoals",
+            self._welcome_goals_buf,
+            flags=imgui.InputTextFlags_.enter_returns_true,
+        )
+        if imgui.is_item_hovered(imgui.HoveredFlags_.delay_short):
+            imgui.set_tooltip("e.g. relaxation, sleep, focus, curiosity, pleasure")
+
+        imgui.spacing()
+        imgui.spacing()
+        has_input = bool(self._welcome_name_buf.strip())
+        if not has_input:
+            imgui.begin_disabled()
+        imgui.set_cursor_pos_x((avail_w - 120) * 0.5)
+        if imgui.button("Next##w1next", imgui.ImVec2(120, 0)):
+            self._welcome_step = 2
+        if not has_input:
+            imgui.end_disabled()
+
+    # Step 2: Hardware scan
+    def _render_welcome_2(self, avail_w, muted, val, iris):
+        imgui.text_colored(iris, "Hardware")
+        imgui.spacing()
+        imgui.push_text_wrap_pos(avail_w)
+        imgui.text_colored(
+            muted,
+            "Somna works with Muse EEG headbands, Lovense haptic devices, and "
+            "DG Labs Coyote electrodes. These are optional — audio and visuals "
+            "work great on their own.",
+        )
+        imgui.pop_text_wrap_pos()
+        imgui.spacing()
+
+        if not self._welcome_hw_scanned:
+            if imgui.button("Scan for Devices##w2scan", imgui.ImVec2(180, 0)):
+                self._welcome_hw_status = self._do_hw_scan()
+                self._welcome_hw_scanned = True
+            imgui.same_line(spacing=8)
+            imgui.text_colored(muted, "or")
+            imgui.same_line(spacing=8)
+            if imgui.button("Skip##w2skip", imgui.ImVec2(80, 0)):
+                self._welcome_hw_status = "skipped"
+                self._welcome_hw_scanned = True
+        else:
+            if self._welcome_hw_status == "skipped":
+                imgui.text_colored(muted, "Skipped. You can connect devices anytime.")
+            elif self._welcome_hw_status:
+                imgui.text_colored(val, self._welcome_hw_status)
+            else:
+                imgui.text_colored(
+                    muted,
+                    "No devices found. That's fine — audio/visual mode works great.",
+                )
+            imgui.spacing()
+
+        if self._welcome_hw_scanned:
+            imgui.set_cursor_pos_x((avail_w - 120) * 0.5)
+            if imgui.button("Next##w2next", imgui.ImVec2(120, 0)):
+                self._welcome_step = 3
+
+    def _do_hw_scan(self) -> str:
+        found = []
+        try:
+            import brainflow
+
+            found.append("BrainFlow available (EEG support ready)")
+        except ImportError:
+            pass
+        if not found:
+            return ""
+        return "; ".join(found)
+
+    # Step 3: LLM setup
+    def _render_welcome_3(self, avail_w, muted, val, iris):
+        imgui.text_colored(iris, "AI Companion")
+        imgui.spacing()
+        imgui.push_text_wrap_pos(avail_w)
+        imgui.text_colored(
+            muted,
+            "Somna's AI companion adapts sessions to you in real time, guides you "
+            "through experiences, and learns what works best. It requires an LLM endpoint "
+            "(local or cloud).",
+        )
+        imgui.pop_text_wrap_pos()
+        imgui.spacing()
+
+        imgui.text_colored(muted, "Endpoint URL")
+        imgui.set_next_item_width(avail_w - 16)
+        _, self._welcome_llm_url_buf = imgui.input_text(
+            "##wllmurl", self._welcome_llm_url_buf
+        )
+        imgui.spacing()
+
+        imgui.text_colored(muted, "API Key")
+        imgui.set_next_item_width(avail_w - 16)
+        _, self._welcome_llm_key_buf = imgui.input_text(
+            "##wllmkey", self._welcome_llm_key_buf, flags=imgui.InputTextFlags_.password
+        )
+        imgui.spacing()
+
+        imgui.text_colored(muted, "Model Name")
+        imgui.set_next_item_width(avail_w - 16)
+        _, self._welcome_llm_model_buf = imgui.input_text(
+            "##wllmmodel", self._welcome_llm_model_buf
+        )
+        imgui.spacing()
+
+        if imgui.button("Test Connection##wllmtest", imgui.ImVec2(140, 0)):
+            threading.Thread(
+                target=self._do_welcome_llm_test, daemon=True, name="WelcomeLLMTest"
+            ).start()
+        imgui.same_line(spacing=8)
+        if self._welcome_llm_test_status:
+            is_ok = self._welcome_llm_test_status.startswith("OK")
+            col = (
+                imgui.ImVec4(*token_rgba("success_green"))
+                if is_ok
+                else imgui.ImVec4(*token_rgba("alert_red"))
+            )
+            imgui.text_colored(col, self._welcome_llm_test_status)
+        if self._welcome_llm_test_running:
+            imgui.same_line(spacing=4)
+            imgui.text_colored(muted, "...")
+
+        imgui.spacing()
+        imgui.spacing()
+
+        has_url = bool(self._welcome_llm_url_buf.strip())
+        if has_url:
+            if imgui.button("Save & Next##w3next", imgui.ImVec2(140, 0)):
+                self._save_welcome_llm()
+                self._welcome_step = 4
+            imgui.same_line(spacing=8)
+        imgui.text_colored(muted, "or")
+        imgui.same_line(spacing=8)
+        if imgui.button("Skip for now##w3skip", imgui.ImVec2(120, 0)):
+            self._welcome_step = 4
+
+    def _do_welcome_llm_test(self) -> None:
+        import urllib.request
+        import urllib.error
+
+        self._welcome_llm_test_running = True
+        self._welcome_llm_test_status = "Testing..."
+        url = self._welcome_llm_url_buf.rstrip("/")
+        if "/v1" not in url:
+            url += "/v1"
+        try:
+            req = urllib.request.Request(
+                f"{url}/models", headers={"Content-Type": "application/json"}
+            )
+            if self._welcome_llm_key_buf:
+                req.add_header("Authorization", f"Bearer {self._welcome_llm_key_buf}")
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                self._welcome_llm_test_status = (
+                    "OK — connected" if resp.status == 200 else f"HTTP {resp.status}"
+                )
+        except urllib.error.HTTPError as e:
+            self._welcome_llm_test_status = f"HTTP {e.code}"
+        except Exception as e:
+            self._welcome_llm_test_status = f"Failed: {e}"
+        self._welcome_llm_test_running = False
+
+    def _save_welcome_llm(self) -> None:
+        try:
+            path = self._root / "agent_config.yaml"
+            raw = path.read_text(encoding="utf-8")
+            out_lines = []
+            for line in raw.splitlines():
+                stripped = line.lstrip()
+                if stripped.startswith("base_url:") or stripped.startswith("base_url "):
+                    out_lines.append(f'base_url: "{self._welcome_llm_url_buf}"')
+                elif stripped.startswith("api_key:") or stripped.startswith("api_key "):
+                    if self._welcome_llm_key_buf:
+                        out_lines.append(f'api_key: "{self._welcome_llm_key_buf}"')
+                    else:
+                        out_lines.append('api_key: ""')
+                elif stripped.startswith("model:") or stripped.startswith("model "):
+                    out_lines.append(f'model:    "{self._welcome_llm_model_buf}"')
+                else:
+                    out_lines.append(line)
+            path.write_text("\n".join(out_lines) + "\n", encoding="utf-8")
+        except Exception:
+            pass
+
+    # Step 4: Ready
+    def _render_welcome_4(self, avail_w, muted, val, iris):
+        imgui.spacing()
+        imgui.spacing()
+        imgui.text_colored(iris, "You're all set.")
+        imgui.spacing()
+        imgui.push_text_wrap_pos(avail_w)
+        imgui.text_colored(
+            muted,
+            "Your session library is on the left. Pick one and hit play to begin. "
+            "The console above is where the AI companion talks to you.",
+        )
+        imgui.spacing()
+        llm_ok = bool(self._welcome_llm_url_buf.strip())
+        if not llm_ok:
+            imgui.text_colored(
+                imgui.ImVec4(*token_rgba("warning_amber")),
+                "No LLM configured. You can set one up later in Settings \u2192 Agent.",
+            )
+            imgui.spacing()
+        imgui.text_colored(
+            muted,
+            "Click the \u2699 gear icon in the console bar anytime to change settings.",
+        )
+        imgui.pop_text_wrap_pos()
+        imgui.spacing()
+        imgui.spacing()
+        imgui.spacing()
+        imgui.set_cursor_pos_x((avail_w - 120) * 0.5)
+        if imgui.button("Let's Go##w4done", imgui.ImVec2(120, 0)):
+            self._finish_welcome()
 
     # ── EEG device control panel ──────────────────────────────────────────────
 

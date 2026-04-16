@@ -178,7 +178,7 @@ class SQITracker:
             smoothed[ch] = round(self._ema[ch], 3)
 
         composite = round(float(np.mean(list(smoothed.values()))), 3)
-        usable = sum(1 for v in smoothed.values() if v >= 0.5)
+        usable = sum(1 for v in smoothed.values() if v >= 0.3)
         self._history.append(composite)
         if len(self._history) > 120:
             self._history = self._history[-120:]
@@ -223,11 +223,11 @@ class SQITracker:
 
     @staticmethod
     def _level_for(composite: float, usable: int) -> str:
-        if composite >= 0.7 and usable >= 3:  # 3/4 channels sufficient for full
+        if composite >= 0.6 and usable >= 3:
             return "full"
-        if composite >= 0.5 and usable >= 3:
+        if composite >= 0.4 and usable >= 3:
             return "reduced"
-        if composite >= 0.3 and usable >= 2:
+        if composite >= 0.2 and usable >= 2:
             return "low"
         return "none"
 
@@ -1458,7 +1458,7 @@ class EEGEngine:
         self._last_sqi_confidence = confidence
 
         composite = round(float(np.mean(list(smoothed.values()))), 3)
-        usable = sum(1 for v in smoothed.values() if v >= 0.5)
+        usable = sum(1 for v in smoothed.values() if v >= 0.3)
 
         # Bible Ch.2 §2.9 §5.1 — IMU-aware SQI degradation.
         # Head movement introduces muscle artifact and electrode displacement noise.

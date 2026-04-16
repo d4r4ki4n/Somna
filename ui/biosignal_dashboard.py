@@ -167,6 +167,7 @@ class BiosignalDashboard:
             implot.end_plot()
 
     def _render_alpha_detail(self) -> None:
+        live = self._live
         if len(self._ts_buf) < 2:
             imgui.text_colored(
                 imgui.ImVec4(*hex_to_rgba(RP["muted"])), "Waiting for EEG data..."

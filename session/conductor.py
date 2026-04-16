@@ -674,6 +674,10 @@ class Conductor:
             except Exception:
                 pass
             edison_updates = self._edison.tick(live_snap_edison)
+            if edison_updates and "agent_message" in edison_updates:
+                cur = live_snap_edison.get("agent_message") or {}
+                if isinstance(cur, dict) and cur.get("needs_response"):
+                    edison_updates.pop("agent_message", None)
             if edison_updates:
                 patch_live(edison_updates)
 
@@ -715,6 +719,10 @@ class Conductor:
             except Exception:
                 pass
             ssild_updates = self._ssild.tick(live_snap_ssild)
+            if ssild_updates and "agent_message" in ssild_updates:
+                cur = live_snap_ssild.get("agent_message") or {}
+                if isinstance(cur, dict) and cur.get("needs_response"):
+                    ssild_updates.pop("agent_message", None)
             if ssild_updates:
                 patch_live(ssild_updates)
 
@@ -2837,7 +2845,11 @@ class Conductor:
     def _say(
         self, text: str, needs_response: bool = False, via: Optional[List[str]] = None
     ) -> None:
-        """Deliver a message via agent_message (same channel as SomnaAgent._say)."""
+        """Deliver a message via agent_message — skips if a prompt is in flight."""
+        live = self._read_live()
+        cur = live.get("agent_message") or {}
+        if isinstance(cur, dict) and cur.get("needs_response"):
+            return
         patch_live(
             {
                 "agent_message": {

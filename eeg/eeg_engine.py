@@ -17,6 +17,7 @@ Board ID note:
   39 = MUSE_S_BOARD  (Muse S — recommended for sleep/lying-down sessions)
   NEVER use 22 (MUSE_2_BLED_BOARD) — that requires a $30 BLED112 USB dongle.
 """
+
 import json
 import threading
 import time
@@ -26,7 +27,7 @@ from pathlib import Path
 
 import numpy as np
 
-_LIVE_PATH    = Path(__file__).parent.parent / "live_control.json"
+_LIVE_PATH = Path(__file__).parent.parent / "live_control.json"
 _PROFILE_PATH = Path(__file__).parent.parent / "user_profile.json"
 # Muse 2 channel order from BrainFlow: indices 0-3 → TP9, AF7, AF8, TP10
 _CH_NAMES = ["tp9", "af7", "af8", "tp10"]
@@ -39,25 +40,34 @@ from ipc import patch_live
 
 def _read_live() -> dict:
     try:
-        return json.loads(_LIVE_PATH.read_text(encoding="utf-8")) if _LIVE_PATH.exists() else {}
+        return (
+            json.loads(_LIVE_PATH.read_text(encoding="utf-8"))
+            if _LIVE_PATH.exists()
+            else {}
+        )
     except Exception:
         return {}
 
 
 def _load_profile() -> dict:
     try:
-        return json.loads(_PROFILE_PATH.read_text(encoding="utf-8")) if _PROFILE_PATH.exists() else {}
+        return (
+            json.loads(_PROFILE_PATH.read_text(encoding="utf-8"))
+            if _PROFILE_PATH.exists()
+            else {}
+        )
     except Exception:
         return {}
 
 
 # ── SQI (Signal Quality Index) — Bible Ch.5 §5.3 ───────────────────────────────────────
 
+
 def _sqi_amplitude(ch: np.ndarray) -> float:
     """Amplitude-based quality score. 1.0 = clean, 0.0 = saturated/dead."""
     if np.any(np.abs(ch) > 500.0):
         return 0.0
-    rms = float(np.sqrt(np.mean(ch ** 2)))
+    rms = float(np.sqrt(np.mean(ch**2)))
     if rms < 2.0:
         return 0.0
     if rms <= 80.0:
@@ -75,6 +85,7 @@ def _sqi_spectral_flatness(ch: np.ndarray, fs: int = 256) -> float:
     """
     try:
         from scipy.signal import welch as _welch
+
         freqs, psd = _welch(ch, fs=fs, nperseg=min(256, len(ch)))
     except Exception:
         return 0.5  # neutral on failure
@@ -101,13 +112,14 @@ def _sqi_hf_ratio(ch: np.ndarray, fs: int = 256) -> float:
     """
     try:
         from scipy.signal import welch as _welch
+
         freqs, psd = _welch(ch, fs=fs, nperseg=min(256, len(ch)))
     except Exception:
         return 0.5
-    total_mask = (freqs >= 1.0)  & (freqs <= 45.0)
-    hf_mask    = (freqs >= 30.0) & (freqs <= 45.0)
+    total_mask = (freqs >= 1.0) & (freqs <= 45.0)
+    hf_mask = (freqs >= 30.0) & (freqs <= 45.0)
     total = float(np.sum(psd[total_mask]))
-    hf    = float(np.sum(psd[hf_mask]))
+    hf = float(np.sum(psd[hf_mask]))
     if total <= 0:
         return 0.5
     ratio = hf / total
@@ -139,18 +151,19 @@ class SQITracker:
 
     Hysteresis: 3 s to gate DOWN, 5 s to gate UP.
     """
+
     _LEVELS = ("none", "low", "reduced", "full")
 
-    _WARMUP_TICKS = 8   # ~8 seconds after connect before gating on SQI
+    _WARMUP_TICKS = 8  # ~8 seconds after connect before gating on SQI
 
     def __init__(self, alpha: float = 0.3):
-        self._alpha   = alpha
-        self._ema     = {ch: 0.5 for ch in _CH_NAMES}
-        self._history: list[float] = []   # composite history (last 120 s)
+        self._alpha = alpha
+        self._ema = {ch: 0.5 for ch in _CH_NAMES}
+        self._history: list[float] = []  # composite history (last 120 s)
         self._confidence = "none"
-        self._below_ctr  = 0              # consecutive ticks below next threshold
-        self._above_ctr  = 0
-        self._prompted   = False
+        self._below_ctr = 0  # consecutive ticks below next threshold
+        self._above_ctr = 0
+        self._prompted = False
         self._warmup_ctr = self._WARMUP_TICKS
 
     def update(self, raw_sqi: dict) -> tuple[dict, str]:
@@ -162,10 +175,10 @@ class SQITracker:
         for ch in _CH_NAMES:
             raw = float(raw_sqi.get(ch, 0.0))
             self._ema[ch] = self._alpha * raw + (1 - self._alpha) * self._ema[ch]
-            smoothed[ch]  = round(self._ema[ch], 3)
+            smoothed[ch] = round(self._ema[ch], 3)
 
         composite = round(float(np.mean(list(smoothed.values()))), 3)
-        usable    = sum(1 for v in smoothed.values() if v >= 0.5)
+        usable = sum(1 for v in smoothed.values() if v >= 0.5)
         self._history.append(composite)
         if len(self._history) > 120:
             self._history = self._history[-120:]
@@ -179,7 +192,7 @@ class SQITracker:
         prev = self._confidence
         self._confidence = self._gate(composite, usable)
         if self._confidence in ("none", "low") and prev in ("reduced", "full"):
-            ch_str  = " ".join(f"{c}:{v:.2f}" for c, v in smoothed.items())
+            ch_str = " ".join(f"{c}:{v:.2f}" for c, v in smoothed.items())
             raw_str = " ".join(f"{c}:{raw_sqi.get(c, 0):.2f}" for c in _CH_NAMES)
             print(f"[EEG] SQI drop  ema={ch_str}  composite={composite:.2f}")
             print(f"[EEG] SQI raw   {raw_str}")
@@ -189,15 +202,15 @@ class SQITracker:
         """Apply hysteresis to smooth confidence-level transitions."""
         target = self._level_for(composite, usable)
         current_idx = self._LEVELS.index(self._confidence)
-        target_idx  = self._LEVELS.index(target)
+        target_idx = self._LEVELS.index(target)
 
-        if target_idx < current_idx:       # downgrade
+        if target_idx < current_idx:  # downgrade
             self._above_ctr = 0
             self._below_ctr += 1
             if self._below_ctr >= 3:
                 self._below_ctr = 0
                 return target
-        elif target_idx > current_idx:     # upgrade
+        elif target_idx > current_idx:  # upgrade
             self._below_ctr = 0
             self._above_ctr += 1
             if self._above_ctr >= 3:
@@ -210,7 +223,7 @@ class SQITracker:
 
     @staticmethod
     def _level_for(composite: float, usable: int) -> str:
-        if composite >= 0.7 and usable >= 3:   # 3/4 channels sufficient for full
+        if composite >= 0.7 and usable >= 3:  # 3/4 channels sufficient for full
             return "full"
         if composite >= 0.5 and usable >= 3:
             return "reduced"
@@ -237,17 +250,20 @@ class SQITracker:
 
 # ── ASSR (Entrainment Verification) — Bible Ch.5 §5.4 ──────────────────────────────────
 
+
 def _assr_welch(ch: np.ndarray, fs: int = 256, nperseg: int = 512):
     """Welch PSD for ASSR detection. nperseg=512 → 0.5 Hz resolution."""
     try:
         from scipy.signal import welch as _welch
+
         return _welch(ch, fs=fs, nperseg=nperseg, noverlap=nperseg // 2, window="hann")
     except Exception:
         return np.array([]), np.array([])
 
 
-def _estimate_1f_background(freqs: np.ndarray, psd: np.ndarray,
-                             beat_freq: float, exclude_width: float = 2.0) -> float:
+def _estimate_1f_background(
+    freqs: np.ndarray, psd: np.ndarray, beat_freq: float, exclude_width: float = 2.0
+) -> float:
     """Fit log-log 1/f line to PSD excluding beat frequency and harmonics.
 
     Returns estimated background power at beat_freq.
@@ -273,9 +289,9 @@ def _estimate_1f_background(freqs: np.ndarray, psd: np.ndarray,
     return float(10 ** (coeffs[0] * np.log10(beat_freq) + coeffs[1]))
 
 
-def _compute_entrainment_strength(freqs: np.ndarray, psd: np.ndarray,
-                                   beat_freq: float,
-                                   window: float = 0.5) -> tuple[float, float]:
+def _compute_entrainment_strength(
+    freqs: np.ndarray, psd: np.ndarray, beat_freq: float, window: float = 0.5
+) -> tuple[float, float]:
     """Excess power above 1/f background → entrainment strength 0.0–1.0.
 
     Returns (strength, excess_ratio).
@@ -283,7 +299,7 @@ def _compute_entrainment_strength(freqs: np.ndarray, psd: np.ndarray,
     beat_mask = (freqs >= beat_freq - window) & (freqs <= beat_freq + window)
     if not np.any(beat_mask):
         return 0.0, 0.0
-    measured   = float(np.max(psd[beat_mask]))
+    measured = float(np.max(psd[beat_mask]))
     background = _estimate_1f_background(freqs, psd, beat_freq)
     if background <= 0:
         return 0.0, 0.0
@@ -295,19 +311,21 @@ def _compute_entrainment_strength(freqs: np.ndarray, psd: np.ndarray,
     return round(strength, 3), round(excess, 2)
 
 
-def band_coherence(ch_a: np.ndarray, ch_b: np.ndarray,
-                   fs: int = 256,
-                   f_low: float | None = None,
-                   f_high: float | None = None) -> float:
+def band_coherence(
+    ch_a: np.ndarray,
+    ch_b: np.ndarray,
+    fs: int = 256,
+    f_low: float | None = None,
+    f_high: float | None = None,
+) -> float:
     """Mean magnitude-squared coherence between two channels in [f_low, f_high].
 
     Returns 0.0 on failure or when the band is not specified (returns full-band mean).
     """
     try:
         from scipy.signal import coherence as _coh
-        freqs, cxy = _coh(ch_a, ch_b, fs=fs,
-                          nperseg=min(512, len(ch_a)),
-                          noverlap=256)
+
+        freqs, cxy = _coh(ch_a, ch_b, fs=fs, nperseg=min(512, len(ch_a)), noverlap=256)
         if f_low is not None and f_high is not None:
             mask = (freqs >= f_low) & (freqs <= f_high)
             if not np.any(mask):
@@ -318,8 +336,9 @@ def band_coherence(ch_a: np.ndarray, ch_b: np.ndarray,
         return 0.0
 
 
-def composite_assr(power_strength: float, coherence: float,
-                   alpha_ambiguous: bool = False) -> float:
+def composite_assr(
+    power_strength: float, coherence: float, alpha_ambiguous: bool = False
+) -> float:
     """Blend power-based entrainment strength with inter-channel coherence.
 
     Weighting (from spec):
@@ -331,7 +350,7 @@ def composite_assr(power_strength: float, coherence: float,
     """
     base = 0.70 * power_strength + 0.30 * coherence
     if alpha_ambiguous:
-        base *= 0.70   # 30% penalty for ambiguous alpha overlap
+        base *= 0.70  # 30% penalty for ambiguous alpha overlap
     return round(float(max(0.0, min(1.0, base))), 3)
 
 
@@ -341,11 +360,14 @@ class ASSRTracker:
     Computes every update_interval seconds using a min_window_seconds rolling
     window. First result available after min_window_seconds into the session.
     """
+
     def __init__(self, min_window_seconds: int = 60, update_interval: int = 30):
-        self._min_window   = min_window_seconds
-        self._update_iv    = update_interval
-        self._history: list[tuple[float, float, float]] = []  # (ts, strength, beat_freq)
-        self._last_update  = 0.0
+        self._min_window = min_window_seconds
+        self._update_iv = update_interval
+        self._history: list[
+            tuple[float, float, float]
+        ] = []  # (ts, strength, beat_freq)
+        self._last_update = 0.0
         self._switch_count = 0
         self._max_switches = 3
 
@@ -366,7 +388,7 @@ class ASSRTracker:
             return "absent"
         if len(recent) >= 3:
             slope = (recent[-1] - recent[0]) / len(recent)
-            if slope >  0.05:
+            if slope > 0.05:
                 return "rising"
             if slope < -0.05:
                 return "declining"
@@ -379,11 +401,12 @@ class ASSRTracker:
 
     def reset_session(self) -> None:
         self._history.clear()
-        self._last_update  = 0.0
+        self._last_update = 0.0
         self._switch_count = 0
 
 
 # ── FAA (Frontal Alpha Asymmetry) — Bible Ch.6 §6.1 ───────────────────────────────────
+
 
 class FAATracker:
     """Frontal Alpha Asymmetry for receptivity-gated affirmation delivery.
@@ -397,13 +420,14 @@ class FAATracker:
     to ``baseline_mean ± 0.10`` so the gate is personalised to this user's resting
     asymmetry rather than the population default of ±0.10.
     """
-    ALPHA_LOW          = 8.0
-    ALPHA_HIGH         = 13.0
-    APPROACH_THRESHOLD =  0.10   # population default; overridden by set_thresholds()
+
+    ALPHA_LOW = 8.0
+    ALPHA_HIGH = 13.0
+    APPROACH_THRESHOLD = 0.10  # population default; overridden by set_thresholds()
     WITHDRAW_THRESHOLD = -0.10
-    ROLLING_N          = 10      # 10 × 1-s ticks = 10-second rolling average
-    ALPHA_FLOOR        = 1e-8    # combined floor; below this = alpha_suppressed
-    BASELINE_N         = 60      # samples to accumulate for resting baseline
+    ROLLING_N = 10  # 10 × 1-s ticks = 10-second rolling average
+    ALPHA_FLOOR = 1e-8  # combined floor; below this = alpha_suppressed
+    BASELINE_N = 60  # samples to accumulate for resting baseline
 
     def __init__(self):
         self._buffer: deque = deque(maxlen=self.ROLLING_N)
@@ -413,8 +437,8 @@ class FAATracker:
         # Resting baseline accumulation (first BASELINE_N valid non-suppressed samples)
         self._resting_buf: deque = deque(maxlen=self.BASELINE_N)
         self._baseline_ready: bool = False
-        self._baseline_mean:  float | None = None
-        self._baseline_std:   float | None = None
+        self._baseline_mean: float | None = None
+        self._baseline_std: float | None = None
 
     def set_thresholds(self, approach: float, withdraw: float) -> None:
         """Override the default ±0.10 thresholds with personalised values."""
@@ -431,29 +455,33 @@ class FAATracker:
             return None
         return {
             "faa_baseline_mean": round(self._baseline_mean, 4),
-            "faa_baseline_std":  round(self._baseline_std,  4),
+            "faa_baseline_std": round(self._baseline_std, 4),
         }
 
-    def compute(self, eeg_data: np.ndarray, sqi_af7: float,
-                sqi_af8: float, sampling_rate: int) -> dict:
+    def compute(
+        self, eeg_data: np.ndarray, sqi_af7: float, sqi_af8: float, sampling_rate: int
+    ) -> dict:
         """Compute FAA from one 1-second EEG window.
 
         eeg_data: shape (n_channels, n_samples); AF7=index 1, AF8=index 2.
         """
         if eeg_data.shape[0] < 3 or sqi_af7 < 0.5 or sqi_af8 < 0.5:
             return {
-                "eeg_faa": 0.0, "eeg_faa_raw": 0.0,
+                "eeg_faa": 0.0,
+                "eeg_faa_raw": 0.0,
                 "eeg_faa_state": "insufficient_data",
             }
         try:
             from scipy.signal import welch as _welch
+
             af7 = eeg_data[1]
             af8 = eeg_data[2]
             nperseg = min(len(af7), sampling_rate)  # up to 1-second window
 
             def _alpha_power(ch: np.ndarray) -> float:
-                freqs, psd = _welch(ch, fs=sampling_rate, nperseg=nperseg,
-                                    noverlap=nperseg // 2)
+                freqs, psd = _welch(
+                    ch, fs=sampling_rate, nperseg=nperseg, noverlap=nperseg // 2
+                )
                 mask = (freqs >= self.ALPHA_LOW) & (freqs <= self.ALPHA_HIGH)
                 power = float(np.trapz(psd[mask], freqs[mask]))
                 return max(power, 1e-30)
@@ -465,7 +493,8 @@ class FAATracker:
             if al + ar < self.ALPHA_FLOOR:
                 self._buffer.append(0.0)
                 return {
-                    "eeg_faa": 0.0, "eeg_faa_raw": 0.0,
+                    "eeg_faa": 0.0,
+                    "eeg_faa_raw": 0.0,
                     "eeg_faa_state": "alpha_suppressed",
                 }
 
@@ -478,26 +507,33 @@ class FAATracker:
                 self._resting_buf.append(faa_raw)
                 if len(self._resting_buf) >= self.BASELINE_N:
                     import numpy as _np2
+
                     arr = _np2.array(self._resting_buf)
                     self._baseline_mean = float(_np2.mean(arr))
-                    self._baseline_std  = float(_np2.std(arr))
+                    self._baseline_std = float(_np2.std(arr))
                     # Shift thresholds to baseline ± 0.10
                     self._approach_thresh = round(self._baseline_mean + 0.10, 4)
                     self._withdraw_thresh = round(self._baseline_mean - 0.10, 4)
                     self._baseline_ready = True
 
-            if faa_smooth >  self._approach_thresh: state = "approach"
-            elif faa_smooth < self._withdraw_thresh: state = "withdrawal"
-            else:                                    state = "neutral"
+            if faa_smooth > self._approach_thresh:
+                state = "approach"
+            elif faa_smooth < self._withdraw_thresh:
+                state = "withdrawal"
+            else:
+                state = "neutral"
 
             return {
-                "eeg_faa":       round(faa_smooth, 4),
-                "eeg_faa_raw":   round(faa_raw,    4),
+                "eeg_faa": round(faa_smooth, 4),
+                "eeg_faa_raw": round(faa_raw, 4),
                 "eeg_faa_state": state,
             }
         except Exception:
-            return {"eeg_faa": 0.0, "eeg_faa_raw": 0.0,
-                    "eeg_faa_state": "insufficient_data"}
+            return {
+                "eeg_faa": 0.0,
+                "eeg_faa_raw": 0.0,
+                "eeg_faa_state": "insufficient_data",
+            }
 
     def reset(self) -> None:
         """Reset rolling buffer and resting accumulator for a new session.
@@ -509,11 +545,12 @@ class FAATracker:
         self._buffer.clear()
         self._resting_buf.clear()
         self._baseline_ready = False
-        self._baseline_mean  = None
-        self._baseline_std   = None
+        self._baseline_mean = None
+        self._baseline_std = None
 
 
 # ── IAF detection ─────────────────────────────────────────────────────────────
+
 
 def _normalize(v: float, lo: float, hi: float) -> float:
     if hi == lo:
@@ -521,10 +558,13 @@ def _normalize(v: float, lo: float, hi: float) -> float:
     return float(max(0.0, min(1.0, (v - lo) / (hi - lo))))
 
 
-def compute_iaf_confidence(channel_iafs: list, peak_powers: list,
-                           mean_alpha_power: float,
-                           iaf_30s: float | None,
-                           iaf_60s: float | None) -> tuple[float, dict]:
+def compute_iaf_confidence(
+    channel_iafs: list,
+    peak_powers: list,
+    mean_alpha_power: float,
+    iaf_30s: float | None,
+    iaf_60s: float | None,
+) -> tuple[float, dict]:
     """Compute a 0–1 confidence score for IAF detection.
 
     Weights (revised to match real EEG prominence ranges):
@@ -540,8 +580,8 @@ def compute_iaf_confidence(channel_iafs: list, peak_powers: list,
     """
     # Prominence: median peak PSD vs mean alpha-band PSD, linearly scaled
     median_peak = float(np.median(peak_powers)) if peak_powers else 0.0
-    prominence  = median_peak / (mean_alpha_power + 1e-12)
-    prominence_score = _normalize(prominence - 1.0, 0.0, 2.0)   # [1,3] → [0,1]
+    prominence = median_peak / (mean_alpha_power + 1e-12)
+    prominence_score = _normalize(prominence - 1.0, 0.0, 2.0)  # [1,3] → [0,1]
 
     # Agreement: std of per-channel IAF estimates (low std = high agreement)
     std_iaf = float(np.std(channel_iafs)) if len(channel_iafs) >= 2 else 2.0
@@ -553,24 +593,24 @@ def compute_iaf_confidence(channel_iafs: list, peak_powers: list,
     else:
         stability_score = 0.5  # neutral when only one window is available
 
-    iaf_conf = (0.25 * prominence_score
-                + 0.40 * agreement_score
-                + 0.35 * stability_score)
+    iaf_conf = 0.25 * prominence_score + 0.40 * agreement_score + 0.35 * stability_score
     iaf_conf = round(float(max(0.0, min(1.0, iaf_conf))), 3)
 
     return iaf_conf, {
         "prominence_score": round(prominence_score, 3),
-        "agreement_score":  round(agreement_score,  3),
-        "stability_score":  round(stability_score,  3),
-        "std_iaf":          round(std_iaf,           3),
+        "agreement_score": round(agreement_score, 3),
+        "stability_score": round(stability_score, 3),
+        "std_iaf": round(std_iaf, 3),
     }
 
 
-def detect_iaf_with_confidence(eeg_data, sampling_rate: int = 256,
-                                alpha_low: float = 7.0,
-                                alpha_high: float = 13.0,
-                                half_data: np.ndarray | None = None
-                                ) -> tuple[float | None, float, dict]:
+def detect_iaf_with_confidence(
+    eeg_data,
+    sampling_rate: int = 256,
+    alpha_low: float = 7.0,
+    alpha_high: float = 13.0,
+    half_data: np.ndarray | None = None,
+) -> tuple[float | None, float, dict]:
     """Detect IAF and return a confidence score.
 
     Args:
@@ -600,17 +640,20 @@ def detect_iaf_with_confidence(eeg_data, sampling_rate: int = 256,
             for ch_data in data_2d:
                 try:
                     psd, freqs = DataFilter.get_psd_welch(
-                        ch_data.copy(), nfft, overlap, sampling_rate,
+                        ch_data.copy(),
+                        nfft,
+                        overlap,
+                        sampling_rate,
                         WindowOperations.HANNING.value,
                     )
                 except Exception:
                     continue
-                alpha_mask  = (freqs >= alpha_low) & (freqs <= alpha_high)
-                alpha_psd   = psd[alpha_mask]
+                alpha_mask = (freqs >= alpha_low) & (freqs <= alpha_high)
+                alpha_psd = psd[alpha_mask]
                 alpha_freqs = freqs[alpha_mask]
                 if len(alpha_psd) == 0:
                     continue
-                peak_idx   = int(np.argmax(alpha_psd))
+                peak_idx = int(np.argmax(alpha_psd))
                 peak_power = float(alpha_psd[peak_idx])
                 mean_power = float(np.mean(alpha_psd))
                 alpha_powers.append(mean_power)
@@ -618,10 +661,15 @@ def detect_iaf_with_confidence(eeg_data, sampling_rate: int = 256,
                 if peak_power >= 1.5 * mean_power:
                     ch_iafs.append(float(alpha_freqs[peak_idx]))
                 else:
-                    cog = float(np.sum(alpha_freqs * alpha_psd)
-                                / (np.sum(alpha_psd) + 1e-12))
+                    cog = float(
+                        np.sum(alpha_freqs * alpha_psd) / (np.sum(alpha_psd) + 1e-12)
+                    )
                     ch_iafs.append(cog)
-            return ch_iafs, ch_peaks, float(np.mean(alpha_powers)) if alpha_powers else 0.0
+            return (
+                ch_iafs,
+                ch_peaks,
+                float(np.mean(alpha_powers)) if alpha_powers else 0.0,
+            )
         except Exception:
             return [], [], 0.0
 
@@ -641,29 +689,31 @@ def detect_iaf_with_confidence(eeg_data, sampling_rate: int = 256,
         confidence, detail = compute_iaf_confidence(
             ch_iafs, ch_peaks, mean_alpha, iaf_half, iaf_full
         )
-        detail["iaf_hz"]       = round(iaf_full, 2)
-        detail["method"]       = "paf_with_cog_fallback"
-        detail["n_channels"]   = len(ch_iafs)
+        detail["iaf_hz"] = round(iaf_full, 2)
+        detail["method"] = "paf_with_cog_fallback"
+        detail["n_channels"] = len(ch_iafs)
         return iaf_full, confidence, detail
 
     except Exception:
         return None, 0.0, {}
 
 
-def detect_iaf(eeg_data, sampling_rate: int = 256,
-               alpha_low: float = 7.0, alpha_high: float = 13.0):
+def detect_iaf(
+    eeg_data, sampling_rate: int = 256, alpha_low: float = 7.0, alpha_high: float = 13.0
+):
     """Thin wrapper — returns iaf_hz only (backward-compat)."""
-    iaf, _, _ = detect_iaf_with_confidence(eeg_data, sampling_rate,
-                                            alpha_low, alpha_high)
+    iaf, _, _ = detect_iaf_with_confidence(
+        eeg_data, sampling_rate, alpha_low, alpha_high
+    )
     return iaf
 
 
 # Hint templates keyed by channel name (lowest-SQI channel → hint)
 _CAL_HINTS: dict[str, str] = {
-    "tp9":  "Left ear loose — tuck the left armband snug under the ear.",
+    "tp9": "Left ear loose — tuck the left armband snug under the ear.",
     "tp10": "Right ear loose — tuck the right armband snug under the ear.",
-    "af7":  "Left forehead sensor loose — press the headband gently to your brow.",
-    "af8":  "Right forehead sensor loose — press the headband gently to your brow.",
+    "af7": "Left forehead sensor loose — press the headband gently to your brow.",
+    "af8": "Right forehead sensor loose — press the headband gently to your brow.",
 }
 _CAL_HINT_GENERAL = [
     "Relax your jaw and breathe slowly.",
@@ -672,8 +722,9 @@ _CAL_HINT_GENERAL = [
 ]
 
 
-def _select_calibration_hint(channel_sqi: dict, last_hint_at: float,
-                              hint_interval: float = 15.0) -> str:
+def _select_calibration_hint(
+    channel_sqi: dict, last_hint_at: float, hint_interval: float = 15.0
+) -> str:
     """Pick one actionable calibration hint, rate-limited to hint_interval seconds."""
     if time.time() - last_hint_at < hint_interval:
         return ""  # don't spam
@@ -684,19 +735,20 @@ def _select_calibration_hint(channel_sqi: dict, last_hint_at: float,
     return _CAL_HINTS.get(worst_ch, _CAL_HINT_GENERAL[0])
 
 
-def build_iaf_profile_update(iaf_hz: float,
-                             iaf_confidence: float | None = None) -> dict:
+def build_iaf_profile_update(
+    iaf_hz: float, iaf_confidence: float | None = None
+) -> dict:
     """Build the profile update dict to pass to somna_agent.update_profile()."""
     update = {
-        "iaf_hz":            round(iaf_hz, 2),
+        "iaf_hz": round(iaf_hz, 2),
         "iaf_calibrated_at": datetime.now().isoformat(),
-        "iaf_method":        "paf_with_cog_fallback",
+        "iaf_method": "paf_with_cog_fallback",
         "iaf_band_boundaries": {
-            "delta": [0.5,                    round(iaf_hz - 6, 2)],
-            "theta": [round(iaf_hz - 6, 2),   round(iaf_hz - 2, 2)],
-            "alpha": [round(iaf_hz - 2, 2),   round(iaf_hz + 2, 2)],
-            "beta":  [round(iaf_hz + 2, 2),   30.0],
-            "gamma": [30.0,                    100.0],
+            "delta": [0.5, round(iaf_hz - 6, 2)],
+            "theta": [round(iaf_hz - 6, 2), round(iaf_hz - 2, 2)],
+            "alpha": [round(iaf_hz - 2, 2), round(iaf_hz + 2, 2)],
+            "beta": [round(iaf_hz + 2, 2), 30.0],
+            "gamma": [30.0, 100.0],
         },
     }
     if iaf_confidence is not None:
@@ -705,6 +757,7 @@ def build_iaf_profile_update(iaf_hz: float,
 
 
 # ── EEG Engine ────────────────────────────────────────────────────────────────
+
 
 class EEGEngine:
     """BrainFlow-based EEG acquisition and processing thread.
@@ -739,9 +792,10 @@ class EEGEngine:
         """
         try:
             from brainflow.board_shim import BoardShim, BrainFlowInputParams, BoardIds
-            self._BoardShim           = BoardShim
+
+            self._BoardShim = BoardShim
             self._BrainFlowInputParams = BrainFlowInputParams
-            self._BoardIds            = BoardIds
+            self._BoardIds = BoardIds
         except ImportError as e:
             raise ImportError(
                 "brainflow is not installed. Run: pip install brainflow"
@@ -754,17 +808,17 @@ class EEGEngine:
             self.board_id = int(config.get("eeg_board_id", 38))
 
         self.params = self._BrainFlowInputParams()
-        self.board  = None
-        self._stop  = threading.Event()
+        self.board = None
+        self._stop = threading.Event()
         self._thread = None  # type: threading.Thread
 
         # Circular buffer: 5 minutes of 1-Hz samples for trend analysis
         self.history: deque = deque(maxlen=300)
 
         # Calibration state written by control_panel callback
-        self._calibrating           = False
+        self._calibrating = False
         self._calibration_data: list = []
-        self._calibration_done      = threading.Event()
+        self._calibration_done = threading.Event()
         # Shared calibration status — written by calibration thread,
         # merged into live_control.json by the main loop (one writer).
         self._cal_state: dict = {}
@@ -782,8 +836,8 @@ class EEGEngine:
             # Will be set on the tracker after it is created below
 
         # EMA smoothing state for SEF95 and spectral slope (tau ≈ 4 s at 1 Hz tick)
-        self._ema_sef95:  float | None = None
-        self._ema_slope:  float | None = None
+        self._ema_sef95: float | None = None
+        self._ema_slope: float | None = None
         self._EMA_ALPHA = 0.25  # ~4 s time constant at 1 Hz
 
         # Bible Ch.2 §2.8 — Interhemispheric coherence state
@@ -794,36 +848,42 @@ class EEGEngine:
         self._ema_coh_depth: float | None = None
         self._slope_confidence: float = 0.0
         # Baseline slope from calibration; default -1.3 (typical alert wakefulness)
-        self._baseline_slope: float = float(profile.get("baseline_slope", -1.3)) if profile.get("baseline_slope") else -1.3
+        self._baseline_slope: float = (
+            float(profile.get("baseline_slope", -1.3))
+            if profile.get("baseline_slope")
+            else -1.3
+        )
         # Per-user weight vector for the three-axis composite (updated by SessionAnalyzer)
         self._depth_weights: tuple = (0.40, 0.30, 0.30)
 
         # ── SQI, ASSR, and FAA trackers (Bible Ch.5 §5.3 / Bible Ch.5 §5.4 / Bible Ch.6 §6.1) ──────────────
-        self._sqi_tracker  = SQITracker(alpha=0.3)
+        self._sqi_tracker = SQITracker(alpha=0.3)
         self._assr_tracker = ASSRTracker(min_window_seconds=60, update_interval=30)
-        self._faa_tracker  = FAATracker()
+        self._faa_tracker = FAATracker()
         # Apply stored FAA thresholds from profile (if available)
         if faa_baseline_mean is not None:
             self._faa_tracker.set_thresholds(approach, withdraw)
         self._last_sqi_smoothed: dict = {}
         self._last_sqi_confidence: str = "none"
-        self._prev_sqi_confidence: str = "none"   # for phase_gate auto-enable edge detection
+        self._prev_sqi_confidence: str = (
+            "none"  # for phase_gate auto-enable edge detection
+        )
         self._session_start_wall: float = 0.0
         self._faa_baseline_emitted: bool = False  # True after first live_control write
-        self._depth_log_last: float = 0.0          # throttle: log depth estimate every 10 s
+        self._depth_log_last: float = 0.0  # throttle: log depth estimate every 10 s
 
         # Time-series buffers for post-session scoring (Bible Ch.6 §6.3)
         self._series_sef95: list[float] = []
-        self._series_assr:  list[float] = []
-        self._series_faa:   list[float] = []
-        self._series_sqi:   list[float] = []
+        self._series_assr: list[float] = []
+        self._series_faa: list[float] = []
+        self._series_sqi: list[float] = []
 
         # GENUS entrainment ratio tracking (genus_protocol.md §5.3)
         # Pre-GENUS baseline captured during first 60 s of genus_active window.
-        self._genus_baseline_40hz:    float = 0.0
+        self._genus_baseline_40hz: float = 0.0
         self._genus_baseline_samples: list[float] = []
-        self._genus_baseline_done:    bool  = False
-        self._genus_was_active:       bool  = False
+        self._genus_baseline_done: bool = False
+        self._genus_was_active: bool = False
 
         # Optional VR SSVEP plugin (set by Conductor when VR is active)
         self._vr_ssvep_plugin = None
@@ -836,11 +896,14 @@ class EEGEngine:
         from eeg.phase_tracker import PhaseTracker
         from eeg.respiratory_tracker import RespiratoryTracker
         from eeg.pac_estimator import PACEstimator
+
         iaf_for_tracker = self._iaf_hz if self._iaf_hz else 10.0
         self._phase_tracker = PhaseTracker(srate=256, iaf_hz=iaf_for_tracker)
         # Delta PhaseTracker (Bible Ch.7 §7.1): 8 s buffer for reliable 0.5–1.5 Hz estimation
-        self._delta_tracker = PhaseTracker(srate=256, iaf_hz=iaf_for_tracker, buffer_sec=8.0)
-        self._resp_tracker  = RespiratoryTracker(
+        self._delta_tracker = PhaseTracker(
+            srate=256, iaf_hz=iaf_for_tracker, buffer_sec=8.0
+        )
+        self._resp_tracker = RespiratoryTracker(
             breath_rate=float(_read_live().get("breath_rate", 0.10) or 0.10)
         )
         self._pac_estimator = PACEstimator(srate=256)
@@ -851,6 +914,7 @@ class EEGEngine:
         # ── Sleep stage classifier + spindle detector (Bible Ch.7 §7.1) ────────────────
         from eeg.sleep_classifier import SleepStageClassifier
         from eeg.spindle_detector import SpindleDetector
+
         self._sleep_classifier = SleepStageClassifier()
         self._spindle_detector = SpindleDetector()
         # Wake beta baseline — set once during CALIBRATION phase
@@ -861,6 +925,7 @@ class EEGEngine:
         self._alpha_disrupt_last_ts: float = 0.0
         # Gamma verification gate — created once; self-resets via genus_active flag
         from eeg.gamma_verification_gate import GammaVerificationGate
+
         self._genus_gate = GammaVerificationGate()
 
     # ── VR plugin interface ────────────────────────────────────────────────────
@@ -882,9 +947,7 @@ class EEGEngine:
 
     def start(self) -> None:
         self._stop.clear()
-        self._thread = threading.Thread(
-            target=self._run, daemon=True, name="EEGEngine"
-        )
+        self._thread = threading.Thread(target=self._run, daemon=True, name="EEGEngine")
         self._thread.start()
 
     def stop(self) -> None:
@@ -902,6 +965,7 @@ class EEGEngine:
             return
         try:
             from brainflow.board_shim import BrainFlowError
+
             if self.board.is_prepared():
                 try:
                     self.board.stop_stream()
@@ -929,7 +993,9 @@ class EEGEngine:
                 self.board.prepare_session()
                 break
             except Exception as e:
-                print(f"[EEG] Connection attempt {attempt + 1}/{max_retries} failed: {e}")
+                print(
+                    f"[EEG] Connection attempt {attempt + 1}/{max_retries} failed: {e}"
+                )
                 self._release_board()
                 if attempt < max_retries - 1:
                     self._stop.wait(timeout=5 * (attempt + 1))
@@ -944,37 +1010,43 @@ class EEGEngine:
         if self.board_id != -1:
             try:
                 from eeg.ppg_engine import PPGEngine
+
                 self._ppg = PPGEngine()
                 print("[EEG] PPG engine started.")
             except Exception as ppg_e:
                 print(f"[EEG] PPG engine unavailable: {ppg_e}")
             try:
                 from eeg.imu_engine import IMUEngine
+
                 self._imu = IMUEngine()
                 print("[EEG] IMU engine started.")
             except Exception as imu_e:
                 print(f"[EEG] IMU engine unavailable: {imu_e}")
 
-        patch_live({
-            "eeg_connected":                True,
-            "eeg_quality":                  "good",
-            "eeg_confidence":               "none",
-            "eeg_entrainment_confidence":   "unavailable",
-            "eeg_entrainment_strength":     0.0,
-            "eeg_entrainment_trend":        "insufficient_data",
-        })
+        patch_live(
+            {
+                "eeg_connected": True,
+                "eeg_quality": "good",
+                "eeg_confidence": "none",
+                "eeg_entrainment_confidence": "unavailable",
+                "eeg_entrainment_strength": 0.0,
+                "eeg_entrainment_trend": "insufficient_data",
+            }
+        )
         print(f"[EEG] Connected — board_id={self.board_id}")
 
-        eeg_channels  = self._BoardShim.get_eeg_channels(self.board_id)
+        eeg_channels = self._BoardShim.get_eeg_channels(self.board_id)
         sampling_rate = self._BoardShim.get_sampling_rate(self.board_id)
-        window        = sampling_rate  # 1-second window
+        window = sampling_rate  # 1-second window
 
         # Publish IAF from profile if available
         if self._iaf_hz is not None:
-            patch_live({
-                "eeg_iaf_hz": self._iaf_hz,
-                "eeg_needs_iaf_calibration": False,
-            })
+            patch_live(
+                {
+                    "eeg_iaf_hz": self._iaf_hz,
+                    "eeg_needs_iaf_calibration": False,
+                }
+            )
         else:
             patch_live({"eeg_needs_iaf_calibration": True})
 
@@ -986,7 +1058,7 @@ class EEGEngine:
         self._series_assr.clear()
         self._series_faa.clear()
         self._series_sqi.clear()
-        self._session_start_wall  = time.time()
+        self._session_start_wall = time.time()
         self._faa_baseline_emitted = False
 
         while not self._stop.is_set():
@@ -1027,7 +1099,9 @@ class EEGEngine:
                     if ppg_state:
                         patch_live(ppg_state)
                         # Hand real breath phase to RespiratoryTracker
-                        if ppg_state.get("ppg_available") and ppg_state.get("ppg_breath_rate"):
+                        if ppg_state.get("ppg_available") and ppg_state.get(
+                            "ppg_breath_rate"
+                        ):
                             self._resp_tracker.update_ppg_phase(
                                 float(ppg_state["ppg_breath_phase"]),
                                 float(ppg_state["ppg_breath_rate"]),
@@ -1050,9 +1124,14 @@ class EEGEngine:
                         if not live_for_gate.get("phase_gate_enabled"):
                             patch_live({"phase_gate_enabled": True})
                             print("[EEG] SQI sufficient — phase gate enabled.")
-                    elif new_conf in ("low", "none") and self._prev_sqi_confidence in ("full", "reduced"):
+                    elif new_conf in ("low", "none") and self._prev_sqi_confidence in (
+                        "full",
+                        "reduced",
+                    ):
                         patch_live({"phase_gate_enabled": False})
-                        print(f"[EEG] SQI degraded to {new_conf!r} — phase gate disabled.")
+                        print(
+                            f"[EEG] SQI degraded to {new_conf!r} — phase gate disabled."
+                        )
                     self._prev_sqi_confidence = new_conf
 
                 # ── VR SSVEP plugin (Bible Ch.8 §8.1) ──────────────────────────────────
@@ -1060,7 +1139,7 @@ class EEGEngine:
                     # AF7=index 1, AF8=index 2 in Muse 2 channel order
                     self._vr_ssvep_plugin.update_batch(eeg_data[1], eeg_data[2])
                     live_cfg = _read_live()
-                    f_l = float(live_cfg.get("vr_rivalry_left_hz",  0.0))
+                    f_l = float(live_cfg.get("vr_rivalry_left_hz", 0.0))
                     f_r = float(live_cfg.get("vr_rivalry_right_hz", 0.0))
                     if f_l > 0.0 and f_r > 0.0:
                         self._vr_ssvep_plugin.detect(f_l, f_r)
@@ -1070,10 +1149,12 @@ class EEGEngine:
                 # can feed check_paroxysmal() without a second BrainFlow connection.
                 # Only written when VR headset is active to avoid constant disk I/O.
                 if state.get("eeg_connected") and _read_live().get("vr_headset_active"):
-                    patch_live({
-                        "eeg_raw_af7_last_256": eeg_data[1, -256:].tolist(),
-                        "eeg_raw_af8_last_256": eeg_data[2, -256:].tolist(),
-                    })
+                    patch_live(
+                        {
+                            "eeg_raw_af7_last_256": eeg_data[1, -256:].tolist(),
+                            "eeg_raw_af8_last_256": eeg_data[2, -256:].tolist(),
+                        }
+                    )
 
                 # ── Phase-cascade tracking (Bible Ch.4 §4.6) ───────────────────────────
                 # AF7 (index 1) is the primary frontal channel for phase estimation.
@@ -1098,18 +1179,21 @@ class EEGEngine:
 
                 # Sync IAF with latest calibration
                 current_iaf = float(live_for_resp.get("eeg_iaf_hz", 0) or 0)
-                if current_iaf > 0 and abs(current_iaf - self._phase_tracker.iaf_hz) > 0.05:
+                if (
+                    current_iaf > 0
+                    and abs(current_iaf - self._phase_tracker.iaf_hz) > 0.05
+                ):
                     self._phase_tracker.update_iaf(current_iaf)
 
                 # Phase estimation at ~10 Hz (PhaseTracker rate-limits internally)
                 phase_result = self._phase_tracker.estimate_both(now=now_mono)
-                resp_state   = self._resp_tracker.state_dict()
+                resp_state = self._resp_tracker.state_dict()
 
                 phase_patch = {
-                    "alpha_phase":           phase_result["alpha_phase"],
+                    "alpha_phase": phase_result["alpha_phase"],
                     "alpha_phase_confidence": phase_result["alpha_confidence"],
-                    "alpha_at_trough":        phase_result["alpha_at_trough"],
-                    "theta_phase":            phase_result["theta_phase"],
+                    "alpha_at_trough": phase_result["alpha_at_trough"],
+                    "theta_phase": phase_result["theta_phase"],
                 }
                 phase_patch.update(resp_state)
                 patch_live(phase_patch)
@@ -1117,14 +1201,18 @@ class EEGEngine:
                 # Delta phase tracking for slow-wave up-state detection (Bible Ch.7 §7.1 §6)
                 delta_result = self._delta_tracker.estimate_phase("delta", now=now_mono)
                 if delta_result.get("phase") is not None:
-                    d_phase    = delta_result["phase"]
+                    d_phase = delta_result["phase"]
                     # Up-state = phase near 0 (surface-positive peak), tolerance 0.3 rad
-                    d_in_gate  = abs(d_phase) < 0.3 or abs(d_phase - 2 * np.pi) < 0.3
-                    patch_live({
-                        "eeg_delta_phase":    round(float(d_phase), 4),
-                        "eeg_delta_in_gate":  bool(d_in_gate),
-                        "eeg_delta_amplitude": round(float(delta_result.get("amplitude", 0.0)), 4),
-                    })
+                    d_in_gate = abs(d_phase) < 0.3 or abs(d_phase - 2 * np.pi) < 0.3
+                    patch_live(
+                        {
+                            "eeg_delta_phase": round(float(d_phase), 4),
+                            "eeg_delta_in_gate": bool(d_in_gate),
+                            "eeg_delta_amplitude": round(
+                                float(delta_result.get("amplitude", 0.0)), 4
+                            ),
+                        }
+                    )
 
                 # PAC estimation at ~0.5 Hz (PACEstimator rate-limits internally)
                 iaf = self._phase_tracker.iaf_hz
@@ -1149,24 +1237,29 @@ class EEGEngine:
                 # enough for per-phase trend analysis; sparse enough to stay lean.
                 # Only logs when coherence data is available (slope + v2 score).
                 now_ts = time.time()
-                if (now_ts - self._depth_log_last >= 10.0
-                        and state.get("eeg_trance_score_v2") is not None):
+                if (
+                    now_ts - self._depth_log_last >= 10.0
+                    and state.get("eeg_trance_score_v2") is not None
+                ):
                     try:
                         from content_tools.somna_db import log_depth_estimate
+
                         live_snap = _read_live()
                         log_depth_estimate(
-                            session_id    = str(live_snap.get("session_name") or "unknown"),
-                            ts            = now_ts,
-                            conductor_phase = str(live_snap.get("conductor_phase") or ""),
-                            spectral_slope  = state.get("eeg_spectral_slope"),
-                            slope_confidence= state.get("eeg_slope_confidence"),
-                            frontal_alpha_coh = state.get("eeg_coherence_frontal_alpha"),
-                            frontal_beta_coh  = state.get("eeg_coherence_frontal_beta"),
-                            temporal_theta_coh= state.get("eeg_coherence_temporal_theta"),
-                            beta_env_corr     = state.get("eeg_beta_env_corr"),
-                            coherence_depth   = state.get("eeg_coherence_depth"),
-                            trance_score_v1   = state.get("eeg_trance_score"),
-                            trance_score_v2   = state.get("eeg_trance_score_v2"),
+                            session_id=str(live_snap.get("session_name") or "unknown"),
+                            ts=now_ts,
+                            conductor_phase=str(live_snap.get("conductor_phase") or ""),
+                            spectral_slope=state.get("eeg_spectral_slope"),
+                            slope_confidence=state.get("eeg_slope_confidence"),
+                            frontal_alpha_coh=state.get("eeg_coherence_frontal_alpha"),
+                            frontal_beta_coh=state.get("eeg_coherence_frontal_beta"),
+                            temporal_theta_coh=state.get(
+                                "eeg_coherence_temporal_theta"
+                            ),
+                            beta_env_corr=state.get("eeg_beta_env_corr"),
+                            coherence_depth=state.get("eeg_coherence_depth"),
+                            trance_score_v1=state.get("eeg_trance_score"),
+                            trance_score_v2=state.get("eeg_trance_score_v2"),
                         )
                         self._depth_log_last = now_ts
                     except Exception:
@@ -1177,11 +1270,16 @@ class EEGEngine:
                 # Needs the _process state dict for band powers.
                 now_ts = now_ts  # reuse from depth log block above
                 _live_snap_sleep = _read_live()
-                conductor_phase_name = str(_live_snap_sleep.get("conductor_phase") or "")
+                conductor_phase_name = str(
+                    _live_snap_sleep.get("conductor_phase") or ""
+                )
 
                 # Capture wake beta baseline during CALIBRATION for beta_dropout
                 beta_ratio = float(state.get("eeg_beta", 0.0) or 0.0)
-                if "calibrat" in conductor_phase_name and self._wake_beta_baseline is None:
+                if (
+                    "calibrat" in conductor_phase_name
+                    and self._wake_beta_baseline is None
+                ):
                     self._wake_beta_baseline = beta_ratio
                     self._sleep_classifier.set_wake_baseline(beta_ratio)
 
@@ -1199,40 +1297,52 @@ class EEGEngine:
                         timestamp=now_ts,
                     )
                 else:
-                    sp_result = {"spindle_detected": False,
-                                 "spindle_density": 0.0, "sigma_amplitude": 0.0}
+                    sp_result = {
+                        "spindle_detected": False,
+                        "spindle_density": 0.0,
+                        "sigma_amplitude": 0.0,
+                    }
 
                 # Sleep stage classification
                 sleep_features = {
-                    "spectral_slope":    state.get("eeg_spectral_slope", -1.5),
+                    "spectral_slope": state.get("eeg_spectral_slope", -1.5),
                     "delta_power_ratio": float(state.get("eeg_delta", 0.0) or 0.0),
                     "theta_power_ratio": float(state.get("eeg_theta", 0.0) or 0.0),
                     "alpha_power_ratio": float(state.get("eeg_alpha", 0.0) or 0.0),
-                    "spindle_density":   sp_result["spindle_density"],
-                    "beta_dropout":      beta_dropout,
+                    "spindle_density": sp_result["spindle_density"],
+                    "beta_dropout": beta_dropout,
                 }
-                sleep_stage, sleep_conf = self._sleep_classifier.classify(sleep_features)
+                sleep_stage, sleep_conf = self._sleep_classifier.classify(
+                    sleep_features
+                )
 
-                patch_live({
-                    "eeg_sleep_stage":      sleep_stage,
-                    "eeg_sleep_confidence": round(float(sleep_conf), 3),
-                    "spindle_density":      sp_result["spindle_density"],
-                    "sigma_amplitude":      round(float(sp_result["sigma_amplitude"]), 4),
-                })
+                patch_live(
+                    {
+                        "eeg_sleep_stage": sleep_stage,
+                        "eeg_sleep_confidence": round(float(sleep_conf), 3),
+                        "spindle_density": sp_result["spindle_density"],
+                        "sigma_amplitude": round(
+                            float(sp_result["sigma_amplitude"]), 4
+                        ),
+                    }
+                )
 
                 # Throttled sleep stage logging (30 s → ≈960 rows per 8-hour session)
                 if now_ts - self._sleep_log_last >= 30.0:
                     try:
                         from content_tools.somna_db import log_sleep_stage
+
                         log_sleep_stage(
-                            session_id    = str(_live_snap_sleep.get("session_name") or "unknown"),
-                            ts            = now_ts,
-                            stage         = sleep_stage,
-                            confidence    = sleep_conf,
-                            spectral_slope = state.get("eeg_spectral_slope"),
-                            delta_power   = sleep_features["delta_power_ratio"],
-                            spindle_density = sp_result["spindle_density"],
-                            sigma_amplitude = sp_result["sigma_amplitude"],
+                            session_id=str(
+                                _live_snap_sleep.get("session_name") or "unknown"
+                            ),
+                            ts=now_ts,
+                            stage=sleep_stage,
+                            confidence=sleep_conf,
+                            spectral_slope=state.get("eeg_spectral_slope"),
+                            delta_power=sleep_features["delta_power_ratio"],
+                            spindle_density=sp_result["spindle_density"],
+                            sigma_amplitude=sp_result["sigma_amplitude"],
                         )
                         self._sleep_log_last = now_ts
                     except Exception:
@@ -1243,38 +1353,51 @@ class EEGEngine:
                 if not self._faa_baseline_emitted:
                     bl = self._faa_tracker.get_baseline()
                     if bl is not None:
-                        patch_live({
-                            "eeg_faa_baseline_mean": bl["faa_baseline_mean"],
-                            "eeg_faa_baseline_std":  bl["faa_baseline_std"],
-                            "eeg_faa_baseline_ready": True,
-                        })
+                        patch_live(
+                            {
+                                "eeg_faa_baseline_mean": bl["faa_baseline_mean"],
+                                "eeg_faa_baseline_std": bl["faa_baseline_std"],
+                                "eeg_faa_baseline_ready": True,
+                            }
+                        )
                         self._faa_baseline_emitted = True
-                        print(f"[EEG] FAA resting baseline ready: "
-                              f"mean={bl['faa_baseline_mean']:.4f}  "
-                              f"std={bl['faa_baseline_std']:.4f}  "
-                              f"thresholds: approach>{self._faa_tracker._approach_thresh:.3f}  "
-                              f"withdraw<{self._faa_tracker._withdraw_thresh:.3f}")
+                        print(
+                            f"[EEG] FAA resting baseline ready: "
+                            f"mean={bl['faa_baseline_mean']:.4f}  "
+                            f"std={bl['faa_baseline_std']:.4f}  "
+                            f"thresholds: approach>{self._faa_tracker._approach_thresh:.3f}  "
+                            f"withdraw<{self._faa_tracker._withdraw_thresh:.3f}"
+                        )
 
                 # ── Headband prompt when SQI critically low ───────────────────
                 if self._sqi_tracker.should_headband_prompt():
-                    patch_live({
-                        "agent_message": {
-                            "text":         "The headband may need a small adjustment. "
-                                            "When you're ready, gently press it snug "
-                                            "against your forehead.",
-                            "ts":           time.time(),
-                            "needs_response": False,
-                            "via":          ["console", "tts"],
-                            "style":        {"voice_mode": "tts", "intensity": "soft",
-                                             "needs_response": False},
-                            "timeout_s":    None,
-                        }
-                    })
+                    cur = state.get("agent_message") or {}
+                    if not (isinstance(cur, dict) and cur.get("needs_response")):
+                        patch_live(
+                            {
+                                "agent_message": {
+                                    "text": "The headband may need a small adjustment. "
+                                    "When you're ready, gently press it snug "
+                                    "against your forehead.",
+                                    "ts": time.time(),
+                                    "needs_response": False,
+                                    "via": ["console", "tts"],
+                                    "style": {
+                                        "voice_mode": "tts",
+                                        "intensity": "soft",
+                                        "needs_response": False,
+                                    },
+                                    "timeout_s": None,
+                                }
+                            }
+                        )
 
                 # ── ASSR update (every 30s, 60s window, full SQI only) ─────────
                 session_elapsed = time.time() - self._session_start_wall
-                if (self._last_sqi_confidence == "full"
-                        and self._assr_tracker.should_update(session_elapsed)):
+                if (
+                    self._last_sqi_confidence == "full"
+                    and self._assr_tracker.should_update(session_elapsed)
+                ):
                     self._assr_update(eeg_channels, sampling_rate, session_elapsed)
 
                 self._stop.wait(timeout=1.0)
@@ -1313,8 +1436,9 @@ class EEGEngine:
 
     # ── Processing ────────────────────────────────────────────────────────────
 
-    def _process(self, eeg_data: np.ndarray, eeg_channels: list,
-                 sampling_rate: int) -> dict:
+    def _process(
+        self, eeg_data: np.ndarray, eeg_channels: list, sampling_rate: int
+    ) -> dict:
         """Compute SQI, gate downstream metrics, return live_control patch dict."""
         from brainflow.data_filter import DataFilter, DetrendOperations
 
@@ -1328,11 +1452,11 @@ class EEGEngine:
             raw_sqi.setdefault(ch, 0.0)
 
         smoothed, confidence = self._sqi_tracker.update(raw_sqi)
-        self._last_sqi_smoothed    = smoothed
-        self._last_sqi_confidence  = confidence
+        self._last_sqi_smoothed = smoothed
+        self._last_sqi_confidence = confidence
 
         composite = round(float(np.mean(list(smoothed.values()))), 3)
-        usable    = sum(1 for v in smoothed.values() if v >= 0.5)
+        usable = sum(1 for v in smoothed.values() if v >= 0.5)
 
         # Bible Ch.2 §2.9 §5.1 — IMU-aware SQI degradation.
         # Head movement introduces muscle artifact and electrode displacement noise.
@@ -1344,25 +1468,32 @@ class EEGEngine:
             composite = round(composite * 0.5, 3)
         self._suppress_trance_update = motion_contaminated
 
-        warming_up  = self._sqi_tracker._warmup_ctr > 0
-        quality_str = ("warming" if warming_up else
-                       {"full": "good", "reduced": "good",
-                        "low":  "poor", "none":    "unusable"}.get(confidence, "poor"))
+        warming_up = self._sqi_tracker._warmup_ctr > 0
+        quality_str = (
+            "warming"
+            if warming_up
+            else {
+                "full": "good",
+                "reduced": "good",
+                "low": "poor",
+                "none": "unusable",
+            }.get(confidence, "poor")
+        )
 
-        signal_lost = (confidence == "none")
+        signal_lost = confidence == "none"
         base = {
-            "eeg_connected":             True,
-            "eeg_quality":               quality_str,
-            "eeg_confidence":            confidence,
-            "eeg_sqi_tp9":               smoothed["tp9"],
-            "eeg_sqi_af7":               smoothed["af7"],
-            "eeg_sqi_af8":               smoothed["af8"],
-            "eeg_sqi_tp10":              smoothed["tp10"],
-            "eeg_sqi_composite":         composite,
-            "eeg_sqi_usable_channels":   usable,
-            "eeg_timestamp":             time.time(),
+            "eeg_connected": True,
+            "eeg_quality": quality_str,
+            "eeg_confidence": confidence,
+            "eeg_sqi_tp9": smoothed["tp9"],
+            "eeg_sqi_af7": smoothed["af7"],
+            "eeg_sqi_af8": smoothed["af8"],
+            "eeg_sqi_tp10": smoothed["tp10"],
+            "eeg_sqi_composite": composite,
+            "eeg_sqi_usable_channels": usable,
+            "eeg_timestamp": time.time(),
             # Bible Ch.7 §7.5: safety flag consumed by TMREngine and SlowWaveEnhancer
-            "eeg_signal_lost":           signal_lost,
+            "eeg_signal_lost": signal_lost,
         }
 
         # ── Step 2: Gate downstream metrics ───────────────────────────────────
@@ -1374,19 +1505,25 @@ class EEGEngine:
         try:
             clean = eeg_data.copy()
             for i in range(n_ch):
-                if smoothed.get(_CH_NAMES[i], 0.0) >= 0.3:   # use all non-dead channels
+                if smoothed.get(_CH_NAMES[i], 0.0) >= 0.3:  # use all non-dead channels
                     try:
                         DataFilter.detrend(clean[i], DetrendOperations.LINEAR.value)
                         DataFilter.perform_bandpass(
-                            clean[i], sampling_rate,
-                            1.0, 50.0, 4, 0, 0.0,
+                            clean[i],
+                            sampling_rate,
+                            1.0,
+                            50.0,
+                            4,
+                            0,
+                            0.0,
                         )
                     except Exception:
                         pass
 
             # Band powers — only over channels with acceptable SQI
-            clean_indices = [i for i in range(n_ch)
-                             if smoothed.get(_CH_NAMES[i], 0.0) >= 0.3]
+            clean_indices = [
+                i for i in range(n_ch) if smoothed.get(_CH_NAMES[i], 0.0) >= 0.3
+            ]
             if not clean_indices:
                 return base
 
@@ -1397,19 +1534,23 @@ class EEGEngine:
         except Exception:
             return base
 
-        total   = delta + theta + alpha + beta + gamma + 1e-12
+        total = delta + theta + alpha + beta + gamma + 1e-12
         delta_n = delta / total
         theta_n = theta / total
         alpha_n = alpha / total
-        beta_n  = beta  / total
+        beta_n = beta / total
         gamma_n = gamma / total
 
         # Narrow-band 40 Hz (GENUS monitoring — genus_protocol.md §5.3)
-        gamma_40hz  = 0.0
+        gamma_40hz = 0.0
         genus_ratio = 1.0
         try:
             g40 = DataFilter.get_custom_band_powers(
-                clean, [(38.0, 42.0)], clean_indices, sampling_rate, True,
+                clean,
+                [(38.0, 42.0)],
+                clean_indices,
+                sampling_rate,
+                True,
             )
             gamma_40hz = float(g40[0][0]) if g40 else 0.0
         except Exception:
@@ -1452,7 +1593,7 @@ class EEGEngine:
                 pass
 
         alpha_theta = alpha_n / (theta_n + 1e-12)
-        beta_alpha  = beta_n  / (alpha_n + 1e-12)
+        beta_alpha = beta_n / (alpha_n + 1e-12)
 
         # ── Step 4: SEF95 + spectral slope (reduced or full confidence) ───────
         sef95: float | None = None
@@ -1460,30 +1601,36 @@ class EEGEngine:
         if confidence in ("reduced", "full"):
             try:
                 from brainflow.data_filter import WindowOperations
+
                 nfft_sef = DataFilter.get_nearest_power_of_two(sampling_rate)
-                if nfft_sef >= sampling_rate:   # get_psd_welch requires nfft < data_len strictly
+                if (
+                    nfft_sef >= sampling_rate
+                ):  # get_psd_welch requires nfft < data_len strictly
                     nfft_sef //= 2
                 channel_psds = []
                 for i in clean_indices:
                     try:
                         psd_vals, psd_freqs = DataFilter.get_psd_welch(
-                            clean[i].copy(), nfft_sef, nfft_sef // 2,
-                            sampling_rate, WindowOperations.HAMMING.value,
+                            clean[i].copy(),
+                            nfft_sef,
+                            nfft_sef // 2,
+                            sampling_rate,
+                            WindowOperations.HAMMING.value,
                         )
                         channel_psds.append((psd_vals, psd_freqs))
                     except Exception:
                         pass
 
                 if channel_psds:
-                    avg_psd   = np.mean([p[0] for p in channel_psds], axis=0)
+                    avg_psd = np.mean([p[0] for p in channel_psds], axis=0)
                     freqs_sef = channel_psds[0][1]
 
                     mask_sef = freqs_sef >= 0.5
-                    p_sef    = avg_psd[mask_sef]
-                    f_sef    = freqs_sef[mask_sef]
+                    p_sef = avg_psd[mask_sef]
+                    f_sef = freqs_sef[mask_sef]
                     if len(p_sef) > 0:
-                        cum  = np.cumsum(p_sef)
-                        idx  = int(np.searchsorted(cum, 0.95 * cum[-1]))
+                        cum = np.cumsum(p_sef)
+                        idx = int(np.searchsorted(cum, 0.95 * cum[-1]))
                         sef95 = float(f_sef[min(idx, len(f_sef) - 1)])
 
                     mask_slope = (freqs_sef >= 2.0) & (freqs_sef <= 30.0)
@@ -1497,19 +1644,26 @@ class EEGEngine:
 
         # EMA smoothing
         if sef95 is not None:
-            self._ema_sef95 = (sef95 if self._ema_sef95 is None
-                               else self._ema_sef95 + self._EMA_ALPHA * (sef95 - self._ema_sef95))
+            self._ema_sef95 = (
+                sef95
+                if self._ema_sef95 is None
+                else self._ema_sef95 + self._EMA_ALPHA * (sef95 - self._ema_sef95)
+            )
         if spectral_slope is not None:
-            self._ema_slope = (spectral_slope if self._ema_slope is None
-                               else self._ema_slope + self._EMA_ALPHA * (spectral_slope - self._ema_slope))
+            self._ema_slope = (
+                spectral_slope
+                if self._ema_slope is None
+                else self._ema_slope
+                + self._EMA_ALPHA * (spectral_slope - self._ema_slope)
+            )
 
         # ── Step 4b: Interhemispheric coherence (Bible Ch.2 §2.8) ──────────────────────
         # Update the rolling 2-second buffer with clean (detrended+bandpass) data.
         # The buffer is [4 ch × 512 samples]: ch0=TP9, ch1=AF7, ch2=AF8, ch3=TP10
-        frontal_coh_result  = {"alpha_coh": 0.5, "theta_coh": 0.5, "beta_coh": 0.5}
+        frontal_coh_result = {"alpha_coh": 0.5, "theta_coh": 0.5, "beta_coh": 0.5}
         temporal_coh_result = {"theta_coh": 0.5}
-        beta_env_corr_val   = 1.0
-        coh_depth_val       = 0.0
+        beta_env_corr_val = 1.0
+        coh_depth_val = 0.0
         if n_ch >= 2:
             n_new = clean.shape[1]
             buf_len = self._coh_buffer.shape[1]
@@ -1523,21 +1677,27 @@ class EEGEngine:
 
         if confidence in ("reduced", "full") and self._coh_buffer_ready:
             try:
-                from eeg.depth_features import (compute_band_coherence,
-                                                 compute_beta_envelope_correlation,
-                                                 coherence_depth_indicator)
-                af7_buf  = self._coh_buffer[1]
-                af8_buf  = self._coh_buffer[2]
-                tp9_buf  = self._coh_buffer[0]
+                from eeg.depth_features import (
+                    compute_band_coherence,
+                    compute_beta_envelope_correlation,
+                    coherence_depth_indicator,
+                )
+
+                af7_buf = self._coh_buffer[1]
+                af8_buf = self._coh_buffer[2]
+                tp9_buf = self._coh_buffer[0]
                 tp10_buf = self._coh_buffer[3]
 
-                frontal_coh_result  = compute_band_coherence(
-                    af7_buf, af8_buf, fs=float(sampling_rate))
+                frontal_coh_result = compute_band_coherence(
+                    af7_buf, af8_buf, fs=float(sampling_rate)
+                )
                 temporal_coh_result = compute_band_coherence(
-                    tp9_buf, tp10_buf, fs=float(sampling_rate))
-                beta_env_corr_val   = compute_beta_envelope_correlation(
-                    af7_buf, af8_buf, fs=float(sampling_rate))
-                coh_depth_val       = coherence_depth_indicator(
+                    tp9_buf, tp10_buf, fs=float(sampling_rate)
+                )
+                beta_env_corr_val = compute_beta_envelope_correlation(
+                    af7_buf, af8_buf, fs=float(sampling_rate)
+                )
+                coh_depth_val = coherence_depth_indicator(
                     frontal_coh_result["alpha_coh"],
                     beta_env_corr_val,
                     temporal_coh_result["theta_coh"],
@@ -1548,23 +1708,28 @@ class EEGEngine:
         # EMA-smooth coherence depth
         if coh_depth_val != 0.0:
             self._ema_coh_depth = (
-                coh_depth_val if self._ema_coh_depth is None
-                else self._ema_coh_depth + self._EMA_ALPHA * (coh_depth_val - self._ema_coh_depth)
+                coh_depth_val
+                if self._ema_coh_depth is None
+                else self._ema_coh_depth
+                + self._EMA_ALPHA * (coh_depth_val - self._ema_coh_depth)
             )
         # Slope confidence: 1.0 for full, 0.5 for reduced
-        self._slope_confidence = 1.0 if confidence == "full" else (0.5 if confidence == "reduced" else 0.0)
+        self._slope_confidence = (
+            1.0 if confidence == "full" else (0.5 if confidence == "reduced" else 0.0)
+        )
 
         # ── Step 5: Trance score ───────────────────────────────────────────────
         def _norm(v, hi, lo):
             return max(0.0, min(1.0, (v - hi) / (lo - hi))) if (lo - hi) != 0 else 0.0
 
-        score_theta_alpha = max(0.0, min(1.0, (theta_n + 0.5 * delta_n) /
-                                               (alpha_n + beta_n + 1e-12) * 0.5))
+        score_theta_alpha = max(
+            0.0, min(1.0, (theta_n + 0.5 * delta_n) / (alpha_n + beta_n + 1e-12) * 0.5)
+        )
         if self._ema_sef95 is not None and self._ema_slope is not None:
             trance_score = (
-                0.4 * _norm(self._ema_sef95,  25.0, 8.0) +
-                0.3 * _norm(self._ema_slope,  -1.0, -3.0) +
-                0.3 * score_theta_alpha
+                0.4 * _norm(self._ema_sef95, 25.0, 8.0)
+                + 0.3 * _norm(self._ema_slope, -1.0, -3.0)
+                + 0.3 * score_theta_alpha
             )
         else:
             trance_score = score_theta_alpha
@@ -1575,10 +1740,11 @@ class EEGEngine:
         if getattr(self, "_suppress_trance_update", False):
             trance_score_v2 = getattr(self, "_last_trance_score_v2", trance_score)
         else:
-            trance_score_v2 = trance_score   # fallback: v1 until coherence is ready
+            trance_score_v2 = trance_score  # fallback: v1 until coherence is ready
             if self._ema_slope is not None and self._ema_coh_depth is not None:
                 try:
                     from eeg.depth_features import enhanced_trance_score
+
                     trance_score_v2 = enhanced_trance_score(
                         trance_score,
                         self._ema_slope,
@@ -1593,7 +1759,9 @@ class EEGEngine:
 
         # Widen adaptation thresholds at reduced confidence (Bible Ch.5 §5.3 §4.2)
         if confidence == "reduced":
-            trance_score = round(trance_score, 2)   # coarser precision signals lower trust
+            trance_score = round(
+                trance_score, 2
+            )  # coarser precision signals lower trust
 
         trance_score = round(max(0.0, min(1.0, trance_score)), 3)
 
@@ -1609,13 +1777,21 @@ class EEGEngine:
         else:
             eeg_state = "relaxed"
 
-        bands_named = [("delta", delta_n), ("theta", theta_n), ("alpha", alpha_n),
-                       ("beta", beta_n),   ("gamma", gamma_n)]
+        bands_named = [
+            ("delta", delta_n),
+            ("theta", theta_n),
+            ("alpha", alpha_n),
+            ("beta", beta_n),
+            ("gamma", gamma_n),
+        ]
         dominant = max(bands_named, key=lambda x: x[1])[0]
 
         # ── FAA (Bible Ch.6 §6.1) — requires reduced or full confidence ────────────────
-        faa_result = {"eeg_faa": 0.0, "eeg_faa_raw": 0.0,
-                      "eeg_faa_state": "insufficient_data"}
+        faa_result = {
+            "eeg_faa": 0.0,
+            "eeg_faa_raw": 0.0,
+            "eeg_faa_state": "insufficient_data",
+        }
         if confidence in ("reduced", "full"):
             faa_result = self._faa_tracker.compute(
                 eeg_data,
@@ -1624,39 +1800,52 @@ class EEGEngine:
                 sampling_rate=sampling_rate,
             )
 
-        base.update({
-            "eeg_dominant_band":      dominant,
-            "eeg_delta":              round(delta_n,    4),
-            "eeg_theta":              round(theta_n,    4),
-            "eeg_alpha":              round(alpha_n,    4),
-            "eeg_beta":               round(beta_n,     4),
-            "eeg_gamma":              round(gamma_n,    4),
-            "eeg_gamma_40hz":         round(gamma_40hz, 6),
-            "eeg_genus_ratio":        round(genus_ratio, 3),
-            "eeg_alpha_theta_ratio":  round(alpha_theta, 3),
-            "eeg_beta_alpha_ratio":   round(beta_alpha,  3),
-            "eeg_frontal_asymmetry":  round(frontal_asym, 4),
-            "eeg_trance_score":       trance_score,
-            "eeg_state":              eeg_state,
-            "eeg_iaf_hz":             self._iaf_hz,
-            "eeg_sef95":              round(self._ema_sef95, 2) if self._ema_sef95 is not None else None,
-            "eeg_spectral_slope":     round(self._ema_slope, 3) if self._ema_slope is not None else None,
-            # Bible Ch.2 §2.8 — three-axis depth markers
-            "eeg_slope_confidence":          round(self._slope_confidence, 2),
-            "eeg_coherence_frontal_alpha":   round(frontal_coh_result.get("alpha_coh", 0.5), 4),
-            "eeg_coherence_frontal_beta":    round(frontal_coh_result.get("beta_coh",  0.5), 4),
-            "eeg_coherence_temporal_theta":  round(temporal_coh_result.get("theta_coh", 0.5), 4),
-            "eeg_beta_env_corr":             round(beta_env_corr_val, 4),
-            "eeg_coherence_depth":           round(self._ema_coh_depth or 0.0, 4),
-            "eeg_trance_score_v2":           trance_score_v2,
-            **faa_result,
-        })
+        base.update(
+            {
+                "eeg_dominant_band": dominant,
+                "eeg_delta": round(delta_n, 4),
+                "eeg_theta": round(theta_n, 4),
+                "eeg_alpha": round(alpha_n, 4),
+                "eeg_beta": round(beta_n, 4),
+                "eeg_gamma": round(gamma_n, 4),
+                "eeg_gamma_40hz": round(gamma_40hz, 6),
+                "eeg_genus_ratio": round(genus_ratio, 3),
+                "eeg_alpha_theta_ratio": round(alpha_theta, 3),
+                "eeg_beta_alpha_ratio": round(beta_alpha, 3),
+                "eeg_frontal_asymmetry": round(frontal_asym, 4),
+                "eeg_trance_score": trance_score,
+                "eeg_state": eeg_state,
+                "eeg_iaf_hz": self._iaf_hz,
+                "eeg_sef95": round(self._ema_sef95, 2)
+                if self._ema_sef95 is not None
+                else None,
+                "eeg_spectral_slope": round(self._ema_slope, 3)
+                if self._ema_slope is not None
+                else None,
+                # Bible Ch.2 §2.8 — three-axis depth markers
+                "eeg_slope_confidence": round(self._slope_confidence, 2),
+                "eeg_coherence_frontal_alpha": round(
+                    frontal_coh_result.get("alpha_coh", 0.5), 4
+                ),
+                "eeg_coherence_frontal_beta": round(
+                    frontal_coh_result.get("beta_coh", 0.5), 4
+                ),
+                "eeg_coherence_temporal_theta": round(
+                    temporal_coh_result.get("theta_coh", 0.5), 4
+                ),
+                "eeg_beta_env_corr": round(beta_env_corr_val, 4),
+                "eeg_coherence_depth": round(self._ema_coh_depth or 0.0, 4),
+                "eeg_trance_score_v2": trance_score_v2,
+                **faa_result,
+            }
+        )
         return base
 
     # ── ASSR ──────────────────────────────────────────────────────────────────
 
-    def _assr_update(self, eeg_channels: list, sampling_rate: int,
-                     session_elapsed: float) -> None:
+    def _assr_update(
+        self, eeg_channels: list, sampling_rate: int, session_elapsed: float
+    ) -> None:
         """Compute ASSR entrainment strength and publish to live_control.json.
 
         Called from the main loop at 30-second intervals when SQI is full.
@@ -1664,21 +1853,21 @@ class EEGEngine:
         """
         try:
             n_samples = 60 * sampling_rate
-            data      = self.board.get_current_board_data(n_samples)
+            data = self.board.get_current_board_data(n_samples)
             if data.shape[1] < n_samples:
                 return  # not enough data yet
 
-            live      = _read_live()
+            live = _read_live()
             beat_freq = float(live.get("beat_frequency", 10.0))
-            iaf       = self._iaf_hz or 10.0
+            iaf = self._iaf_hz or 10.0
 
             # Check for alpha band ambiguity (beat ≈ IAF ± 1 Hz)
             alpha_ambiguous = abs(beat_freq - iaf) < 1.0
 
             n_ch = min(4, len(eeg_channels))
             ch_results: dict[str, dict] = {}
-            w_sum  = 0.0
-            w_tot  = 0.0
+            w_sum = 0.0
+            w_tot = 0.0
             ch_arrays: dict[str, np.ndarray] = {}
 
             for i in range(n_ch):
@@ -1687,27 +1876,29 @@ class EEGEngine:
                 if sqi_val < 0.5:
                     continue  # skip bad channels
 
-                ch_data         = data[eeg_channels[i], :]
+                ch_data = data[eeg_channels[i], :]
                 ch_arrays[ch_name] = ch_data
-                freqs, psd      = _assr_welch(ch_data, fs=sampling_rate)
+                freqs, psd = _assr_welch(ch_data, fs=sampling_rate)
                 if len(freqs) == 0:
                     continue
 
                 strength, ratio = _compute_entrainment_strength(freqs, psd, beat_freq)
-                w               = _CH_WEIGHTS_ASSR[ch_name]
+                w = _CH_WEIGHTS_ASSR[ch_name]
                 ch_results[ch_name] = {"strength": strength, "excess_ratio": ratio}
                 w_sum += strength * w
                 w_tot += w
 
             if w_tot == 0:
                 power_composite = 0.0
-                agreement       = "insufficient_channels"
+                agreement = "insufficient_channels"
             else:
                 power_composite = round(w_sum / w_tot, 3)
                 if len(ch_results) >= 3:
                     vals = [v["strength"] for v in ch_results.values()]
-                    sd   = float(np.std(vals))
-                    agreement = "high" if sd < 0.15 else "moderate" if sd < 0.30 else "low"
+                    sd = float(np.std(vals))
+                    agreement = (
+                        "high" if sd < 0.15 else "moderate" if sd < 0.30 else "low"
+                    )
                 else:
                     agreement = "insufficient_channels"
 
@@ -1718,59 +1909,73 @@ class EEGEngine:
             coherence_score = 0.0
             coh_tp = None
             coh_af = None
-            if (all(ch in ch_arrays for ch in ("tp9", "tp10", "af7", "af8"))
-                    and self._last_sqi_confidence == "full"):
+            if (
+                all(ch in ch_arrays for ch in ("tp9", "tp10", "af7", "af8"))
+                and self._last_sqi_confidence == "full"
+            ):
                 band_lo = max(0.5, beat_freq - 1.0)
                 band_hi = beat_freq + 1.0
                 coh_tp = band_coherence(
-                    ch_arrays["tp9"], ch_arrays["tp10"], fs=sampling_rate,
-                    f_low=band_lo, f_high=band_hi,
+                    ch_arrays["tp9"],
+                    ch_arrays["tp10"],
+                    fs=sampling_rate,
+                    f_low=band_lo,
+                    f_high=band_hi,
                 )
                 coh_af = band_coherence(
-                    ch_arrays["af7"], ch_arrays["af8"], fs=sampling_rate,
-                    f_low=band_lo, f_high=band_hi,
+                    ch_arrays["af7"],
+                    ch_arrays["af8"],
+                    fs=sampling_rate,
+                    f_low=band_lo,
+                    f_high=band_hi,
                 )
                 coherence_score = round(0.5 * coh_tp + 0.5 * coh_af, 3)
 
-            composite = composite_assr(power_composite, coherence_score, alpha_ambiguous)
+            composite = composite_assr(
+                power_composite, coherence_score, alpha_ambiguous
+            )
 
             self._assr_tracker.record(session_elapsed, composite, beat_freq)
             trend = self._assr_tracker.get_trend()
 
             patch: dict = {
-                "eeg_entrainment_strength":           composite,
-                "eeg_entrainment_power_strength":     power_composite,
-                "eeg_entrainment_coherence":          coherence_score,
-                "eeg_entrainment_coherence_tp":       coh_tp,
-                "eeg_entrainment_coherence_af":       coh_af,
-                "eeg_entrainment_confidence":         "active",
-                "eeg_entrainment_trend":              trend,
-                "eeg_entrainment_beat_freq":          beat_freq,
-                "eeg_entrainment_channel_agreement":  agreement,
+                "eeg_entrainment_strength": composite,
+                "eeg_entrainment_power_strength": power_composite,
+                "eeg_entrainment_coherence": coherence_score,
+                "eeg_entrainment_coherence_tp": coh_tp,
+                "eeg_entrainment_coherence_af": coh_af,
+                "eeg_entrainment_confidence": "active",
+                "eeg_entrainment_trend": trend,
+                "eeg_entrainment_beat_freq": beat_freq,
+                "eeg_entrainment_channel_agreement": agreement,
                 "eeg_entrainment_recommend_modality": None,
             }
 
             if alpha_ambiguous:
                 patch["eeg_entrainment_confidence"] = "alpha_overlap"
-                print(f"[EEG] ASSR: beat {beat_freq:.1f} Hz ≈ IAF {iaf:.1f} Hz — "
-                      "entrainment measurement ambiguous (alpha overlap)")
+                print(
+                    f"[EEG] ASSR: beat {beat_freq:.1f} Hz ≈ IAF {iaf:.1f} Hz — "
+                    "entrainment measurement ambiguous (alpha overlap)"
+                )
 
             # Modality switching logic — never during sleep sessions
             session_type = str(live.get("session_name", "") or "")
-            in_sleep     = "sleep" in session_type.lower()
+            in_sleep = "sleep" in session_type.lower()
 
             if not in_sleep and self._assr_tracker.should_switch_modality():
                 current_modality = str(live.get("beat_type", "binaural"))
                 if current_modality == "binaural":
                     patch["eeg_entrainment_recommend_modality"] = "isochronic"
-                    patch["eeg_entrainment_recommend_reason"]   = (
+                    patch["eeg_entrainment_recommend_reason"] = (
                         "binaural_assr_absent_2_consecutive — monaural beats "
                         "produce stronger cortical entrainment (Orozco Perez 2020)"
                     )
-                    print("[EEG] ASSR absent (binaural) — recommending switch to isochronic")
+                    print(
+                        "[EEG] ASSR absent (binaural) — recommending switch to isochronic"
+                    )
                 else:
                     patch["eeg_entrainment_recommend_modality"] = "frequency_shift"
-                    patch["eeg_entrainment_recommend_reason"]   = (
+                    patch["eeg_entrainment_recommend_reason"] = (
                         "isochronic_assr_also_absent — possible non-responder "
                         "at this frequency; consider +1 Hz shift"
                     )
@@ -1781,12 +1986,17 @@ class EEGEngine:
                 patch["eeg_entrainment_trend"] = "declining_sleep_expected"
 
             patch_live(patch)
-            coh_str = (f" coh={coherence_score:.2f}(tp={coh_tp:.2f},af={coh_af:.2f})"
-                       if coh_tp is not None else "")
-            print(f"[EEG] ASSR: strength={composite:.3f} power={power_composite:.3f}"
-                  f"{coh_str} trend={trend} agreement={agreement} "
-                  f"beat={beat_freq:.1f}Hz "
-                  f"{'(alpha-overlap)' if alpha_ambiguous else ''}")
+            coh_str = (
+                f" coh={coherence_score:.2f}(tp={coh_tp:.2f},af={coh_af:.2f})"
+                if coh_tp is not None
+                else ""
+            )
+            print(
+                f"[EEG] ASSR: strength={composite:.3f} power={power_composite:.3f}"
+                f"{coh_str} trend={trend} agreement={agreement} "
+                f"beat={beat_freq:.1f}Hz "
+                f"{'(alpha-overlap)' if alpha_ambiguous else ''}"
+            )
 
         except Exception as e:
             print(f"[EEG] ASSR update error: {e}")
@@ -1818,28 +2028,30 @@ class EEGEngine:
             print("[EEG] Cannot calibrate — engine not running.")
             return None
 
-        tick_s            = 5
+        tick_s = 5
         original_duration = duration_s  # immutable; used for the extend/accept gate
-        max_duration      = duration_s  # grows by 15 s on one extension
-        extended_once     = False
+        max_duration = duration_s  # grows by 15 s on one extension
+        extended_once = False
         iaf_result: float | None = None
-        last_hint_at  = 0.0
+        last_hint_at = 0.0
         all_data: np.ndarray | None = None
         iaf_cand: float | None = None  # always holds last good candidate
 
         print(f"[EEG] IAF calibration started ({duration_s:.0f}s).")
-        self._cal_state.update({
-            "calibration_status":          "recording",
-            "calibration_iaf_hz":          None,
-            "calibration_iaf_confidence":  0.0,
-            "calibration_channel_sqi":     {ch: 0.0 for ch in _CH_NAMES},
-            "calibration_hint":            "",
-            "calibration_time_remaining_s": int(max_duration),
-        })
+        self._cal_state.update(
+            {
+                "calibration_status": "recording",
+                "calibration_iaf_hz": None,
+                "calibration_iaf_confidence": 0.0,
+                "calibration_channel_sqi": {ch: 0.0 for ch in _CH_NAMES},
+                "calibration_hint": "",
+                "calibration_time_remaining_s": int(max_duration),
+            }
+        )
 
         self._calibration_data = []
-        self._calibrating      = True
-        elapsed                = 0
+        self._calibrating = True
+        elapsed = 0
 
         try:
             while elapsed < max_duration:
@@ -1854,8 +2066,8 @@ class EEGEngine:
                     continue
 
                 # Build arrays for confidence analysis
-                all_data  = np.concatenate(self._calibration_data, axis=1)
-                half_len  = all_data.shape[1] // 2
+                all_data = np.concatenate(self._calibration_data, axis=1)
+                half_len = all_data.shape[1] // 2
                 half_data = all_data[:, :half_len] if half_len >= 4 else None
 
                 sampling_rate = self._BoardShim.get_sampling_rate(self.board_id)
@@ -1872,16 +2084,22 @@ class EEGEngine:
                     last_hint_at = time.time()
 
                 remaining = int(max_duration - elapsed)
-                self._cal_state.update({
-                    "calibration_status":          "extending" if extended_once else "recording",
-                    "calibration_iaf_hz":          round(iaf_cand, 2) if iaf_cand else None,
-                    "calibration_iaf_confidence":  conf,
-                    "calibration_channel_sqi":     channel_sqi,
-                    "calibration_hint":            hint,
-                    "calibration_time_remaining_s": remaining,
-                })
-                print(f"[EEG] IAF calibration tick: elapsed={elapsed:.0f}s "
-                      f"iaf={iaf_cand} conf={conf:.2f} sqi={channel_sqi}")
+                self._cal_state.update(
+                    {
+                        "calibration_status": "extending"
+                        if extended_once
+                        else "recording",
+                        "calibration_iaf_hz": round(iaf_cand, 2) if iaf_cand else None,
+                        "calibration_iaf_confidence": conf,
+                        "calibration_channel_sqi": channel_sqi,
+                        "calibration_hint": hint,
+                        "calibration_time_remaining_s": remaining,
+                    }
+                )
+                print(
+                    f"[EEG] IAF calibration tick: elapsed={elapsed:.0f}s "
+                    f"iaf={iaf_cand} conf={conf:.2f} sqi={channel_sqi}"
+                )
 
                 # Accept/extend gate fires ONCE at the end of the original window.
                 # After an extension, we let the loop run to max_duration naturally.
@@ -1894,10 +2112,14 @@ class EEGEngine:
                         # Marginal — extend once and keep collecting
                         extended_once = True
                         max_duration = original_duration + 15
-                        self._cal_state.update({
-                            "calibration_status": "extending",
-                            "calibration_time_remaining_s": int(max_duration - elapsed),
-                        })
+                        self._cal_state.update(
+                            {
+                                "calibration_status": "extending",
+                                "calibration_time_remaining_s": int(
+                                    max_duration - elapsed
+                                ),
+                            }
+                        )
                         print("[EEG] IAF confidence insufficient — extending 15 s")
                     else:
                         # Too low to be worth extending — take what we have
@@ -1905,7 +2127,7 @@ class EEGEngine:
                         break
 
         finally:
-            self._calibrating      = False
+            self._calibrating = False
             self._calibration_data = []
 
         # If the loop exited naturally (hit max_duration without a break), accept
@@ -1915,14 +2137,16 @@ class EEGEngine:
 
         if iaf_result is None:
             print("[EEG] IAF detection failed — no clear alpha peak.")
-            self._cal_state.update({"calibration_status": "failed", "calibration_hint": ""})
+            self._cal_state.update(
+                {"calibration_status": "failed", "calibration_hint": ""}
+            )
             return None
 
         # Re-run final confidence on the accumulated data with a proper stability window
-        sampling_rate  = self._BoardShim.get_sampling_rate(self.board_id)
-        final_conf     = 0.0
+        sampling_rate = self._BoardShim.get_sampling_rate(self.board_id)
+        final_conf = 0.0
         if all_data is not None:
-            half_len   = all_data.shape[1] // 2
+            half_len = all_data.shape[1] // 2
             final_half = all_data[:, :half_len] if half_len >= 4 else None
             _, final_conf, _ = detect_iaf_with_confidence(
                 all_data, sampling_rate, half_data=final_half
@@ -1930,23 +2154,28 @@ class EEGEngine:
 
         print(f"[EEG] IAF accepted: {iaf_result:.2f} Hz  conf={final_conf:.2f}")
         self._iaf_hz = iaf_result
-        self._cal_state.update({
-            "eeg_iaf_hz":                 round(iaf_result, 2),
-            "eeg_needs_iaf_calibration":  False,
-            "calibration_status":         "done",
-            "calibration_iaf_confidence": final_conf,
-            "calibration_hint":           "",
-        })
+        self._cal_state.update(
+            {
+                "eeg_iaf_hz": round(iaf_result, 2),
+                "eeg_needs_iaf_calibration": False,
+                "calibration_status": "done",
+                "calibration_iaf_confidence": final_conf,
+                "calibration_hint": "",
+            }
+        )
         return iaf_result
 
     # ── Post-session data for scoring (Bible Ch.6 §6.3) ────────────────────────────────
 
-    def get_session_data_for_scoring(self, session_id: str,
-                                     session_preset: str = "",
-                                     duration_sec: int = 0,
-                                     target_band: tuple = (0.0, 8.0),
-                                     config_snapshot: dict | None = None,
-                                     freq_lead_data: dict | None = None) -> dict:
+    def get_session_data_for_scoring(
+        self,
+        session_id: str,
+        session_preset: str = "",
+        duration_sec: int = 0,
+        target_band: tuple = (0.0, 8.0),
+        config_snapshot: dict | None = None,
+        freq_lead_data: dict | None = None,
+    ) -> dict:
         """Return a dict suitable for SessionScorer.score_session().
 
         Copies the accumulated time-series buffers (sef95, assr, faa, sqi)
@@ -1954,33 +2183,35 @@ class EEGEngine:
         the next session resets the buffers.
         """
         live = _read_live()
-        veil_modes = [r.get("veil_mode") for r in list(self.history)
-                      if r.get("veil_mode")]
+        veil_modes = [
+            r.get("veil_mode") for r in list(self.history) if r.get("veil_mode")
+        ]
         from collections import Counter
+
         veil_primary = Counter(veil_modes).most_common(1)[0][0] if veil_modes else None
 
         snap = config_snapshot or {}
         if not snap:
             snap = {
-                "beat_type":       live.get("beat_type", "binaural"),
+                "beat_type": live.get("beat_type", "binaural"),
                 "veil_mode_primary": veil_primary,
-                "spiral_style":    live.get("spiral_style"),
-                "spiral_chaos":    live.get("spiral_chaos"),
-                "trail_decay":     live.get("trail_decay"),
+                "spiral_style": live.get("spiral_style"),
+                "spiral_chaos": live.get("spiral_chaos"),
+                "trail_decay": live.get("trail_decay"),
             }
 
         return {
-            "session_id":       session_id,
-            "session_preset":   session_preset,
-            "duration_sec":     duration_sec,
-            "target_band":      target_band,
-            "sef95_series":     list(self._series_sef95),
-            "assr_series":      list(self._series_assr),
-            "faa_series":       list(self._series_faa),
-            "sqi_series":       list(self._series_sqi),
-            "affirmation_windows": [],   # filled by agent if available
-            "config_snapshot":  snap,
-            "freq_lead_data":   freq_lead_data or {},
+            "session_id": session_id,
+            "session_preset": session_preset,
+            "duration_sec": duration_sec,
+            "target_band": target_band,
+            "sef95_series": list(self._series_sef95),
+            "assr_series": list(self._series_assr),
+            "faa_series": list(self._series_faa),
+            "sqi_series": list(self._series_sqi),
+            "affirmation_windows": [],  # filled by agent if available
+            "config_snapshot": snap,
+            "freq_lead_data": freq_lead_data or {},
         }
 
     # ── History ───────────────────────────────────────────────────────────────
@@ -1999,37 +2230,43 @@ class EEGEngine:
             vals = [r[key] for r in recent if isinstance(r.get(key), (int, float))]
             if len(vals) < 6:
                 return "stable"
-            first_half  = sum(vals[:len(vals) // 2]) / (len(vals) // 2)
-            second_half = sum(vals[len(vals) // 2:]) / (len(vals) - len(vals) // 2)
+            first_half = sum(vals[: len(vals) // 2]) / (len(vals) // 2)
+            second_half = sum(vals[len(vals) // 2 :]) / (len(vals) - len(vals) // 2)
             delta = second_half - first_half
-            if delta >  0.02: return "rising"
-            if delta < -0.02: return "falling"
+            if delta > 0.02:
+                return "rising"
+            if delta < -0.02:
+                return "falling"
             return "stable"
 
-        good_count   = sum(1 for r in recent if r.get("eeg_quality") == "good")
-        dominant_hist = [r.get("eeg_dominant_band", "") for r in recent
-                         if r.get("eeg_dominant_band")]
+        good_count = sum(1 for r in recent if r.get("eeg_quality") == "good")
+        dominant_hist = [
+            r.get("eeg_dominant_band", "") for r in recent if r.get("eeg_dominant_band")
+        ]
 
-        faa_hist = [r.get("eeg_faa_state", "") for r in recent if r.get("eeg_faa_state")]
-        approach_pct = (round(faa_hist.count("approach") / len(faa_hist), 2)
-                        if faa_hist else 0.0)
+        faa_hist = [
+            r.get("eeg_faa_state", "") for r in recent if r.get("eeg_faa_state")
+        ]
+        approach_pct = (
+            round(faa_hist.count("approach") / len(faa_hist), 2) if faa_hist else 0.0
+        )
 
         return {
-            "samples":               len(recent),
-            "period_minutes":        round(len(recent) / 60, 1),
+            "samples": len(recent),
+            "period_minutes": round(len(recent) / 60, 1),
             "trend": {
                 "alpha": _trend("eeg_alpha"),
                 "theta": _trend("eeg_theta"),
-                "beta":  _trend("eeg_beta"),
-                "faa":   _trend("eeg_faa"),
+                "beta": _trend("eeg_beta"),
+                "faa": _trend("eeg_faa"),
             },
             "avg_alpha_theta_ratio": _avg("eeg_alpha_theta_ratio"),
-            "avg_beta_alpha_ratio":  _avg("eeg_beta_alpha_ratio"),
-            "avg_trance_score":      _avg("eeg_trance_score"),
-            "avg_sqi_composite":     _avg("eeg_sqi_composite"),
-            "avg_entrainment":       _avg("eeg_entrainment_strength"),
-            "avg_faa":               _avg("eeg_faa"),
-            "faa_approach_pct":      approach_pct,
+            "avg_beta_alpha_ratio": _avg("eeg_beta_alpha_ratio"),
+            "avg_trance_score": _avg("eeg_trance_score"),
+            "avg_sqi_composite": _avg("eeg_sqi_composite"),
+            "avg_entrainment": _avg("eeg_entrainment_strength"),
+            "avg_faa": _avg("eeg_faa"),
+            "faa_approach_pct": approach_pct,
             "dominant_band_history": dominant_hist[-10:],
-            "quality_good_pct":      round(good_count / len(recent), 2),
+            "quality_good_pct": round(good_count / len(recent), 2),
         }

@@ -2,7 +2,7 @@
 somna_agent.py  —  Somna LLM Session Agent
 ============================================
 A standalone agent that drives a live Somna session using an LLM.
-Run alongside main.py (not instead of it).
+Run alongside main_imgui.py (not instead of it).
 
 Usage
 -----
@@ -5639,16 +5639,18 @@ class SomnaAgent:
         if tts:
             via.append("tts")
 
+        msg_ts = time.time()
         patch: dict = {
             "agent_message": {
                 "text": text,
-                "ts": time.time(),
+                "ts": msg_ts,
                 "needs_response": needs_response,
                 "via": via,
                 "style": resolved_style,
                 "timeout_s": timeout_s,
             },
         }
+        self._last_msg_ts = msg_ts
         if needs_response:
             patch["user_response"] = None
             patch["response_timestamp"] = None
@@ -5662,8 +5664,13 @@ class SomnaAgent:
         return None
 
     def _clear_message(self) -> None:
-        """Clear the active agent message overlay (call after dwell or response)."""
-        self._write_live({"agent_message": None})
+        """Clear the active agent message — only if it is still ours (ts match)."""
+        live = self._read_live()
+        cur = live.get("agent_message") or {}
+        if isinstance(cur, dict) and cur.get("ts") == getattr(
+            self, "_last_msg_ts", None
+        ):
+            self._write_live({"agent_message": None})
 
     # ── Session builder ───────────────────────────────────────────────────────
 

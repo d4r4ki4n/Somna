@@ -21,7 +21,7 @@ Three corrections to the original spec that the writing agent got wrong:
 
 ## 1. Executive Summary
 
-One new module (`eeg_engine.py`), one new knowledge file (`knowledge/eeg_entrainment.md`), minor additions to `control_panel.py`, `somna_agent.py`, and `agent_config.yaml`. Everything else stays the same.
+One new module (`eeg_engine.py`), one new knowledge file (`knowledge/eeg_entrainment.md`), minor additions to `control_panel_imgui.py`, `somna_agent.py`, and `agent_config.yaml`. Everything else stays the same.
 
 Integration pattern: EEG data flows through `live_control.json` as read-only keys — exactly like `session_time`, `session_duration`, and `display_active` already do. The agent reads these keys from state and factors them into its existing decision loop. No new threads inside `somna_agent.py`. No new IPC mechanisms.
 
@@ -54,7 +54,7 @@ The only genuinely new components are EEG acquisition/processing and GENUS-speci
 
 **Purpose:** Acquire raw EEG from Muse 2 via BrainFlow, process into band power metrics, write results to `live_control.json` as read-only keys.
 
-**Pattern:** Same as `timeline_runner.py` — a background thread started from `control_panel.py`, writing to `live_control.json` via `_patch_live()`.
+**Pattern:** Same as `timeline_runner.py` — a background thread started from `control_panel_imgui.py`, writing to `live_control.json` via `_patch_live()`.
 
 ### Thread Lifecycle
 - Started by "Start EEG" button in control panel (or auto-start if `eeg_auto_connect: true`)
@@ -371,7 +371,7 @@ Add to `requirements.txt`. BrainFlow handles all Muse 2 communication, signal pr
 |------|--------|------|
 | `eeg_engine.py` | NEW | BrainFlow acquisition + processing thread |
 | `knowledge/eeg_entrainment.md` | NEW | Agent knowledge file for EEG interpretation |
-| `control_panel.py` | MODIFY | Add EEG section (connect buttons, band power bars, quality badge) |
+| `control_panel_imgui.py` | MODIFY | Add EEG section (connect buttons, band power bars, quality badge) |
 | `somna_agent.py` | MODIFY | Include EEG state block in LLM context when `eeg_connected` is true |
 | `agent_config.yaml` | MODIFY | Add `eeg_enabled`, `eeg_synthetic`, `eeg_board_id`, `eeg_auto_connect`, `output_device` |
 | `content_tools/__init__.py` | MODIFY | Register `read_eeg_history` tool |

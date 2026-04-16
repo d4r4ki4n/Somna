@@ -12,7 +12,7 @@ Protocol: newline-delimited JSON over loopback TCP (port 6789).
 The server responds with nothing (fire-and-forget from the client side).
 Every write uses temp-file + os.replace() for atomic NTFS visibility.
 
-Usage (started automatically by control_panel.py):
+Usage (started automatically by control_panel_imgui.py):
     from ipc.state_server import StateServer
     srv = StateServer(Path("live_control.json"))
     srv.start()   # non-blocking; runs as a daemon thread
@@ -33,8 +33,8 @@ _BACKLOG = 64
 
 class StateServer:
     def __init__(self, live_path: Path) -> None:
-        self._live   = live_path
-        self._lock   = threading.Lock()   # serialises every write
+        self._live = live_path
+        self._lock = threading.Lock()  # serialises every write
         self._sock: socket.socket | None = None
         self._running = False
         self._thread: threading.Thread | None = None
@@ -68,8 +68,10 @@ class StateServer:
             try:
                 conn, _ = self._sock.accept()
                 threading.Thread(
-                    target=self._handle_client, args=(conn,),
-                    daemon=True, name="StateClient-handler"
+                    target=self._handle_client,
+                    args=(conn,),
+                    daemon=True,
+                    name="StateClient-handler",
                 ).start()
             except Exception:
                 break
@@ -89,7 +91,7 @@ class StateServer:
                         continue
                     try:
                         msg = json.loads(line.decode("utf-8"))
-                        op  = msg.get("op")
+                        op = msg.get("op")
                         if op == "patch":
                             self._apply_patch(msg["data"])
                         elif op == "write":
@@ -118,7 +120,7 @@ class StateServer:
                 data = {}
             for k, v in updates.items():
                 if v is None:
-                    data.pop(k, None)   # None = delete the key
+                    data.pop(k, None)  # None = delete the key
                 else:
                     data[k] = v
             self._atomic_write(data)
@@ -142,6 +144,7 @@ class StateServer:
 
 if __name__ == "__main__":
     import sys
+
     root = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent.parent
     live = root / "live_control.json"
     print(f"[StateServer] Starting on port {PORT}  live={live}")

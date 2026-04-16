@@ -1,10 +1,8 @@
-"""Somna ImGui control panel entry point.
+"""Somna control panel entry point.
 
 Run with:   python main_imgui.py
-Or:         python -m control_panel_imgui    (not available, use this file)
-
-The legacy Tkinter panel is still available via:  python main.py
 """
+
 import sys
 from pathlib import Path
 

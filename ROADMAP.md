@@ -348,24 +348,21 @@ _Core sleep detection and TMR are built. These are the novel session types and a
 
 ### \### Tier 3 — Console Migration (Tkinter → ImGui)
 
-_Tkinter panel is production-complete. ImGui migration is started but early-stage._
+_✅ SHIPPED April 2026. Tkinter panel (control_panel.py) is obsolete; main_imgui.py is the production entry point._
 
-| **Item** | **Bible Spec** | **Notes** |
+| **Item** | **Bible Spec** | **Status** |
 | --- | --- | --- |
-| ImGui three-panel layout | Ch.9 §3–§5 | Replace two-column Tkinter layout with Bible-spec three-panel: control, telemetry, console |
-| --- | --- | --- |
-| Rosé Pine Moon ImGui theme | Ch.9 §6, Ch.8 §4 | Full imgui.push_style_color() implementation from RP palette dict; the ONLY palette |
-| --- | --- | --- |
-| Widget taxonomy implementation | Ch.9 §7–§8 | Sliders, combo boxes, transport bar, waveform display, session treeview — all ported to ImGui equivalents |
-| --- | --- | --- |
-| Telemetry dashboard | Ch.9 §19–§20 | Real-time biosignal display, trance score graph, sleep metrics panel, conditioning status |
-| --- | --- | --- |
-| Console bus migration | Ch.9 §26 | Agent↔console messaging ported from Tkinter text widget to ImGui console panel |
-| --- | --- | --- |
-| Sleep telemetry panel | Ch.7 §20, Ch.9 §20 | Sleep stage hypnogram, spindle density graph, SWE burst log, TMR cue timeline |
-| --- | --- | --- |
-| Edison Mode capture log viewer | Ch.7 §14, Ch.9 §14 | Hypnagogic capture history with playback and annotation |
-| --- | --- | --- |
+| ImGui docking layout | Ch.9 §3–§5 | ✅ hello_imgui dockable windows, 4 mandatory + dynamic section docks |
+| Rosé Pine Moon ImGui theme | Ch.9 §6, Ch.8 §4 | ✅ Full token table, fonts, badge colors in panel_theme.py |
+| Data-driven widget system | Ch.9 §7–§8 | ✅ 138 widgets from panel_config.json; all 15 widget types implemented |
+| Biosignal dashboard | Ch.9 §19–§20 | ✅ 4-tab ImPlot telemetry (EEG Overview, Alpha Detail, Cardiac, Respiratory) |
+| Console bus migration | Ch.9 §26 | ✅ SpectrogramConsole with agent/warn/EEG/user tag inference |
+| Agent prompt dialog | Ch.9 §26 | ✅ Subprocess dialog with voice input, TOPMOST fight, countdown |
+| Panel toggle system | Ch.9 §3 | ✅ 7 domain groups, dynamic section windows, ini persistence |
+| Session player | Ch.9 §3 | ✅ Dockable session browser, transport, seek, queue |
+| Waveform display | Ch.9 §8 | ✅ Binaural waveform in console spectrogram |
+| Memory viewer | Ch.9 §26 | ✅ Profile viewer modal |
+| Agent messaging bus | Ch.5 §13, Ch.9 §26 | ✅ Clobber guards on all 6 writers; ts-gated clearing; skip-response fix |
 
 > **Design decision (April 2026):** All log/data viewers (Edison captures, session logs, sleep hypnograms, conductor decisions, TMR replay logs) should be unified into a **single comprehensive log exploration tool** before any individual viewer is built. The data complexity deserves a viewing tool that complements it. Individual viewers are blocked until this unified design exists. Giga low priority — do not build until the rest of the stack is mature.
 | Training mode panel | Ch.6 §11, Ch.9 §11 | Conditioning status, habituation curves, active paradigm, rotation schedule |
@@ -443,9 +440,9 @@ Use this table to understand what must ship before what. Items in the same tier 
 | --- | --- | --- |
 | Tier 2 (HabituationManager) | Tier 5 (initial habituation baseline in onboarding) | Onboarding seeds the habituation model |
 | --- | --- | --- |
-| Tier 4 (ImGui migration) | Tier 5 (FTUE console walkthrough) | Can't build a walkthrough for a UI that's about to change |
+| ~~Tier 4 (ImGui migration)~~ | Tier 5 (FTUE console walkthrough) | ✅ Tier 3 shipped — FTUE walkthrough now unblocked |
 | --- | --- | --- |
-| Tier 4 (sleep telemetry panel) | ~~Tier 3 (Edison Mode UI)~~ | Blocked on unified log exploration tool design decision (April 2026) — all individual log viewers deferred |
+| Tier 3 (sleep telemetry) | Edison Mode UI | Blocked on unified log exploration tool design decision (April 2026) — all individual log viewers deferred |
 | --- | --- | --- |
 | ~~Tier 1 (haptic drivers)~~ | ~~Tier 5 (hardware discovery wizard)~~ | ✅ Shipped — discovery wizard can now scan for haptic/taVNS devices |
 | --- | --- | --- |

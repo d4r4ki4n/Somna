@@ -346,6 +346,16 @@ class ControlPanelImGui:
         if "section_order" in _geom0:
             self._panel_manager._section_order = _geom0["section_order"]
 
+        # Clear orphaned agent state from a previous crashed session
+        try:
+            live = self._cfg.update()
+            if live.get("agent_message"):
+                patch_live({"agent_message": None})
+            if live.get("session_time"):
+                patch_live({"session_time": 0})
+        except Exception:
+            pass
+
         # Start audio engines and background polls
         self._start_audio()
         self._schedule_audio_poll()
@@ -553,11 +563,16 @@ class ControlPanelImGui:
                 self._agent_msg_ts = msg_ts
                 text = agent_msg["text"]
                 via = agent_msg.get("via", [])
+
+                if text.startswith("[EEG"):
+                    self._console.warn(text, src="EEG")
+                elif "silent" in text.lower() and "headband" in text.lower():
+                    self._console.warn(text, src="warn")
+                else:
+                    self._console.agent(text)
+
                 needs_r = bool(agent_msg.get("needs_response", False))
                 timeout_s = agent_msg.get("timeout_s")
-
-                if "console" in via or True:  # always log
-                    self._console.agent(text)
 
                 if needs_r and (
                     self._prompt_proc is None or self._prompt_proc.poll() is not None
@@ -566,6 +581,13 @@ class ControlPanelImGui:
                     if timeout_s:
                         args.append(str(float(timeout_s)))
                     self._prompt_proc = subprocess.Popen(args, cwd=str(self._root))
+
+        # Echo user responses back to console
+        resp_ts = live.get("response_timestamp")
+        if resp_ts is not None and resp_ts != getattr(self, "_last_resp_ts", None):
+            self._last_resp_ts = resp_ts
+            resp = live.get("user_response")
+            self._console.info(f"You: {resp}" if resp else "You: (skipped)", src="you")
 
         # Legacy agent_console_response channel
         console_resp = live.get("agent_console_response") or ""

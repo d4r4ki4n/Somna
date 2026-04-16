@@ -34,7 +34,7 @@ This file captures implementation details, coding conventions, and codebase patt
 
 \## Project identity
 
-The project is called \*\*Somna\*\*. There are two control panel entry points: \`main.py\` (legacy Tkinter panel) and \`main_imgui.py\` (new Dear ImGui panel). The display window is spawned as a subprocess via \`visual_display_runner.py\`. All communication between processes flows through a single JSON file: \`live_control.json\`.
+The project is called \*\*Somna\*\*. The control panel entry point is \`main_imgui.py\` (Dear ImGui panel). The display window is spawned as a subprocess via \`visual_display_runner.py\`. All communication between processes flows through a single JSON file: \`live_control.json\`.
 
 \---
 
@@ -44,17 +44,17 @@ The project is called \*\*Somna\*\*. There are two control panel entry points: \
 
 |---------------|------|
 
-| \`ipc/state_server.py\` | Single-writer daemon for \`live_control.json\`; started by \`control_panel.py\`; serialises all writes via loopback TCP port 6789 |
+| \`ipc/state_server.py\` | Single-writer daemon for \`live_control.json\`; started by \`control_panel_imgui.py\`; serialises all writes via loopback TCP port 6789 |
 
 | \`ipc/state_client.py\` | Per-process client; exports \`patch_live(updates)\` and \`write_live(data)\`; auto-reconnects; fire-and-forget queue |
 
 | \`ipc/\__init_\_.py\` | Re-exports \`patch_live\`, \`write_live\`, \`StateServer\`, \`PORT\` |
 
-| \`control_panel.py\` | Legacy Tkinter UI; session management; starts \`StateServer\` in \`\__init_\_\`; all live writes via \`patch_live()\` |
+| \`control_panel_imgui.py\` | Dear ImGui control panel; session management; starts \`StateServer\` in \`\__init_\_\`; all live writes via \`patch_live()\` |
 
-| \`control_panel_imgui.py\` | New Dear ImGui control panel (\`ControlPanelImGui\`); reads state via \`ConfigManager.update()\` every frame; writes via \`patch_live()\`; launched via \`main_imgui.py\` |
+| \`control_panel_imgui.py\` | Dear ImGui control panel (\`ControlPanelImGui\`); reads state via \`ConfigManager.update()\` every frame; writes via \`patch_live()\`; launched via \`main_imgui.py\` |
 
-| \`main_imgui.py\` | New entry point for the ImGui panel; \`python main_imgui.py\` to launch |
+| \`main_imgui.py\` | Entry point for the ImGui panel; \`python main_imgui.py\` to launch |
 
 | \`ui/\__init_\_.py\` | \`ui\` package — Dear ImGui panel helper modules |
 
@@ -82,7 +82,7 @@ The project is called \*\*Somna\*\*. There are two control panel entry points: \
 
 | \`freq_leader.py\` | Adaptive frequency leading (meet-and-lead); mirrors user's brainwave dominant frequency then leads it toward target; runs as background thread inside agent process |
 
-| \`session_scorer.py\` | Session effectiveness scoring; triggered by \`control_panel.py\` when display stops; writes to \`somna.db\` \`session_metrics\` table |
+| \`session_scorer.py\` | Session effectiveness scoring; triggered by \`control_panel_imgui.py\` when display stops; writes to \`somna.db\` \`session_metrics\` table |
 
 | \`eeg/\` | EEG acquisition and signal processing package (\`from eeg.eeg_engine import EEGEngine\`) |
 
@@ -196,11 +196,11 @@ When the user moves a slider, the touched param is added to \`timeline_locked_pa
 
 \- \`session_folder\` — set before sending \`\_timeline_cmd: "load"\`
 
-\*\*Agent display commands\*\* — written by \`somna_agent.py\`, consumed by \`control_panel.py\` in \`\_poll_session_state()\`:
+\*\*Agent display commands\*\* — written by \`somna_agent.py\`, consumed by \`control_panel_imgui.py\` in \`\_poll_session_state()\`:
 
-\- \`\_agent_stop_display\` — bool; when \`True\`, \`control_panel.py\` calls \`\_stop_display()\` and clears the key. Used by \`\_nudge_advance()\` when a nudge session exceeds \`nudge_max_session_minutes\`. Never set by timeline_runner — this is an agent-to-panel command only.
+\- \`\_agent_stop_display\` — bool; when \`True\`, \`control_panel_imgui.py\` calls \`\_stop_display()\` and clears the key. Used by \`\_nudge_advance()\` when a nudge session exceeds \`nudge_max_session_minutes\`. Never set by timeline_runner — this is an agent-to-panel command only.
 
-\*\*Agent prompt/response loop\*\* — used between \`somna_agent.py\` and \`control_panel.py\`:
+\*\*Agent prompt/response loop\*\* — used between \`somna_agent.py\` and \`control_panel_imgui.py\`:
 
 \- \`agent_message\` — \*\*unified channel\*\* written by \`SomnaAgent.\_say()\`; dict with keys:
 
@@ -384,7 +384,7 @@ When the user moves a slider, the touched param is added to \`timeline_locked_pa
 
 \*\*FAA calibration handoff\*\* — one-shot flag:
 
-\- \`eeg_faa_baseline_ready\` — bool; set \`true\` by \`eeg_engine.py\` when the resting FAA baseline is ready to be persisted. \`control_panel.py\` reads it in \`\_poll_eeg_status\`, saves to \`user_profile.json\`, and clears the flag.
+\- \`eeg_faa_baseline_ready\` — bool; set \`true\` by \`eeg_engine.py\` when the resting FAA baseline is ready to be persisted. \`control_panel_imgui.py\` reads it in \`\_poll_eeg_status\`, saves to \`user_profile.json\`, and clears the flag.
 
 \*\*Agent console\*\* — bidirectional text channel between control panel and agent:
 
@@ -402,181 +402,16 @@ When the user moves a slider, the touched param is added to \`timeline_locked_pa
 
 \*\*Display lifecycle\*\* — written by \`visual_display.py\`:
 
-\- \`display_active\` — bool; \`True\` when the display render loop is running, \`False\` after it exits. Written via a minimal \`\_patch_live()\` helper inside \`visual_display.py\`. Consumed by \`somna_agent.py\` to detect session start/end edges (post-session summary trigger, staleness detection) and by \`\_poll_audio()\` in \`control_panel.py\` to gate TTS affirmation playback to active sessions.
+\- \`display_active\` — bool; \`True\` when the display render loop is running, \`False\` after it exits. Written via a minimal \`\_patch_live()\` helper inside \`visual_display.py\`. Consumed by \`somna_agent.py\` to detect session start/end edges (post-session summary trigger, staleness detection) and by \`\_poll_audio()\` in \`control_panel_imgui.py\` to gate TTS affirmation playback to active sessions.
 
-\- \`tts_playing\` — str or null; phrase currently being spoken by \`TTSEngine\`. Written by \`control_panel.py\` \`\_poll_audio()\` when a phrase is popped and sent to the channel. Read by \`CenterTextLayer\` in the display for phrase-sync text display (replaces the old \`poll_ready()\` call from the render loop).
-
-\---
-
-\## Control panel layout rules (LEGACY — TKINTER)
-
-\> \*\*This section documents the current Tkinter implementation.\*\* The canonical ImGui target architecture is specified in Bible Ch.9. Tkinter remains the running code during migration.
-
-The panel uses a hybrid \`pack\` + \`grid\` layout. At the top level, \`outer_hbox\` is a horizontal \`pack\` container with two siblings:
-
-\`\`\`
-
-outer_hbox (pack, fill="both", expand=True)
-
-├── \_col_sessions (pack, side="left", fill="y", width=350, pack_propagate=False)
-
-│ └── \_build_session_col() — SESSION treeview + queue listbox + launch buttons
-
-└── content_area (pack, side="left", fill="both", expand=True)
-
-├── console panel (row=0, columnspan=2) — CONSOLE + agent filter checkboxes
-
-├── \_col_left (row=1, col=0) — BINAURAL BEATS · VOICE · BRAINWAVE MONITOR · OVERLAY
-
-├── \_col_right (row=1, col=1) — VISUAL OVERLAY · SUBLIMINAL AFFIRMATIONS · SPIRALS · EEG (moved here)
-
-└── wave panel (row=2, columnspan=2) — BINAURAL WAVEFORM (PIL-rendered canvas)
-
-\`\`\`
-
-The session column is a \`pack\` sibling of the scrollable content area — it is \*\*not\*\* inside the scroll canvas. This is critical: it must have a fixed \`width=\` and \`pack_propagate(False)\` to prevent geometry feedback loops.
-
-\*\*Panel names (as displayed in the UI):\*\*
-
-| Section title | Accent | Builder |
-
-|---|---|---|
-
-| SESSION | iris | \`\_build_session_col\` |
-
-| BINAURAL BEATS | foam | \`\_build_left_col\` |
-
-| VOICE | rose | \`\_build_left_col\` |
-
-| BRAINWAVE MONITOR | pine | \`\_build_left_col\` |
-
-| OVERLAY | muted | \`\_build_right_col\` |
-
-| VISUAL OVERLAY | subtle | \`\_build_right_col\` |
-
-| SUBLIMINAL AFFIRMATIONS | rose | \`\_build_right_col\` |
-
-| SPIRALS | gold | \`\_build_right_col\` |
-
-| BINAURAL WAVEFORM | foam | \`\_build_wave_panel\` |
-
-\*\*Sections\*\* are created via \`self.\_section(parent, title, accent_color)\` which returns a \`body\` frame. The helper calls \`.upper()\` on the title automatically — pass the display name in title case. All section content goes into the body frame using \`.grid()\`.
-
-\*\*Sliders\*\* are created via \`self.\_slider(parent, row, lo, hi, res=1)\` which uses these fixed style params:
-
-\`\`\`python
-
-bg=RP\["surface"\], fg=RP\["text"\], troughcolor=RP\["overlay"\],
-
-activebackground=RP\["iris"\], highlightthickness=0, bd=0,
-
-sliderrelief="flat", sliderlength=14, width=6, font=FONT_SMALL
-
-\`\`\`
-
-Always use \`\_slider()\` for consistency — never construct a \`tk.Scale\` with different style params.
-
-\*\*Labels\*\* for sliders use \`\_plabel(parent, text, row, param_key)\` which registers the label so it turns gold when that param is in \`timeline_locked_params\`.
-
-\*\*Comboboxes\*\* use \`self.\_combobox(parent, values, row)\`.
-
-\*\*Button style constants\*\* (for transport / small buttons):
-
-\`\`\`python
-
-bg=RP\["overlay"\], fg=RP\["text"\],
-
-activebackground=RP\["hl_high"\], activeforeground=RP\["text"\],
-
-relief="flat", bd=0, width=3, pady=2, cursor="hand2"
-
-\`\`\`
-
-\*\*Launch buttons\*\* (Start Agent / Start Session / Start Beats) use \`columnconfigure((0,1,2), weight=1, uniform="btns")\` so all three are always equal width. Do not set \`width=\` on these buttons — it fights the grid stretch.
-
-\*\*Do not pack \`agent_status_lbl\`\*\* — it was removed from the layout. The agent button text changes directly to reflect agent state.
-
-\*\*\`\_update()\` is surgical\*\* — it diffs widget values against \`\_last_ui_snapshot\` and only writes params that actually changed. Never write all params unconditionally; the timeline runner treats any changed value as a user lock.
-
-\*\*\`\_load_current_values()\` must guard with \`\_ui_syncing = True\`\*\* before calling \`.set()\` on sliders. Tkinter \`Scale\` widgets fire their \`command\` callback on \`.set()\`, which triggers \`\_update()\`. During startup \`\_last_ui_snapshot\` is still \`{}\`, so every value looks dirty and clobbers \`live_control.json\`.
-
-\*\*\`\_tbtn()\` helper\*\* — creates consistently styled transport buttons. Always pass extra style overrides as \`\*\*kwargs\` so they are merged with defaults via \`opts.update(kw)\`. Never pass \`fg=\` both in the helper defaults AND as a kwarg (duplicate keyword argument error).
-
-\*\*Binaural waveform panel\*\* — \`\_build_wave_panel()\` adds a PIL-rendered canvas spanning both control columns below the fold. Rendering uses \`PIL.ImageDraw\` + \`ImageFilter.GaussianBlur\` for the glow bloom; the result is pushed as a single \`PhotoImage\` via \`c.itemconfig(\_wave_img_id, image=photo)\`. Keep a strong reference in \`self.\_wave_photo\` to prevent GC. When \`audio_muted\` is True the canvas is cleared and \`\_wave_img_id\` is set to \`None\` so the item is re-created (not \`itemconfig\`-d onto a dead ID) when audio resumes.
-
-\*\*Window geometry persistence\*\* — \`window_geometry\` is stored in \`user_settings.json\` via a debounced \`&lt;Configure&gt;\` binding (500 ms). It is in \`\_USER_SETTINGS_KEYS\` and restored at startup before \`mainloop()\`.
-
-\*\*Voice input\*\* — the agent response dialog has a mic button that records audio and transcribes via KoboldCpp's \`/v1/audio/transcriptions\` endpoint (Whisper-compatible). Implemented as \`\_VoiceRecorder\` class with VAD (voice-activity detection): records until silence is detected after speech. Config keys in \`agent_config.yaml\` under \`whisper:\` block. The mic button submits the transcription directly as the user's response.
-
-\*\*Memory viewer\*\* — a "Memory" button in the Agent Console section opens a \`Toplevel\` dialog showing the current \`user_profile.json\` formatted as readable text. Implemented as \`\_show_memory_dialog()\`. Allows the user to see what the agent knows about them without editing the file directly.
-
-\*\*Nudge popup removed\*\* — \`\_check_pending_nudge()\` has been deleted from \`control_panel.py\`. The ghost nudge mechanism in the agent still works, but the old Tkinter dialog that showed the raw LLM \`nudge_reason\` text verbatim has been removed.
+\- \`tts_playing\` — str or null; phrase currently being spoken by \`TTSEngine\`. Written by \`control_panel_imgui.py\` \`\_poll_audio()\` when a phrase is popped and sent to the channel. Read by \`CenterTextLayer\` in the display for phrase-sync text display (replaces the old \`poll_ready()\` call from the render loop).
 
 \---
-
-\## Style tokens — \`RP\` palette (Rosé Pine Moon)
-
-\> \*\*Rosé Pine Moon is the sole palette for Somna.\*\* No alternative or competing palettes exist. All UI color values derive from this dictionary.
-
-\`\`\`python
-
-RP = {
-
-"base": "#232136", # window background
-
-"surface": "#2a273f", # section background
-
-"overlay": "#393552", # input / slider trough / listbox
-
-"muted": "#6e6a86", # disabled / inactive text
-
-"subtle": "#908caa", # secondary labels
-
-"text": "#e0def4", # primary text
-
-"love": "#eb6f92", # destructive / stop actions
-
-"gold": "#f6c177", # locked params / warnings
-
-"rose": "#ea9a97", # Visual Presets accent
-
-"pine": "#3e8fb0", # Start Session button / active
-
-"foam": "#9ccfd8", # Binaural section accent / timer
-
-"iris": "#c4a7e7", # Session section accent / agent
-
-"hl_low": "#2a283e",
-
-"hl_med": "#44415a",
-
-"hl_high": "#56526e", # hover highlight
-
-}
-
-\`\`\`
-
-\*\*Font constants:\*\*
-
-\`\`\`python
-
-FONT_LABEL = ("Segoe UI", 9)
-
-FONT_SMALL = ("Segoe UI", 8)
-
-FONT_HEADER = ("Segoe UI", 9, "bold")
-
-FONT_TITLE = ("Segoe UI", 11, "bold")
-
-FONT_LAUNCH = ("Segoe UI", 11, "bold")
-
-\`\`\`
-
-\---
+---
 
 \## User lock system
 
-When the user moves a slider, \`\_update()\` in \`control_panel.py\` writes only the changed key(s) to \`live_control.json\` and timestamps \`\_last_user_interaction\`. The \`timeline_runner.py\` detects the change via \`\_detect_user_locks()\` — if a param's current live value differs from what the runner last wrote, it adds that param to \`\_user_locks\`. On each tick, \`\_user_locks\` params are stripped from the values dict before writing.
+When the user moves a slider, \`\_update()\` in \`control_panel_imgui.py\` writes only the changed key(s) to \`live_control.json\` and timestamps \`\_last_user_interaction\`. The \`timeline_runner.py\` detects the change via \`\_detect_user_locks()\` — if a param's current live value differs from what the runner last wrote, it adds that param to \`\_user_locks\`. On each tick, \`\_user_locks\` params are stripped from the values dict before writing.
 
 \*\*Locks are permanent within a session\*\* — they do not expire tick-by-tick. They are cleared on \`restart\`, \`seek\`, or \`load\` commands.
 
@@ -612,7 +447,7 @@ The timeline runner (\`TimelineRunner\` in \`timeline_runner.py\`) reads \`sessi
 
 Current valid \`veil_mode\` values: \`scroll\`, \`rain\`, \`drift\`, \`converge\`, \`strobe\`, \`tunnel\`, \`null\`.
 
-\*\*\`mirror\` is removed\*\* — it was deleted from \`layers/veil.py\`. Do not reference it anywhere. The \`\_ADJUSTABLE_PARAMS\` dict in \`somna_agent.py\` and the combobox in \`control_panel.py\` both use the current list.
+\*\*\`mirror\` is removed\*\* — it was deleted from \`layers/veil.py\`. Do not reference it anywhere. The \`\_ADJUSTABLE_PARAMS\` dict in \`somna_agent.py\` and the combobox in \`control_panel_imgui.py\` both use the current list.
 
 \`null\` means auto-rotate through modes on a timer (excluding \`strobe\` and \`tunnel\` which are excluded from random rotation).
 
@@ -624,7 +459,7 @@ Current valid \`veil_mode\` values: \`scroll\`, \`rain\`, \`drift\`, \`converge\
 
 2\. Consume the command by setting \`data\["\_timeline_cmd"\] = None\` and writing back (already done in the shared consume block at the end)
 
-3\. Add a corresponding method in \`control_panel.py\` that writes \`{"\_timeline_cmd": "your_cmd"}\` via \`\_send_timeline_cmd()\` or by directly writing \`live_control.json\`
+3\. Add a corresponding method in \`control_panel_imgui.py\` that writes \`{"\_timeline_cmd": "your_cmd"}\` via \`\_send_timeline_cmd()\` or by directly writing \`live_control.json\`
 
 4\. Document the new key in \`README.md\`'s live control table
 
@@ -652,7 +487,7 @@ Current valid \`veil_mode\` values: \`scroll\`, \`rain\`, \`drift\`, \`converge\
 
 3\. Add init/update/draw dispatch in the \`\__init_\_\` / \`update\` / \`draw\` methods
 
-4\. Add to the \`veil_mode\` combobox values in \`\_build_right_col\` in \`control_panel.py\`
+4\. Add to the \`veil_mode\` combobox values in \`\_build_right_col\` in \`control_panel_imgui.py\`
 
 5\. Add to \`\_ADJUSTABLE_PARAMS\` in \`somna_agent.py\`
 
@@ -794,9 +629,9 @@ All three agent scripts read and write this file. \*\*Always use \`update_profil
 
 \`effective_moments\` is capped at 30 entries (FIFO). \`last_session\` is written at the start of each fresh session. \`last_session_date\` is updated by \`somna_agent.py\` on every active tick so the nudge threshold works correctly.
 
-IAF keys (\`iaf_hz\`, \`iaf_confidence\`, \`iaf_calibrated_at\`, \`iaf_method\`, \`iaf_band_boundaries\`) are written by \`control_panel.py\` via \`\_save_iaf_to_profile()\` after calibration completes. That function does a reload-first merge — it does NOT call \`update_profile()\` because \`control_panel.py\` runs in a different process. Follow the same pattern for any future writes from the panel process.
+IAF keys (\`iaf_hz\`, \`iaf_confidence\`, \`iaf_calibrated_at\`, \`iaf_method\`, \`iaf_band_boundaries\`) are written by \`control_panel_imgui.py\` via \`\_save_iaf_to_profile()\` after calibration completes. That function does a reload-first merge — it does NOT call \`update_profile()\` because \`control_panel_imgui.py\` runs in a different process. Follow the same pattern for any future writes from the panel process.
 
-\`update_profile()\` reloads from disk before saving to prevent concurrent write races between \`somna_agent.py\` and \`control_panel.py\`. Never write the file without reloading first.
+\`update_profile()\` reloads from disk before saving to prevent concurrent write races between \`somna_agent.py\` and \`control_panel_imgui.py\`. Never write the file without reloading first.
 
 \---
 
@@ -870,11 +705,11 @@ CLI: \`python -m content_tools.image_tags tag &lt;session&gt; --batch 20 \[--har
 
 \- \`record_session_played()\` uses SQLite \`datetime('now')\` (UTC) — when computing age in Python use \`datetime.utcnow()\` not \`datetime.now()\` to avoid timezone sign errors.
 
-\*\*Session Treeview\*\* — \`\_session_tv\` (a \`ttk.Treeview\`) replaced the old \`\_library_lb\` (\`tk.Listbox\`) everywhere in \`control_panel.py\`. The Treeview \`iid\` is the raw session folder name (not the decorated display string). \`\_get_selected_session()\` returns \`\_session_tv.selection()\[0\]\` directly — do not try to parse from \`values\[0\]\`.
+\*\*Session Treeview\*\* — \`\_session_tv\` (a \`ttk.Treeview\`) replaced the old \`\_library_lb\` (\`tk.Listbox\`) everywhere in \`control_panel_imgui.py\`. The Treeview \`iid\` is the raw session folder name (not the decorated display string). \`\_get_selected_session()\` returns \`\_session_tv.selection()\[0\]\` directly — do not try to parse from \`values\[0\]\`.
 
 \*\*Mode strip\*\* — a row of quick-launch buttons above the Treeview. Defined in \`\_MODE_STRIP\` constant; each entry has \`label\`, \`session\`, and \`tooltip\` fields. \`\_launch_mode()\` loads the session and tracks \`\_dismissed_mode\` to prevent the button re-highlighting after the user deselects it.
 
-\*\*Session scoring\*\* — \`session_scorer.py\` / \`SessionScorer\` is triggered by \`control_panel.py\` when it detects the display subprocess has stopped (not from the agent process — the agent is a subprocess with no EEGEngine reference). \`\_trigger_eeg_scoring()\` in \`control_panel.py\` reads FreqLeader state from \`live_control.json\` at stop time and passes it to the scorer.
+\*\*Session scoring\*\* — \`session_scorer.py\` / \`SessionScorer\` is triggered by \`control_panel_imgui.py\` when it detects the display subprocess has stopped (not from the agent process — the agent is a subprocess with no EEGEngine reference). \`\_trigger_eeg_scoring()\` in \`control_panel_imgui.py\` reads FreqLeader state from \`live_control.json\` at stop time and passes it to the scorer.
 
 \*\*\`session_quality\` table\*\* — stores content pipeline quality scores from \`session_pipeline.py\`. Written via \`save_session_quality()\` after each pipeline run. Tracks structural and content review scores per session.
 
@@ -918,13 +753,13 @@ CLI: \`python -m content_tools.image_tags tag &lt;session&gt; --batch 20 \[--har
 
 \*\*TTS cook thread sync\*\* — the TTS cook thread must call \`self.\_pool.update(config)\` before each \`pick()\` call. \`PhrasePool\` does not self-update; if \`update()\` is never called the pool is frozen at engine startup and will return phrases from the initial \`live_control.json\` state indefinitely — including phrases from a session that has since changed. Additionally, when \`session_folder\` changes in config the cook thread must clear the \`\_ready\` deque immediately to prevent stale pre-cooked phrases from playing in the new session.
 
-\*\*Audio ownership\*\* — \`pygame.mixer\` is initialised and owned exclusively by \`control_panel.py\`. \`visual_display.py\` sets \`os.environ\['SDL_AUDIODRIVER'\] = 'dummy'\` before \`pygame.init()\` and never touches the mixer. \`BinauralAudioEngine\` and \`TTSEngine\` are instantiated inside the control panel process. The agent process has no audio at all.
+\*\*Audio ownership\*\* — \`pygame.mixer\` is initialised and owned exclusively by \`control_panel_imgui.py\`. \`visual_display.py\` sets \`os.environ\['SDL_AUDIODRIVER'\] = 'dummy'\` before \`pygame.init()\` and never touches the mixer. \`BinauralAudioEngine\` and \`TTSEngine\` are instantiated inside the control panel process. The agent process has no audio at all.
 
 \*\*Crash recovery\*\* — \`BinauralAudioEngine.\_audio_loop\` catches exceptions and reinitialises its own channels (0, 1, 2) on 5 consecutive errors. It does \*\*not\*\* call \`pygame.mixer.quit()\` — that would destroy the TTS channels owned by the same mixer instance. Channel objects are recreated via \`pygame.mixer.Channel(n)\`.
 
 \*\*Binaural crossfade\*\* — for changes ≥ 2 Hz combined (carrier + beat), \`\_crossfade()\` hard-stops the old channel and starts the new one immediately. For smaller changes the \`current_carrier\`/\`current_beat\` values update silently and the next generated chunk picks them up at the chunk boundary — no stop, no click.
 
-\*\*\`pygame.mixer.pre_init(44100, -16, 2, 512)\`\*\* must be called before \`pygame.init()\` and is done in \`control_panel.py\` at startup. Do not move it into \`BinauralAudioEngine.\__init_\_\` — the mixer is already initialised by the time the engine is created.
+\*\*\`pygame.mixer.pre_init(44100, -16, 2, 512)\`\*\* must be called before \`pygame.init()\` and is done in \`control_panel_imgui.py\` at startup. Do not move it into \`BinauralAudioEngine.\__init_\_\` — the mixer is already initialised by the time the engine is created.
 
 \---
 
@@ -1292,7 +1127,7 @@ Lives in \`agent/somna_agent.py\` (chord monitoring + selection + recording) and
 
 \- Do not use \`fractionation_phase\` values \`ascending\`, \`holding\`, \`descending\`, or \`pausing\` — the fractionation state machine was rewritten; canonical values are \`INDUCTION\`, \`HOLD\`, \`EMERGE\`, \`EMERGE_HOLD\`, \`REINDUCE\`, and \`DEEP_N\`.
 
-\- Do not trigger \`session_scorer.py\` from \`somna_agent.py\` — the agent is a subprocess with no \`EEGEngine\` reference; scoring must be triggered from \`control_panel.py\` in \`\_trigger_eeg_scoring()\`.
+\- Do not trigger \`session_scorer.py\` from \`somna_agent.py\` — the agent is a subprocess with no \`EEGEngine\` reference; scoring must be triggered from \`control_panel_imgui.py\` in \`\_trigger_eeg_scoring()\`.
 
 \- Do not use \`start_stream(buffer_size=450_000)\` keyword form in BrainFlow — newer versions require it as a positional arg: \`start_stream(450_000)\`.
 
@@ -1306,17 +1141,17 @@ Lives in \`agent/somna_agent.py\` (chord monitoring + selection + recording) and
 
 \- Do not add new content to the session sidebar column (\`\_col_sessions\`) beyond the session section — it is \`pack_propagate(False)\` with a fixed \`width\`; adding taller content does not expand the column.
 
-\- Do not write \`user_profile.json\` from \`control_panel.py\` without doing a reload-first merge (same pattern as \`update_profile()\`) — the agent may be writing concurrently. \`\_save_iaf_to_profile()\` in \`control_panel.py\` already does this correctly; follow that pattern.
+\- Do not write \`user_profile.json\` from \`control_panel_imgui.py\` without doing a reload-first merge (same pattern as \`update_profile()\`) — the agent may be writing concurrently. \`\_save_iaf_to_profile()\` in \`control_panel_imgui.py\` already does this correctly; follow that pattern.
 
 \- Do not write \`eeg_\*\` keys to \`live_control.json\` from anywhere other than \`eeg/eeg_engine.py\` — those keys are owned by the EEG engine exclusively.
 
-\- Do not initialize \`pygame.mixer\` in the display process or the agent process — the mixer is owned exclusively by \`control_panel.py\`. \`visual_display.py\` sets \`os.environ\['SDL_AUDIODRIVER'\] = 'dummy'\` before \`pygame.init()\`. Adding a second mixer init causes audio clipping and channel conflicts.
+\- Do not initialize \`pygame.mixer\` in the display process or the agent process — the mixer is owned exclusively by \`control_panel_imgui.py\`. \`visual_display.py\` sets \`os.environ\['SDL_AUDIODRIVER'\] = 'dummy'\` before \`pygame.init()\`. Adding a second mixer init causes audio clipping and channel conflicts.
 
-\- Do not call \`pygame.mixer.quit()\` from \`BinauralAudioEngine.\_audio_loop\` crash recovery or from \`\_stop_audio\` in \`control_panel.py\` — that destroys the TTS channels owned by the same mixer instance. Only recreate the specific channels via \`pygame.mixer.Channel(n)\`.
+\- Do not call \`pygame.mixer.quit()\` from \`BinauralAudioEngine.\_audio_loop\` crash recovery or from \`\_stop_audio\` in \`control_panel_imgui.py\` — that destroys the TTS channels owned by the same mixer instance. Only recreate the specific channels via \`pygame.mixer.Channel(n)\`.
 
 \- Do not check \`audio_muted\` inside \`TTSEngine.poll_ready()\` — TTS is gated only by \`tts_enabled\` and \`tts_subliminal\`. \`audio_muted\` controls binaural + noise only.
 
-\- Do not re-add \`\_check_pending_nudge()\` to \`control_panel.py\` — the nudge popup that showed raw LLM reasoning verbatim has been intentionally removed. The ghost nudge mechanism in \`somna_agent.py\` still works; only the confusing raw-text dialog is gone.
+\- Do not re-add \`\_check_pending_nudge()\` to \`control_panel_imgui.py\` — the nudge popup that showed raw LLM reasoning verbatim has been intentionally removed. The ghost nudge mechanism in \`somna_agent.py\` still works; only the confusing raw-text dialog is gone.
 
 \- Do not use \`ease: step\` in session YAML — it is not a valid easing mode and silently falls through to \`linear\`. The correct instant-switch value is \`ease: instant\`.
 
@@ -1374,15 +1209,15 @@ The agent strips these keys from any LLM \`adjustments\` dict before writing. Do
 
 \`FreqLeader\` implements the meet-and-lead protocol. Runs as a background thread inside \`somna_agent.py\`. Reads \`eeg_dominant_band\` and \`eeg_trance_score\` from \`live_control.json\`; falls back to timer-based schedule when EEG is unavailable.
 
-\*\*Live keys written:\*\* \`freq_lead_phase\`, \`freq_lead_current\`, \`freq_lead_steps\`, \`freq_lead_holds\`. These are read by \`control_panel.py\` at session stop time for scoring and by the agent's state summary.
+\*\*Live keys written:\*\* \`freq_lead_phase\`, \`freq_lead_current\`, \`freq_lead_steps\`, \`freq_lead_holds\`. These are read by \`control_panel_imgui.py\` at session stop time for scoring and by the agent's state summary.
 
-\*\*Session scoring\*\* (\`session_scorer.py\`) — \`SessionScorer\` takes \`eeg_session_data\` from \`EEGEngine.get_session_data_for_scoring()\` and \`freq_lead_data\` from the FreqLeader live keys. It writes a row to \`somna.db\` \`session_metrics\` table and \`conductor_decisions\` table. Triggered by \`control_panel.py\` → \`\_trigger_eeg_scoring()\` when display stops.
+\*\*Session scoring\*\* (\`session_scorer.py\`) — \`SessionScorer\` takes \`eeg_session_data\` from \`EEGEngine.get_session_data_for_scoring()\` and \`freq_lead_data\` from the FreqLeader live keys. It writes a row to \`somna.db\` \`session_metrics\` table and \`conductor_decisions\` table. Triggered by \`control_panel_imgui.py\` → \`\_trigger_eeg_scoring()\` when display stops.
 
 \---
 
 \## Session / beats lifecycle
 
-\`\_launch_display()\` and \`\_stop_display()\` in \`control_panel.py\` own the session lifecycle.
+\`\_launch_display()\` and \`\_stop_display()\` in \`control_panel_imgui.py\` own the session lifecycle.
 
 \*\*Beats on session start\*\* — \`audio_muted\` is in \`timeline_runner.py\`'s \`APP_DEFAULTS\` as \`False\`. When a session loads, the timeline runner writes \`audio_muted: False\` on the first tick, which starts the beats. Starting a session always starts the beats unless a session keyframe overrides it.
 
@@ -1392,7 +1227,7 @@ The agent strips these keys from any LLM \`adjustments\` dict before writing. Do
 
 \*\*TTS is independent of \`audio_muted\`\*\* — \`TTSEngine.poll_ready()\` ignores \`audio_muted\`; it only gates on \`tts_enabled\` and \`tts_subliminal\`. Muting binaural beats never silences the agent's voice.
 
-\*\*\`poll_ready(session_active)\` parameter\*\* — \`control_panel.py\`'s \`\_poll_audio()\` passes \`session_active\` based on whether \`display_active\` is True. When \`session_active=False\`, the regular affirmation pool is not drained; one-shot agent prompts (\`\_prompt_ready\`) still play regardless. This prevents TTS from reading affirmations when no session is running.
+\*\*\`poll_ready(session_active)\` parameter\*\* — \`control_panel_imgui.py\`'s \`\_poll_audio()\` passes \`session_active\` based on whether \`display_active\` is True. When \`session_active=False\`, the regular affirmation pool is not drained; one-shot agent prompts (\`\_prompt_ready\`) still play regardless. This prevents TTS from reading affirmations when no session is running.
 
 \*\*\`audio_muted\` default safety\*\* — \`\_refresh_mute_btn()\` and \`\_load_current_values()\` both use \`self.\_beats_muted\` as the fallback when \`audio_muted\` is absent from the JSON (e.g., during a mid-write race). Never use a hardcoded \`True\` default for this key in either function — that would kill the waveform any time the JSON is momentarily unreadable.
 
@@ -1404,7 +1239,7 @@ The agent strips these keys from any LLM \`adjustments\` dict before writing. Do
 
 Acquires EEG via BrainFlow, processes band powers, and writes results to \`live_control.json\` as read-only keys. Import as \`from eeg.eeg_engine import EEGEngine\`.
 
-\*\*Pattern:\*\* Same as \`timeline_runner.py\` — background thread started from \`control_panel.py\` via the "Connect EEG" button, writes to \`live_control.json\` via \`\_patch_live()\`.
+\*\*Pattern:\*\* Same as \`timeline_runner.py\` — background thread started from \`control_panel_imgui.py\` via the "Connect EEG" button, writes to \`live_control.json\` via \`\_patch_live()\`.
 
 \*\*Secondary thread state publication\*\* — secondary threads inside \`eeg_engine.py\` (e.g., the calibration thread) must NOT call \`\_patch_live()\` directly. Instead they write into an in-memory dict (\`self.\_cal_state\`). The main EEG loop merges \`self.\_cal_state\` into every tick write via a single \`\_patch_live()\` call. This is the correct pattern for any background thread that needs to publish state — it keeps all file I/O on a single thread and prevents concurrent write collisions.
 
@@ -1520,7 +1355,7 @@ Acquires EEG via BrainFlow, processes band powers, and writes results to \`live_
 
 | \`calibration_time_remaining_s\` | int |
 
-\*\*IAF calibration\*\* — \`EEGEngine.run_iaf_calibration(duration_s=30.0)\` runs a progressive confidence-gated loop that ticks every 5 s. \`detect_iaf_with_confidence()\` returns \`(iaf_hz, confidence, detail)\` where \`confidence\` is a weighted blend of peak prominence (25%), inter-channel agreement (40%), and temporal stability half-vs-full window (35%). At the end of the initial window: conf ≥ 0.65 → accept; 0.35–0.64 → extend 15 s; < 0.35 → fallback. After the extension the loop runs to max_duration and accepts the best candidate. Results are saved to \`user_profile.json\` via \`\_save_iaf_to_profile()\` in \`control_panel.py\` — includes \`iaf_hz\`, \`iaf_confidence\`, \`iaf_calibrated_at\`, and \`iaf_band_boundaries\`. Do NOT call \`update_profile()\` from \`control_panel.py\` directly (different process).
+\*\*IAF calibration\*\* — \`EEGEngine.run_iaf_calibration(duration_s=30.0)\` runs a progressive confidence-gated loop that ticks every 5 s. \`detect_iaf_with_confidence()\` returns \`(iaf_hz, confidence, detail)\` where \`confidence\` is a weighted blend of peak prominence (25%), inter-channel agreement (40%), and temporal stability half-vs-full window (35%). At the end of the initial window: conf ≥ 0.65 → accept; 0.35–0.64 → extend 15 s; < 0.35 → fallback. After the extension the loop runs to max_duration and accepts the best candidate. Results are saved to \`user_profile.json\` via \`\_save_iaf_to_profile()\` in \`control_panel_imgui.py\` — includes \`iaf_hz\`, \`iaf_confidence\`, \`iaf_calibrated_at\`, and \`iaf_band_boundaries\`. Do NOT call \`update_profile()\` from \`control_panel_imgui.py\` directly (different process).
 
 \*\*Agent integration\*\* — \`\_state_summary()\` in \`somna_agent.py\` appends EEG state when \`eeg_connected\` is true. The agent sees \`iaf=X.XX(cal_conf=0.72)\` in the state line; when \`iaf_confidence < 0.50\` a warning is added so the agent knows band boundaries are estimates only. \`eeg_entrainment_recommend_modality\` is surfaced with a warning symbol when non-null so the agent knows to act.
 

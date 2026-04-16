@@ -99,7 +99,7 @@ def _pct_to_steps(pct: float) -> int:
 class TavnsEngine:
     """DG Labs Coyote taVNS output engine.
 
-    Started by control_panel.py when the user clicks "Connect taVNS"
+    Started by control_panel_imgui.py when the user clicks "Connect taVNS"
     or during hardware discovery. Runs as a background thread that
     reads live_control.json at ~10 Hz and sends stimulation commands.
 

@@ -8,8 +8,7 @@
 
 ```bash
 pip install -r requirements.txt
-python main_imgui.py      # Dear ImGui panel (active development)
-# python main.py          # legacy Tkinter panel (still functional)
+python main_imgui.py
 ```
 
 The control panel opens. Use the **Session** panel to build a playlist, then press **Start Session** to launch the display on your primary monitor. Press **Start Agent** to run the LLM session agent alongside it.
@@ -19,8 +18,8 @@ The control panel opens. Use the **Session** panel to build a playlist, then pre
 ## Architecture
 
 ```
-main_imgui.py  (active)   OR   main.py  (legacy Tkinter)
-  └── control_panel_imgui.py / control_panel.py
+main_imgui.py
+  └── control_panel_imgui.py
         ├── ipc/state_server.py         single-writer IPC daemon (TCP 6789)
         ├── engines/audio_engine.py     7-channel audio (binaural/noise/TTS/TMR/sleep burst)
         ├── content/tts_engine.py       pre-synthesis TTS (Edge / OpenAI / local + SSB)
@@ -395,8 +394,8 @@ The agent never overrides `timeline_locked_params`. `transitions` triggers a smo
 
 | File | Purpose |
 |------|---------|
-| `main.py` | Entry point |
-| `control_panel.py` | Tkinter control panel UI |
+| `main_imgui.py` | Entry point |
+| `control_panel_imgui.py` | Dear ImGui control panel UI |
 | `visual_display.py` | Render loop and layer orchestration |
 | `visual_display_runner.py` | Subprocess wrapper for display window |
 | `audio_engine.py` | Binaural beat generator |

@@ -10,11 +10,14 @@ from ipc import patch_live
 _TMR_AVAILABLE = False
 try:
     from session.tmr_cue_manager import CueManager as _CueManager
+
     _TMR_AVAILABLE = True
 except Exception:
     pass
 
 _LIVE_PATH = Path(__file__).parent.parent / "live_control.json"
+
+
 def _cfg_float(cfg: dict, key: str, default: float) -> float:
     """Read a float from the config dict, safely handling None / missing / bad values."""
     v = cfg.get(key)
@@ -29,6 +32,7 @@ def _cfg_float(cfg: dict, key: str, default: float) -> float:
 def _cfg_str(cfg: dict, key: str, default: str) -> str:
     v = cfg.get(key)
     return str(v) if v is not None else default
+
 
 # Colored-noise color names in display order (matches control panel)
 NOISE_COLORS = ("white", "pink", "brown", "blue", "violet", "grey")
@@ -52,23 +56,25 @@ class BinauralAudioEngine:
     active channel only, eliminating zipper noise.
     """
 
-    _CHUNK_SEC    = 2.0
-    _POLL_SEC     = 0.025
-    _DEBOUNCE_SEC = 0.08   # frequency: wait for slider to settle
-    _VOL_DEBOUNCE = 0.04   # volume:    shorter window, no restart needed
+    _CHUNK_SEC = 2.0
+    _POLL_SEC = 0.025
+    _DEBOUNCE_SEC = 0.08  # frequency: wait for slider to settle
+    _VOL_DEBOUNCE = 0.04  # volume:    shorter window, no restart needed
 
     def __init__(self, config):
         # pre_init is called by VisualDisplay before pygame.init(); calling
         # init() here ensures the mixer is active even if this class is used
         # standalone, without re-initialising it if already running.
         pygame.mixer.init()
-        pygame.mixer.set_num_channels(7)   # 0+1 binaural crossfade, 2 noise, 3 sleep bursts, 4+5 TTS, 6 TMR
+        pygame.mixer.set_num_channels(
+            7
+        )  # 0+1 binaural crossfade, 2 noise, 3 sleep bursts, 4+5 TTS, 6 TMR
 
-        self.config          = config
-        self.sample_rate     = 44100
+        self.config = config
+        self.sample_rate = 44100
         self.current_carrier = 200.0
-        self.current_beat    = 10.0
-        self.volume          = 0.8
+        self.current_beat = 10.0
+        self.volume = 0.8
 
         self._chan_a = pygame.mixer.Channel(0)
         self._chan_b = pygame.mixer.Channel(1)
@@ -80,8 +86,8 @@ class BinauralAudioEngine:
         self._phases_b = [0.0, 0.0, 0.0, 0.0]
 
         # Breath modulation (Tier 1 — passive respiratory entrainment)
-        self._breath_mod   = False
-        self._breath_rate  = 0.1   # Hz (6 bpm default — population resonance mode)
+        self._breath_mod = False
+        self._breath_rate = 0.1  # Hz (6 bpm default — population resonance mode)
         self._breath_depth = 0.20  # fraction of carrier amplitude
 
         self._lock = threading.Lock()
@@ -92,42 +98,43 @@ class BinauralAudioEngine:
         # Beat-phase accumulator: 0.0–1.0, written to live_control.json
         # Written every 8 ticks (200 ms) — fast enough for visual sync,
         # half the file-write pressure of the previous 100 ms cadence.
-        self._beat_phase          = 0.0
+        self._beat_phase = 0.0
         self._phase_write_counter = 0
 
         # Crossfade state
-        self._active  = self._chan_a
+        self._active = self._chan_a
         self._standby = self._chan_b
-        self._active_phases  = self._phases_a
+        self._active_phases = self._phases_a
         self._standby_phases = self._phases_b
 
         # Frequency debounce
         self._pending_carrier = None
-        self._pending_beat    = None
-        self._change_at       = None
+        self._pending_beat = None
+        self._change_at = None
 
         # Volume debounce
-        self._pending_vol     = None
-        self._vol_change_at   = None
+        self._pending_vol = None
+        self._vol_change_at = None
 
         # Colored noise — dedicated channel, independent of binaural beats
-        self._noise_chan  = pygame.mixer.Channel(2)
+        self._noise_chan = pygame.mixer.Channel(2)
         self._noise_color = "pink"
-        self._noise_vol   = 30.0
-        self._noise_rng   = np.random.default_rng()
+        self._noise_vol = 30.0
+        self._noise_rng = np.random.default_rng()
         self._noise_sound = None
 
         # Bible Ch.10 §10.2 §3.3 — spectral tilt (1/f^α tracking)
-        self._noise_spectral_tilt:    float = 1.0
-        self._tilt_update_counter:    int   = 0   # rebuild noise every ~10 s
+        self._noise_spectral_tilt: float = 1.0
+        self._tilt_update_counter: int = 0  # rebuild noise every ~10 s
 
         # Bible Ch.10 §10.2 §3.2 — AM depth (isochronic envelope depth)
-        self._am_depth:               float = 0.8
-        self._am_depth_target:        float = 0.8
+        self._am_depth: float = 0.8
+        self._am_depth_target: float = 0.8
 
         # ── Bible Ch.3 §3.7 — Spatial audio (optional, additive) ───────────────────────
         try:
             from engines.spatial_audio import SpatialAudioEngine as _SAE
+
             self._spatial: "_SAE | None" = _SAE(sample_rate=self.sample_rate)
         except Exception:
             self._spatial = None
@@ -136,7 +143,7 @@ class BinauralAudioEngine:
         # Used for both alpha anti-phase (SLEEP_APPROACH) and slow-wave
         # phase-locked enhancement (SLEEP_MAINTAIN).  Bible Ch.7 §7.1 §8.3.
         self._burst_chan = pygame.mixer.Channel(3)
-        self._last_burst_cmd_ts: float = 0.0   # deduplicate burst commands
+        self._last_burst_cmd_ts: float = 0.0  # deduplicate burst commands
 
         # TMR cue channel — channel 6, one-shot tonal cues (Bible Ch.7 §7.5)
         # Separate from burst channel so sleep bursts and TMR cues never collide.
@@ -147,14 +154,14 @@ class BinauralAudioEngine:
         # ── GENUS rectangular pulse state (Bible Ch.4 Addendum A / genus_protocol.md) ──────────
         # Rectangular 1ms ON / 24ms OFF click train at 40 Hz.  Separate from the
         # normal binaural/isochronic path; activated by genus_active flag.
-        self._genus_active:             bool  = False
-        self._genus_frequency:          float = 40.0
-        self._genus_pulse_ms:           float = 1.0
-        self._genus_session_start:      float = 0.0
+        self._genus_active: bool = False
+        self._genus_frequency: float = 40.0
+        self._genus_pulse_ms: float = 1.0
+        self._genus_session_start: float = 0.0
         self._genus_session_duration_s: float = 3600.0  # 60 min default
         # Bible Ch.4 Addendum A §3 — ramp gain written by Conductor during RAMP_UP and WIND_DOWN.
         # Scales the pulse amplitude (0.0 = silent, 1.0 = full target amplitude).
-        self._genus_audio_gain:         float = 1.0
+        self._genus_audio_gain: float = 1.0
 
         self._stop_evt = threading.Event()
 
@@ -178,19 +185,20 @@ class BinauralAudioEngine:
     # independent of the binaural beat channels so there is no interference.
     # ------------------------------------------------------------------
 
-    _NOISE_BUF_SEC  = 10     # loop length before seam
-    _NOISE_FADE_SEC = 0.05   # crossfade seam length
+    _NOISE_BUF_SEC = 10  # loop length before seam
+    _NOISE_FADE_SEC = 0.05  # crossfade seam length
 
     @staticmethod
     def _a_weight(f_hz: np.ndarray) -> np.ndarray:
         """Amplitude A-weighting curve (for grey noise inverse-weighting)."""
-        f2 = f_hz ** 2
+        f2 = f_hz**2
         ra = (
-            12200.0 ** 2 * f2 ** 2
+            12200.0**2
+            * f2**2
             / (
-                (f2 + 20.6 ** 2)
-                * np.sqrt((f2 + 107.7 ** 2) * (f2 + 737.9 ** 2))
-                * (f2 + 12200.0 ** 2)
+                (f2 + 20.6**2)
+                * np.sqrt((f2 + 107.7**2) * (f2 + 737.9**2))
+                * (f2 + 12200.0**2)
             )
         )
         return ra + 1e-12
@@ -208,7 +216,7 @@ class BinauralAudioEngine:
         Range [0.8, 1.5] clamped; default 1.0 = no change.
         """
         fade_n = int(self.sample_rate * self._NOISE_FADE_SEC)
-        N      = int(self.sample_rate * self._NOISE_BUF_SEC) + fade_n
+        N = int(self.sample_rate * self._NOISE_BUF_SEC) + fade_n
 
         white = self._noise_rng.standard_normal(N)
 
@@ -219,7 +227,7 @@ class BinauralAudioEngine:
             # Zero out DC and everything below 20 Hz to prevent sub-audible
             # amplitude swings that make the noise sound horrible.
             hp_bin = max(1, int(20.0 * N / self.sample_rate))
-            f[:hp_bin] = 1.0        # placeholder so division doesn't blow up
+            f[:hp_bin] = 1.0  # placeholder so division doesn't blow up
             spectrum = np.fft.rfft(white)
             spectrum[:hp_bin] = 0.0
 
@@ -268,11 +276,11 @@ class BinauralAudioEngine:
         self._noise_sound = None
         if color == "off":
             return
-        buf   = self._build_noise_buffer(color, spectral_tilt=spectral_tilt)
+        buf = self._build_noise_buffer(color, spectral_tilt=spectral_tilt)
         # Stereo: identical on both channels — mono noise avoids accidental
         # binaural-beat-like effects from left/right decorrelation.
         stereo = np.column_stack([buf, buf])
-        sound  = pygame.sndarray.make_sound((stereo * 32767.0).astype(np.int16))
+        sound = pygame.sndarray.make_sound((stereo * 32767.0).astype(np.int16))
         self._noise_sound = sound
         if play:
             self._noise_chan.play(sound, loops=-1)
@@ -291,7 +299,7 @@ class BinauralAudioEngine:
             return
         try:
             audio = self._tmr_cue_mgr.generate(pool, content_hash)
-            pcm   = (np.clip(audio, -1.0, 1.0) * 32767.0).astype(np.int16)
+            pcm = (np.clip(audio, -1.0, 1.0) * 32767.0).astype(np.int16)
             sound = pygame.sndarray.make_sound(pcm)
             self._tmr_chan.stop()
             self._tmr_chan.play(sound)
@@ -306,31 +314,31 @@ class BinauralAudioEngine:
         Total length = duration_ms + 20 ms.  Mirrors the isochronic RCOS pattern.
         """
         try:
-            ramp_ms    = 10
-            ramp_n     = int(self.sample_rate * ramp_ms / 1000)
-            hold_n     = int(self.sample_rate * duration_ms / 1000)
-            total_n    = ramp_n + hold_n + ramp_n
+            ramp_ms = 10
+            ramp_n = int(self.sample_rate * ramp_ms / 1000)
+            hold_n = int(self.sample_rate * duration_ms / 1000)
+            total_n = ramp_n + hold_n + ramp_n
 
             # Pink noise base
-            wn     = self._noise_rng.standard_normal(total_n).astype(np.float64)
-            freqs  = np.fft.rfftfreq(total_n, d=1.0 / self.sample_rate)
-            fft_w  = np.fft.rfft(wn)
+            wn = self._noise_rng.standard_normal(total_n).astype(np.float64)
+            freqs = np.fft.rfftfreq(total_n, d=1.0 / self.sample_rate)
+            fft_w = np.fft.rfft(wn)
             freqs[0] = 1.0
             fft_w /= np.sqrt(freqs)
-            pink   = np.fft.irfft(fft_w, n=total_n).astype(np.float32)
-            pink  /= (np.max(np.abs(pink)) + 1e-9)
+            pink = np.fft.irfft(fft_w, n=total_n).astype(np.float32)
+            pink /= np.max(np.abs(pink)) + 1e-9
 
             # Raised cosine envelope (10 ms ramp up, hold, 10 ms ramp down)
             t_ramp = np.linspace(0.0, np.pi / 2, ramp_n, dtype=np.float32)
-            ramp_up   = np.sin(t_ramp) ** 2
-            hold_env  = np.ones(hold_n, dtype=np.float32)
+            ramp_up = np.sin(t_ramp) ** 2
+            hold_env = np.ones(hold_n, dtype=np.float32)
             ramp_down = np.cos(t_ramp) ** 2
-            envelope  = np.concatenate([ramp_up, hold_env, ramp_down])
+            envelope = np.concatenate([ramp_up, hold_env, ramp_down])
             burst_mono = pink * envelope
 
             # Stereo (identical channels)
             stereo = np.column_stack([burst_mono, burst_mono])
-            sound  = pygame.sndarray.make_sound(
+            sound = pygame.sndarray.make_sound(
                 (stereo * 32767.0).clip(-32768, 32767).astype(np.int16)
             )
             self._burst_chan.stop()
@@ -352,12 +360,12 @@ class BinauralAudioEngine:
         t = np.arange(n) / self.sample_rate
 
         with self._lock:
-            c              = self.current_carrier
-            b              = self.current_beat
-            btype          = self._beat_type
-            carrier_wave   = getattr(self, "_carrier_waveform", "sine")
-            breath_mod     = self._breath_mod
-            breath_rate    = self._breath_rate
+            c = self.current_carrier
+            b = self.current_beat
+            btype = self._beat_type
+            carrier_wave = getattr(self, "_carrier_waveform", "sine")
+            breath_mod = self._breath_mod
+            breath_rate = self._breath_rate
             breath_depth = self._breath_depth
             # Bible Ch.10 §10.2 §3.2 — AM depth (accessed via _am_depth_live set in audio_loop)
             am_depth = float(getattr(self, "_am_depth_live", 0.8))
@@ -382,7 +390,9 @@ class BinauralAudioEngine:
                 if carrier_wave == "triangle":
                     # Normalised sawtooth folded into triangle: range [-1, 1]
                     s = x / (2.0 * np.pi)
-                    return (2.0 * np.abs(2.0 * (s - np.floor(s + 0.5))) - 1.0).astype(np.float32)
+                    return (2.0 * np.abs(2.0 * (s - np.floor(s + 0.5))) - 1.0).astype(
+                        np.float32
+                    )
                 if carrier_wave == "sawtooth":
                     s = x / (2.0 * np.pi)
                     return (2.0 * (s - np.floor(s + 0.5))).astype(np.float32)
@@ -390,21 +400,21 @@ class BinauralAudioEngine:
 
             if btype == "isochronic":
                 # Single carrier, amplitude-modulated at beat_freq via raised cosine
-                mono  = _carrier(c, lp) * _am_envelope()
-                left  = right = mono
+                mono = _carrier(c, lp) * _am_envelope()
+                left = right = mono
             elif btype == "both":
                 # Bible Ch.10 §10.2 §3.1 "dual": binaural + isochronic blend
                 # binaural_blend controls balance (default 0.3 = mostly isochronic)
-                bl         = float(getattr(self, "_binaural_blend", 0.3))
-                bi_weight  = bl
+                bl = float(getattr(self, "_binaural_blend", 0.3))
+                bi_weight = bl
                 iso_weight = 1.0 - bl
-                bi_l  = _carrier(c,     lp) * bi_weight
-                bi_r  = _carrier(c + b, rp) * bi_weight
-                iso   = _carrier(c,     lp) * iso_weight * _am_envelope()
-                left  = bi_l + iso
+                bi_l = _carrier(c, lp) * bi_weight
+                bi_r = _carrier(c + b, rp) * bi_weight
+                iso = _carrier(c, lp) * iso_weight * _am_envelope()
+                left = bi_l + iso
                 right = bi_r + iso
             else:  # "binaural" (default) — frequency offset creates the beat
-                left  = _carrier(c,     lp)
+                left = _carrier(c, lp)
                 right = _carrier(c + b, rp)
 
             # Breath AM — sinusoidal volume swell at breathing rate.
@@ -415,14 +425,16 @@ class BinauralAudioEngine:
                 breath_env = 1.0 + breath_depth * np.sin(
                     2.0 * np.pi * breath_rate * t + bp
                 )
-                left  = left  * breath_env
+                left = left * breath_env
                 right = right * breath_env
 
             # Always advance all four phases for continuity across mode switches
-            phases[0] = (lp + 2.0 * np.pi * c           * self._CHUNK_SEC) % (2.0 * np.pi)
-            phases[1] = (rp + 2.0 * np.pi * (c + b)     * self._CHUNK_SEC) % (2.0 * np.pi)
-            phases[2] = (ip + 2.0 * np.pi * b            * self._CHUNK_SEC) % (2.0 * np.pi)
-            phases[3] = (bp + 2.0 * np.pi * breath_rate  * self._CHUNK_SEC) % (2.0 * np.pi)
+            phases[0] = (lp + 2.0 * np.pi * c * self._CHUNK_SEC) % (2.0 * np.pi)
+            phases[1] = (rp + 2.0 * np.pi * (c + b) * self._CHUNK_SEC) % (2.0 * np.pi)
+            phases[2] = (ip + 2.0 * np.pi * b * self._CHUNK_SEC) % (2.0 * np.pi)
+            phases[3] = (bp + 2.0 * np.pi * breath_rate * self._CHUNK_SEC) % (
+                2.0 * np.pi
+            )
 
         stereo = np.column_stack((left, right))
 
@@ -433,6 +445,7 @@ class BinauralAudioEngine:
                 try:
                     from pathlib import Path as _P
                     import json as _js
+
                     _lp = _P(__file__).parent.parent / "live_control.json"
                     if _lp.exists():
                         live = _js.loads(_lp.read_text(encoding="utf-8"))
@@ -450,7 +463,9 @@ class BinauralAudioEngine:
             except Exception:
                 pass
 
-        return pygame.sndarray.make_sound((np.clip(stereo, -1.0, 1.0) * 32767.0).astype(np.int16))
+        return pygame.sndarray.make_sound(
+            (np.clip(stereo, -1.0, 1.0) * 32767.0).astype(np.int16)
+        )
 
     def _genus_chunk(self) -> pygame.mixer.Sound:
         """Generate a GENUS rectangular pulse buffer (genus_protocol.md §2.1).
@@ -460,22 +475,22 @@ class BinauralAudioEngine:
         NO smoothing, NO Hanning window on individual pulses.
         Amplitude is scaled by _genus_audio_gain (0.0–1.0) for RAMP_UP / WIND_DOWN.
         """
-        freq       = self._genus_frequency
-        pulse_ms   = self._genus_pulse_ms
-        period_s   = 1.0 / freq
-        pulse_s    = pulse_ms / 1000.0
-        off_s      = period_s - pulse_s
+        freq = self._genus_frequency
+        pulse_ms = self._genus_pulse_ms
+        period_s = 1.0 / freq
+        pulse_s = pulse_ms / 1000.0
+        off_s = period_s - pulse_s
 
-        on_n  = max(1, int(np.ceil(pulse_s * self.sample_rate)))
-        off_n = max(1, int(np.ceil(off_s   * self.sample_rate)))
+        on_n = max(1, int(np.ceil(pulse_s * self.sample_rate)))
+        off_n = max(1, int(np.ceil(off_s * self.sample_rate)))
         cycle = np.zeros(on_n + off_n, dtype=np.float32)
-        gain  = max(0.0, min(1.0, self._genus_audio_gain))
-        cycle[:on_n] = gain                             # sharp rectangular pulse, scaled
+        gain = max(0.0, min(1.0, self._genus_audio_gain))
+        cycle[:on_n] = gain  # sharp rectangular pulse, scaled
 
-        n_total     = int(self.sample_rate * self._CHUNK_SEC)
-        n_cycles    = int(np.ceil(n_total / len(cycle)))
-        mono        = np.tile(cycle, n_cycles)[:n_total]
-        stereo      = np.column_stack((mono, mono))
+        n_total = int(self.sample_rate * self._CHUNK_SEC)
+        n_cycles = int(np.ceil(n_total / len(cycle)))
+        mono = np.tile(cycle, n_cycles)[:n_total]
+        stereo = np.column_stack((mono, mono))
         return pygame.sndarray.make_sound(
             (np.clip(stereo, -1.0, 1.0) * 32767.0).astype(np.int16)
         )
@@ -501,9 +516,10 @@ class BinauralAudioEngine:
             self._active.stop()
 
             # Swap roles
-            self._active,  self._standby  = self._standby, self._active
+            self._active, self._standby = self._standby, self._active
             self._active_phases, self._standby_phases = (
-                self._standby_phases, self._active_phases
+                self._standby_phases,
+                self._active_phases,
             )
 
         except Exception as exc:
@@ -522,13 +538,13 @@ class BinauralAudioEngine:
         _first_error_in_run = True  # log full traceback only on first new error
         while not self._stop_evt.is_set():
             try:
-                cfg         = self.config.update()
-                paused      = bool(cfg.get("timeline_paused", False))
-                muted       = bool(cfg.get("audio_muted",     False))
+                cfg = self.config.update()
+                paused = bool(cfg.get("timeline_paused", False))
+                muted = bool(cfg.get("audio_muted", False))
                 new_carrier = _cfg_float(cfg, "carrier_frequency", 200.0)
-                new_beat    = _cfg_float(cfg, "beat_frequency",    10.0)
-                new_vol     = _cfg_float(cfg, "volume",            80.0) / 100.0
-                new_btype   = _cfg_str(cfg, "beat_type", "binaural")
+                new_beat = _cfg_float(cfg, "beat_frequency", 10.0)
+                new_vol = _cfg_float(cfg, "volume", 80.0) / 100.0
+                new_btype = _cfg_str(cfg, "beat_type", "binaural")
 
                 # Bible Ch.10 §10.2 §3.1 — entrainment_mode overrides beat_type
                 entrainment_mode = _cfg_str(cfg, "entrainment_mode", "")
@@ -545,14 +561,16 @@ class BinauralAudioEngine:
                     new_wave = "sine"
 
                 with self._lock:
-                    self._beat_type        = new_btype
+                    self._beat_type = new_btype
                     self._carrier_waveform = new_wave
                     self._binaural_blend = float(cfg.get("binaural_blend", 0.3) or 0.3)
-                    self._breath_mod   = bool(cfg.get("breath_mod", False))
-                    self._breath_rate  = max(0.04, min(0.2,
-                        _cfg_float(cfg, "breath_rate",  0.1)))
-                    self._breath_depth = max(0.0, min(0.5,
-                        _cfg_float(cfg, "breath_depth", 0.20)))
+                    self._breath_mod = bool(cfg.get("breath_mod", False))
+                    self._breath_rate = max(
+                        0.04, min(0.2, _cfg_float(cfg, "breath_rate", 0.1))
+                    )
+                    self._breath_depth = max(
+                        0.0, min(0.5, _cfg_float(cfg, "breath_depth", 0.20))
+                    )
 
                 # ── GENUS rectangular pulse mode (genus_protocol.md §5.1) ─────────
                 genus_active = bool(cfg.get("genus_active", False))
@@ -561,8 +579,12 @@ class BinauralAudioEngine:
                     if genus_active:
                         # Record session start for auto-stop timer
                         self._genus_session_start = time.monotonic()
-                        self._genus_frequency   = float(cfg.get("genus_frequency",    40.0) or 40.0)
-                        self._genus_pulse_ms    = float(cfg.get("genus_audio_pulse_ms", 1.0) or 1.0)
+                        self._genus_frequency = float(
+                            cfg.get("genus_frequency", 40.0) or 40.0
+                        )
+                        self._genus_pulse_ms = float(
+                            cfg.get("genus_audio_pulse_ms", 1.0) or 1.0
+                        )
                         dur_min = float(cfg.get("genus_session_duration_min", 60) or 60)
                         self._genus_session_duration_s = dur_min * 60.0
                     else:
@@ -570,24 +592,38 @@ class BinauralAudioEngine:
 
                 if genus_active:
                     # Update params while active (allow live tweaks)
-                    self._genus_frequency  = float(cfg.get("genus_frequency",    40.0) or 40.0)
-                    self._genus_pulse_ms   = float(cfg.get("genus_audio_pulse_ms", 1.0) or 1.0)
+                    self._genus_frequency = float(
+                        cfg.get("genus_frequency", 40.0) or 40.0
+                    )
+                    self._genus_pulse_ms = float(
+                        cfg.get("genus_audio_pulse_ms", 1.0) or 1.0
+                    )
                     # Bible Ch.4 Addendum A §3 — Conductor writes genus_audio_gain during ramp/wind-down
-                    self._genus_audio_gain = float(cfg.get("genus_audio_gain",    1.0) or 1.0)
+                    self._genus_audio_gain = float(
+                        cfg.get("genus_audio_gain", 1.0) or 1.0
+                    )
                     # Session auto-stop
                     elapsed_s = time.monotonic() - self._genus_session_start
                     remaining_s = self._genus_session_duration_s - elapsed_s
-                    patch_live({
-                        "genus_session_elapsed_s":  round(elapsed_s,   1),
-                        "genus_session_remaining_s": round(max(0.0, remaining_s), 1),
-                    })
+                    patch_live(
+                        {
+                            "genus_session_elapsed_s": round(elapsed_s, 1),
+                            "genus_session_remaining_s": round(
+                                max(0.0, remaining_s), 1
+                            ),
+                        }
+                    )
                     if remaining_s <= 0.0:
                         patch_live({"genus_active": False})
 
                 # ── Beat-phase accumulator: advances even when muted ──────────
                 # When GENUS is active, advance phase at 40 Hz for AV sync.
                 if not paused:
-                    phase_freq = self._genus_frequency if self._genus_active else self.current_beat
+                    phase_freq = (
+                        self._genus_frequency
+                        if self._genus_active
+                        else self.current_beat
+                    )
                     self._beat_phase = (
                         self._beat_phase + self._POLL_SEC * phase_freq
                     ) % 1.0
@@ -596,8 +632,8 @@ class BinauralAudioEngine:
                         patch_live({"beat_phase": round(self._beat_phase, 4)})
 
                 # ── Colored noise (independent channel) ───────────────────────
-                new_noise_color = _cfg_str(cfg,  "noise_color",  "pink")
-                new_noise_vol   = _cfg_float(cfg, "noise_volume", 30.0)
+                new_noise_color = _cfg_str(cfg, "noise_color", "pink")
+                new_noise_vol = _cfg_float(cfg, "noise_volume", 30.0)
 
                 # ── Bible Ch.10 §10.2 §3.3 — spectral tilt tracking ──────────────────────
                 new_tilt = float(cfg.get("noise_spectral_tilt", 1.0) or 1.0)
@@ -615,9 +651,13 @@ class BinauralAudioEngine:
                 if abs(self._am_depth - self._am_depth_target) > 0.001:
                     step = self._POLL_SEC / 5.0
                     if self._am_depth < self._am_depth_target:
-                        self._am_depth = min(self._am_depth_target, self._am_depth + step)
+                        self._am_depth = min(
+                            self._am_depth_target, self._am_depth + step
+                        )
                     else:
-                        self._am_depth = max(self._am_depth_target, self._am_depth - step)
+                        self._am_depth = max(
+                            self._am_depth_target, self._am_depth - step
+                        )
                 # Pass current am_depth to chunk generator via lock
                 with self._lock:
                     self._am_depth_live = self._am_depth
@@ -625,7 +665,8 @@ class BinauralAudioEngine:
                 if new_noise_color != self._noise_color or tilt_changed:
                     self._noise_color = new_noise_color
                     self._build_and_play_noise(
-                        new_noise_color, play=not muted,
+                        new_noise_color,
+                        play=not muted,
                         spectral_tilt=self._noise_spectral_tilt,
                     )
                     self._tilt_update_counter = 0
@@ -663,7 +704,9 @@ class BinauralAudioEngine:
                     # When GENUS is active, use rectangular pulse chunks instead.
                     if not self._active.get_busy():
                         self._active_phases[:] = [0.0, 0.0, 0.0, 0.0]
-                        if self._genus_active and bool(cfg.get("genus_audio_enabled", True)):
+                        if self._genus_active and bool(
+                            cfg.get("genus_audio_enabled", True)
+                        ):
                             self._active.play(self._genus_chunk())
                             self._active.queue(self._genus_chunk())
                         else:
@@ -682,16 +725,15 @@ class BinauralAudioEngine:
 
                 # ── Sleep burst delivery (Bible Ch.7 §7.1 §8.3) ────────────────────
                 burst_ts = cfg.get("sleep_burst_cmd_ts")
-                if (burst_ts and not muted
-                        and burst_ts > self._last_burst_cmd_ts + 0.20):
+                if burst_ts and not muted and burst_ts > self._last_burst_cmd_ts + 0.20:
                     self._last_burst_cmd_ts = float(burst_ts)
-                    burst_vol  = float(cfg.get("sleep_burst_volume", 12))
-                    burst_ms   = int(cfg.get("sleep_burst_duration_ms", 50))
+                    burst_vol = float(cfg.get("sleep_burst_volume", 12))
+                    burst_ms = int(cfg.get("sleep_burst_duration_ms", 50))
                     self._deliver_sleep_burst(burst_vol, burst_ms)
 
                 # ── TMR cue delivery (Bible Ch.7 §7.5) ───────────────────────────
                 tmr_cmd = cfg.get("tmr_cue_cmd")
-                if (tmr_cmd and not muted and isinstance(tmr_cmd, dict)):
+                if tmr_cmd and not muted and isinstance(tmr_cmd, dict):
                     tmr_ts = float(tmr_cmd.get("ts", 0.0) or 0.0)
                     if tmr_ts > self._last_tmr_cue_ts + 0.20:
                         self._last_tmr_cue_ts = tmr_ts
@@ -704,44 +746,55 @@ class BinauralAudioEngine:
                 now = time.monotonic()
 
                 # ── Volume: debounced 40 ms, applied via set_volume only ───
-                vol_ref = self._pending_vol if self._pending_vol is not None else self.volume
+                vol_ref = (
+                    self._pending_vol if self._pending_vol is not None else self.volume
+                )
                 if abs(new_vol - vol_ref) > 0.005:
-                    self._pending_vol   = new_vol
+                    self._pending_vol = new_vol
                     self._vol_change_at = now
                 elif self._pending_vol is not None:
                     if now - self._vol_change_at >= self._VOL_DEBOUNCE:
-                        self.volume       = self._pending_vol
+                        self.volume = self._pending_vol
                         self._pending_vol = None
                         self._vol_change_at = None
                         self._active.set_volume(self.volume)
 
                 # ── Frequency: 80 ms debounce then crossfade ───────────────
-                ref_c = self._pending_carrier if self._pending_carrier is not None else self.current_carrier
-                ref_b = self._pending_beat    if self._pending_beat    is not None else self.current_beat
+                ref_c = (
+                    self._pending_carrier
+                    if self._pending_carrier is not None
+                    else self.current_carrier
+                )
+                ref_b = (
+                    self._pending_beat
+                    if self._pending_beat is not None
+                    else self.current_beat
+                )
 
-                moving = (abs(new_carrier - ref_c) > 0.05
-                          or abs(new_beat  - ref_b) > 0.05)
+                moving = abs(new_carrier - ref_c) > 0.05 or abs(new_beat - ref_b) > 0.05
 
                 if moving:
                     self._pending_carrier = new_carrier
-                    self._pending_beat    = new_beat
-                    self._change_at       = now
+                    self._pending_beat = new_beat
+                    self._change_at = now
                 elif self._pending_carrier is not None:
                     if now - self._change_at >= self._DEBOUNCE_SEC:
                         old_c = self.current_carrier
                         old_b = self.current_beat
                         with self._lock:
                             self.current_carrier = self._pending_carrier
-                            self.current_beat    = self._pending_beat
+                            self.current_beat = self._pending_beat
                         self._pending_carrier = None
-                        self._pending_beat    = None
-                        self._change_at       = None
+                        self._pending_beat = None
+                        self._change_at = None
                         # Only crossfade for large jumps (slider drag, agent command).
                         # Tiny gradient steps update in-place — the next queued chunk
                         # picks up the new frequency at a natural boundary with no
                         # hard stop and no audible click.
-                        if (abs(self.current_carrier - old_c)
-                                + abs(self.current_beat - old_b)) >= 2.0:
+                        if (
+                            abs(self.current_carrier - old_c)
+                            + abs(self.current_beat - old_b)
+                        ) >= 2.0:
                             self._crossfade()
 
                 # ── Keep active queue full ─────────────────────────────────
@@ -765,7 +818,7 @@ class BinauralAudioEngine:
                     print("[Audio] Consecutive errors — attempting channel reinit.")
                     try:
                         # Do NOT call pygame.mixer.quit() — the mixer is owned by
-                        # control_panel.py.  Just stop all channels and recreate them.
+                        # control_panel_imgui.py.  Just stop all channels and recreate them.
                         for ch in (self._chan_a, self._chan_b, self._noise_chan):
                             try:
                                 ch.stop()
@@ -775,9 +828,9 @@ class BinauralAudioEngine:
                         self._chan_a = pygame.mixer.Channel(0)
                         self._chan_b = pygame.mixer.Channel(1)
                         self._noise_chan = pygame.mixer.Channel(2)
-                        self._active  = self._chan_a
+                        self._active = self._chan_a
                         self._standby = self._chan_b
-                        self._active_phases  = self._phases_a
+                        self._active_phases = self._phases_a
                         self._standby_phases = self._phases_b
                         self._active_phases[:] = [0.0, 0.0, 0.0, 0.0]
                         self._active.play(self._next_chunk_on(self._active_phases))

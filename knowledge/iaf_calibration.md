@@ -205,9 +205,9 @@ def build_iaf_profile_update(iaf_hz: float,
         update["iaf_confidence"] = round(float(iaf_confidence), 3)
     return update
 
-# Usage — called from control_panel.py _save_iaf_to_profile():
+# Usage — called from control_panel_imgui.py _save_iaf_to_profile():
 # profile.update(build_iaf_profile_update(iaf_hz, iaf_conf))
-# Note: control_panel.py does a reload-first merge; it does NOT call update_profile()
+# Note: control_panel_imgui.py does a reload-first merge; it does NOT call update_profile()
 # directly because it runs in a different process from somna_agent.py.
 ```
 

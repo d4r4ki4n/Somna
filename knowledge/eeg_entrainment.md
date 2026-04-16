@@ -278,7 +278,7 @@ Use `eeg_entrainment_recommend_modality` — the ASSR tracker will tell you if i
 
 ## 9. Session Effectiveness Scoring — Bible Ch.5 Â§Scoring
 
-Post-session scores are computed automatically by control_panel.py when the display stops
+Post-session scores are computed automatically by control_panel_imgui.py when the display stops
 and EEG data was collected. Results appear in the agent console and are stored in `somna.db`.
 The `SessionAnalyzer` queries these scores at session start to inform auto-optimization.
 

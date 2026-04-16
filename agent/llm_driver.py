@@ -34,95 +34,87 @@ _LIVE = Path(__file__).parent / "live_control.json"
 
 PARAMS = {
     # ── Audio ─────────────────────────────────────────────────────────────────
-    "carrier_frequency":          "float  80–400 Hz   — base tone pitch (left ear)",
-    "beat_frequency":             "float  0.5–40 Hz   — binaural beat (right = carrier + beat)",
-    "volume":                     "float  0–100       — mixer volume percentage",
-
+    "carrier_frequency": "float  80–400 Hz   — base tone pitch (left ear)",
+    "beat_frequency": "float  0.5–40 Hz   — binaural beat (right = carrier + beat)",
+    "volume": "float  0–100       — mixer volume percentage",
     # ── Spirals ───────────────────────────────────────────────────────────────
-    "spiral_style":               "str    one of: tunnel_dream | galaxy | archimedean | "
-                                  "kaleidoscope | interference | electric | vortex | dna | "
-                                  "fibonacci | rose | moire | spirograph | fermat | superformula",
-    "spiral_count":               "int    1–8         — number of arms/petals",
-    "spiral_tightness":           "float  2.0–12.0    — winding tightness",
-    "spiral_thickness":           "int    4–40        — line width",
-    "spiral_speed_multiplier":    "float  0.1–3.0     — rotation / animation speed",
-    "spiral_chaos":               "float  0.0–0.8     — distortion / organic noise",
-    "spiral_opacity":             "int    10–100      — spiral layer opacity %",
-    "spiral_color_mode":          "str    rainbow | solid",
-    "spiral_base_color":          "list   [R, G, B]   — 0–255 each; hue bias in rainbow mode",
-    "spiral_show_text":           "bool   — show affirmation text along spiral arms",
-
+    "spiral_style": "str    one of: tunnel_dream | galaxy | archimedean | "
+    "kaleidoscope | interference | electric | vortex | dna | "
+    "fibonacci | rose | moire | spirograph | fermat | superformula",
+    "spiral_count": "int    1–8         — number of arms/petals",
+    "spiral_tightness": "float  2.0–12.0    — winding tightness",
+    "spiral_thickness": "int    4–40        — line width",
+    "spiral_speed_multiplier": "float  0.1–3.0     — rotation / animation speed",
+    "spiral_chaos": "float  0.0–0.8     — distortion / organic noise",
+    "spiral_opacity": "int    10–100      — spiral layer opacity %",
+    "spiral_color_mode": "str    rainbow | solid",
+    "spiral_base_color": "list   [R, G, B]   — 0–255 each; hue bias in rainbow mode",
+    "spiral_show_text": "bool   — show affirmation text along spiral arms",
     # ── Veil (ambient affirmation overlay) ────────────────────────────────────
-    "veil_opacity":               "float  0–100       — overall veil opacity",
-    "veil_mode":                  "str    null (auto-rotate) | scroll | rain | drift | converge",
-    "veil_density":               "float  0.5–3.0     — phrase density multiplier",
-
+    "veil_opacity": "float  0–100       — overall veil opacity",
+    "veil_mode": "str    null (auto-rotate) | scroll | rain | drift | converge",
+    "veil_density": "float  0.5–3.0     — phrase density multiplier",
     # ── Background slideshow ──────────────────────────────────────────────────
-    "slideshow_interval":         "float  seconds between image switches (0.001 fast — 60 slow)",
-    "bg_mode":                    "str|null  — null = normal image slideshow; "
-                                  "'none' = fully transparent background (no images rendered). "
-                                  "Use with window_always_on_top + window_click_through for a "
-                                  "pure text/spiral overlay with no background.",
-
+    "slideshow_interval": "float  seconds between image switches (0.001 fast — 60 slow)",
+    "bg_mode": "str|null  — null = normal image slideshow; "
+    "'none' = fully transparent background (no images rendered). "
+    "Use with window_always_on_top + window_click_through for a "
+    "pure text/spiral overlay with no background.",
     # ── Center text (beat-synced flash) ───────────────────────────────────────
-    "center_flash_sync_to_beat":  "bool   — if true, on/off times derived from beat_frequency",
-    "flash_duty_cycle":           "float  0.1–0.9     — fraction of beat cycle text is ON",
-    "flash_variance":             "float  0–0.5       — random timing jitter",
-    "center_flash_on_time":       "int    ms text is visible (used when sync is OFF)",
-    "center_flash_off_time":      "int    ms text is hidden  (used when sync is OFF)",
-
+    "center_flash_sync_to_beat": "bool   — if true, on/off times derived from beat_frequency",
+    "flash_duty_cycle": "float  0.1–0.9     — fraction of beat cycle text is ON",
+    "flash_variance": "float  0–0.5       — random timing jitter",
+    "center_flash_on_time": "int    ms text is visible (used when sync is OFF)",
+    "center_flash_off_time": "int    ms text is hidden  (used when sync is OFF)",
     # ── Subliminal shadow flashes ─────────────────────────────────────────────
-    "shadow_opacity":             "float  0–100       — opacity of shadow layer",
-    "shadow_flash_on_time":       "int    ms shadow is shown  — keep ≤ 50 for subliminal",
-    "shadow_flash_off_time":      "int    ms shadow is hidden",
-    "shadow_count":               "int    number of simultaneous shadow positions",
-
+    "shadow_opacity": "float  0–100       — opacity of shadow layer",
+    "shadow_flash_on_time": "int    ms shadow is shown  — keep ≤ 50 for subliminal",
+    "shadow_flash_off_time": "int    ms shadow is hidden",
+    "shadow_count": "int    number of simultaneous shadow positions",
     # ── Text and font ─────────────────────────────────────────────────────────
-    "text_color":                 "list   [R, G, B] 0–255 — color of all text layers",
-    "font_switch_mode":           "str    intelligent (5-12 s dwell) | rapid (0.15-0.45 s)",
-
+    "text_color": "list   [R, G, B] 0–255 — color of all text layers",
+    "font_switch_mode": "str    intelligent (5-12 s dwell) | rapid (0.15-0.45 s)",
     # ── Affirmations ──────────────────────────────────────────────────────────
-    "affirmations_pool":          "list[str]  — override phrase pool for all text layers; "
-                                  "set to null to revert to session file",
-    "phrases":                    "str   tag name — activate a tag group from affirmations.txt; "
-                                  "null = use all untagged phrases",
-
+    "affirmations_pool": "list[str]  — override phrase pool for all text layers; "
+    "set to null to revert to session file",
+    "phrases": "str   tag name — activate a tag group from affirmations.txt; "
+    "null = use all untagged phrases",
     # ── Window / Overlay ──────────────────────────────────────────────────────
     # These are especially useful for agent-driven sessions where the display
     # should run passively without disrupting the user's normal activity.
-    "window_always_on_top":       "bool  — keep display above all other windows",
-    "window_click_through":       "bool  — mouse events pass through to apps behind the display; "
-                                  "combined with always_on_top creates a fully passive overlay. "
-                                  "Side-effect: window loses taskbar entry and stops accepting "
-                                  "keyboard input (ESC / F11 disabled) — user must stop via "
-                                  "the control panel Stop button.",
-    "window_opacity":             "int   10–100  — whole-window opacity %; "
-                                  "100 = fully opaque (default), lower = see-through overlay",
-
+    "window_always_on_top": "bool  — keep display above all other windows",
+    "window_click_through": "bool  — mouse events pass through to apps behind the display; "
+    "combined with always_on_top creates a fully passive overlay. "
+    "Side-effect: window loses taskbar entry and stops accepting "
+    "keyboard input (ESC / F11 disabled) — user must stop via "
+    "the control panel Stop button.",
+    "window_opacity": "int   10–100  — whole-window opacity %; "
+    "100 = fully opaque (default), lower = see-through overlay",
     # ── Interactive feedback loop ──────────────────────────────────────────────
     # Write llm_prompt to ask the user something; the control panel shows a
     # floating input dialog.  Read user_response to get their answer.
-    "llm_prompt":                 "str|null  — agent writes a question here; control panel "
-                                  "pops up an input dialog; cleared automatically after response",
-    "llm_prompt_timeout_s":       "int|null  — seconds before the dialog auto-skips; "
-                                  "null = no timeout",
-    "user_response":              "str|null  — typed response from the user; null if skipped; "
-                                  "agent should clear this after reading",
-    "response_timestamp":         "float     — time.time() when the response was submitted; "
-                                  "use to detect staleness",
+    "llm_prompt": "str|null  — agent writes a question here; control panel "
+    "pops up an input dialog; cleared automatically after response",
+    "llm_prompt_timeout_s": "int|null  — seconds before the dialog auto-skips; "
+    "null = no timeout",
+    "user_response": "str|null  — typed response from the user; null if skipped; "
+    "agent should clear this after reading",
+    "response_timestamp": "float     — time.time() when the response was submitted; "
+    "use to detect staleness",
 }
 
 # ── Brainwave state presets ───────────────────────────────────────────────────
 
 PRESETS = {
-    "delta":  {"carrier_frequency": 150, "beat_frequency":  2.0},   # deep sleep / healing
-    "theta":  {"carrier_frequency": 180, "beat_frequency":  6.0},   # meditation / dreaming
-    "alpha":  {"carrier_frequency": 200, "beat_frequency": 10.0},   # relaxed awareness
-    "beta":   {"carrier_frequency": 220, "beat_frequency": 20.0},   # alert focus
-    "gamma":  {"carrier_frequency": 300, "beat_frequency": 40.0},   # peak cognition
+    "delta": {"carrier_frequency": 150, "beat_frequency": 2.0},  # deep sleep / healing
+    "theta": {"carrier_frequency": 180, "beat_frequency": 6.0},  # meditation / dreaming
+    "alpha": {"carrier_frequency": 200, "beat_frequency": 10.0},  # relaxed awareness
+    "beta": {"carrier_frequency": 220, "beat_frequency": 20.0},  # alert focus
+    "gamma": {"carrier_frequency": 300, "beat_frequency": 40.0},  # peak cognition
 }
 
 # ── I/O helpers ───────────────────────────────────────────────────────────────
+
 
 def read_state() -> dict[str, Any]:
     """Return the full current live_control.json as a dict.
@@ -211,8 +203,9 @@ def apply_preset(name: str, extra: dict | None = None) -> None:
     send(params)
 
 
-def prompt_user(text: str, timeout_s: int | None = None,
-                style: dict | None = None) -> None:
+def prompt_user(
+    text: str, timeout_s: int | None = None, style: dict | None = None
+) -> None:
     """Display a question to the user via the control panel's floating popup.
 
     The question appears as a styled dialog over the display.  The user types
@@ -234,60 +227,61 @@ def prompt_user(text: str, timeout_s: int | None = None,
         Optional ``llm_prompt_style`` overrides (e.g. ``{"needs_response": False}``).
     """
     import time as _time
-    ts    = _time.time()
+
+    ts = _time.time()
     style = style or {}
-    patch_live({
-        "agent_message": {
-            "text":           text,
-            "ts":             ts,
-            "needs_response": style.get("needs_response", True),
-            "via":            ["overlay"],
-            "style":          style,
-            "timeout_s":      timeout_s,
-        },
-        "user_response":      None,
-        "response_timestamp": None,
-    })
+    patch_live(
+        {
+            "agent_message": {
+                "text": text,
+                "ts": ts,
+                "needs_response": style.get("needs_response", True),
+                "via": ["overlay"],
+                "style": style,
+                "timeout_s": timeout_s,
+            },
+            "user_response": None,
+            "response_timestamp": None,
+        }
+    )
 
 
-def read_response(clear: bool = True) -> str | None:
-    """Return the latest user response, or ``None`` if not yet answered.
+_UNANSWERED = object()
 
-    Parameters
-    ----------
-    clear : bool
-        If ``True`` (default), clears ``user_response`` from live_control.json
-        after reading so the same response is not returned twice.
+
+def read_response(clear: bool = True):
+    """Return the latest user response.
+
+    Returns
+    -------
+    str | None
+        The user's response string, or ``None`` if the user skipped.
+    _UNANSWERED sentinel
+        If no response has been submitted yet (``response_timestamp`` is null).
     """
     state = read_state()
-    # A response exists when response_timestamp is set (None = not yet answered)
     if state.get("response_timestamp") is None:
-        return None
-    response = state.get("user_response")   # may be None if user skipped
+        return _UNANSWERED
+    response = state.get("user_response")
     if clear:
         patch_live({"user_response": None, "response_timestamp": None})
     return response
 
 
-def wait_for_response(timeout_s: float = 60.0,
-                      poll_interval: float = 0.25) -> str | None:
+def wait_for_response(
+    timeout_s: float = 60.0, poll_interval: float = 0.25
+) -> str | None:
     """Block until the user submits a response or ``timeout_s`` elapses.
 
     Returns the response string, or ``None`` if the user skipped / timed out.
-
-    Parameters
-    ----------
-    timeout_s : float
-        Maximum seconds to wait.  Default 60.
-    poll_interval : float
-        How often to check live_control.json.  Default 0.25 s.
     """
     import time
+
     deadline = time.monotonic() + timeout_s
     while time.monotonic() < deadline:
-        response = read_response(clear=True)
-        if response is not None or read_state().get("response_timestamp") is not None:
-            return response
+        result = read_response(clear=True)
+        if result is not _UNANSWERED:
+            return result
         time.sleep(poll_interval)
     return None
 
@@ -314,20 +308,25 @@ def passive_overlay(opacity: int = 60, *, disable: bool = False) -> None:
         Pass ``True`` to restore normal fullscreen (non-overlay) mode.
     """
     if disable:
-        send({
-            "window_always_on_top": False,
-            "window_click_through": False,
-            "window_opacity":       100,
-        })
+        send(
+            {
+                "window_always_on_top": False,
+                "window_click_through": False,
+                "window_opacity": 100,
+            }
+        )
     else:
-        send({
-            "window_always_on_top": True,
-            "window_click_through": True,
-            "window_opacity":       max(10, min(100, opacity)),
-        })
+        send(
+            {
+                "window_always_on_top": True,
+                "window_click_through": True,
+                "window_opacity": max(10, min(100, opacity)),
+            }
+        )
 
 
 # ── Quick reference for LLM context ──────────────────────────────────────────
+
 
 def describe() -> str:
     """Return a formatted string describing all controllable parameters."""
@@ -336,8 +335,10 @@ def describe() -> str:
         lines.append(f"  {key:<35} {desc}")
     lines.append("\nBrainwave presets (apply_preset name):")
     for name, vals in PRESETS.items():
-        lines.append(f"  {name:<12} carrier={vals['carrier_frequency']} Hz, "
-                     f"beat={vals['beat_frequency']} Hz")
+        lines.append(
+            f"  {name:<12} carrier={vals['carrier_frequency']} Hz, "
+            f"beat={vals['beat_frequency']} Hz"
+        )
     return "\n".join(lines)
 
 

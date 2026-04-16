@@ -20,7 +20,7 @@ Target demographic: the hypnokink and altered-states community — people who ac
 
 ```
 main_imgui.py (active)  OR  main.py (legacy Tkinter, still functional)
-  └── control_panel_imgui.py / control_panel.py
+  └── control_panel_imgui.py / control_panel_imgui.py
         ├── ipc/state_server.py     (started here — TCP 6789, single-writer)
         ├── engines/audio_engine.py (7-channel audio)
         ├── content/tts_engine.py   (TTS, channels 4-5)
@@ -52,7 +52,7 @@ Somna/
   main_imgui.py              Active entry point (Dear ImGui panel)
   main.py                    Legacy Tkinter entry point
   control_panel_imgui.py     Dear ImGui application class (57 KB, experimental/parallel)
-  control_panel.py           Production Tkinter panel (214 KB — largest module)
+  control_panel_imgui.py           Production Tkinter panel (214 KB — largest module)
   visual_display.py          ModernGL rendering engine — 5-layer compositor (40 KB)
   visual_display_runner.py   Thread wrapper for visual_display
   config.py                  Path constants, default values, app-wide config

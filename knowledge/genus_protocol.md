@@ -276,8 +276,8 @@ Cognitive engagement enhances the effect (Mlinarič 2025) — the mechanism invo
 | 5 | Add `genus_*` keys to `live_control.json` schema | `live_control.json` | |
 | 6 | Narrow-band 38–42 Hz monitoring + entrainment ratio | `eeg_engine.py` | Requires Muse 2 for live testing |
 | 7 | GENUS session YAML template (60 min, with cognitive engagement content) | `sessions/genus/session.yaml` | |
-| 8 | Photosensitive epilepsy safety warning dialog | `control_panel.py` | Must be in place before visual flicker is user-facing |
-| 9 | Session timer + emergency stop (Escape) | `control_panel.py` | |
+| 8 | Photosensitive epilepsy safety warning dialog | `control_panel_imgui.py` | Must be in place before visual flicker is user-facing |
+| 9 | Session timer + emergency stop (Escape) | `control_panel_imgui.py` | |
 | 10 | Test: synthetic EEG first, then Muse 2 | `eeg_engine.py` | |
 
 ---

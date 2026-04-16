@@ -93,7 +93,7 @@ PATTERN_NAMES = [p.value for p in HapticPattern]
 class HapticEngine:
     """Lovense BLE haptic output engine.
 
-    Started by control_panel.py when the user clicks "Connect Haptic"
+    Started by control_panel_imgui.py when the user clicks "Connect Haptic"
     or during hardware discovery. Runs as a background thread that
     reads live_control.json at ~10 Hz and sends commands to the device.
     """

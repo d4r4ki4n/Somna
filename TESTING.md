@@ -26,7 +26,7 @@ print a green/red summary. If it exits with code 0, everything below marked
 
 ## Step 2 — Session-required checks (synthetic board, no hardware)
 
-These need `python main.py` running with a sleep-type session and
+These need `python main_imgui.py` running with a sleep-type session and
 `eeg_board_id: -1` in `agent_config.yaml`.
 
 ### Ad-hoc verified (2026-03-27, synthetic board, sleep_default session)

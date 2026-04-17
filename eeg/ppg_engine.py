@@ -53,21 +53,21 @@ import numpy as np
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-_PPG_SR         = 64        # Muse 2 ancillary preset sample rate (Hz)
-_BUFFER_S       = 16        # rolling buffer length for IBI analysis
-_MIN_BEATS      = 4         # minimum valid R-peaks before emitting metrics
-_MIN_IBI_S      = 0.30      # 200 BPM maximum
-_MAX_IBI_S      = 1.80      # 33 BPM minimum
-_RESP_LO_HZ     = 0.15      # respiratory band low
-_RESP_HI_HZ     = 0.40      # respiratory band high
-_PEAK_THRESH    = 0.50      # fraction of std for peak threshold (forehead PPG)
+_PPG_SR = 64  # Muse 2 ancillary preset sample rate (Hz)
+_BUFFER_S = 16  # rolling buffer length for IBI analysis
+_MIN_BEATS = 4  # minimum valid R-peaks before emitting metrics
+_MIN_IBI_S = 0.30  # 200 BPM maximum
+_MAX_IBI_S = 1.80  # 33 BPM minimum
+_RESP_LO_HZ = 0.15  # respiratory band low
+_RESP_HI_HZ = 0.40  # respiratory band high
+_PEAK_THRESH = 0.50  # fraction of std for peak threshold (forehead PPG)
 
 # Bible Ch.2 §2.9 §2.2 — cardiac phase gating constants
-_SYSTOLE_GUARD_MS         = 350    # ms after PPG peak before diastolic window opens
-_DIASTOLE_END_FRAC        = 0.85   # fraction of mean IBI at which diastolic window closes
-_CALIBRATION_S            = 60     # seconds of RMSSD baseline calibration
-_AUTONOMIC_SIGMOID_CENTER = 0.30   # RMSSD 30% above baseline → midpoint (0.5) depth
-_AUTONOMIC_SIGMOID_SLOPE  = 5.0    # sigmoid steepness
+_SYSTOLE_GUARD_MS = 350  # ms after PPG peak before diastolic window opens
+_DIASTOLE_END_FRAC = 0.85  # fraction of mean IBI at which diastolic window closes
+_CALIBRATION_S = 60  # seconds of RMSSD baseline calibration
+_AUTONOMIC_SIGMOID_CENTER = 0.30  # RMSSD 30% above baseline → midpoint (0.5) depth
+_AUTONOMIC_SIGMOID_SLOPE = 5.0  # sigmoid steepness
 
 
 class PPGEngine:
@@ -81,22 +81,24 @@ class PPGEngine:
     def __init__(self) -> None:
         self._buffer: deque[float] = deque(maxlen=_PPG_SR * _BUFFER_S)
         # Breath phase monotonic clock
-        self._breath_phase: float  = 0.0
-        self._last_tick_t:  float  = 0.0
+        self._breath_phase: float = 0.0
+        self._last_tick_t: float = 0.0
         # Retained values for graceful degradation
         self._last_breath_rate: float = 0.0
-        self._last_hr:          float = 0.0
-        self._last_rmssd:       float = 0.0
+        self._last_hr: float = 0.0
+        self._last_rmssd: float = 0.0
+        self._tick_count: int = 0
+        self._diag_logged: bool = False
         # Bible Ch.2 §2.9 §2.3 — cardiac phase tracking
-        self._last_peak_time:              float       = 0.0
-        self._mean_ibi_s:                  float       = 0.0
-        self._ibi_ema_alpha:               float       = 0.3
+        self._last_peak_time: float = 0.0
+        self._mean_ibi_s: float = 0.0
+        self._ibi_ema_alpha: float = 0.3
         # Bible Ch.2 §2.9 §2.6 — autonomic depth calibration
-        self._baseline_rmssd:              float | None = None
-        self._calibration_rmssd_samples:   list[float]  = []
-        self._calibration_start_time:      float        = 0.0
-        self._calibrated:                  bool         = False
-        self._current_autonomic_depth:     float        = 0.0
+        self._baseline_rmssd: float | None = None
+        self._calibration_rmssd_samples: list[float] = []
+        self._calibration_start_time: float = 0.0
+        self._calibrated: bool = False
+        self._current_autonomic_depth: float = 0.0
 
     # ── Public interface ───────────────────────────────────────────────────────
 
@@ -114,11 +116,22 @@ class PPGEngine:
             from brainflow.board_shim import BoardShim, BrainFlowPresets
 
             n = _PPG_SR  # 1-second chunk
-            data = board.get_current_board_data(      # type: ignore[attr-defined]
+            data = board.get_current_board_data(  # type: ignore[attr-defined]
                 n, BrainFlowPresets.ANCILLARY_PRESET
             )
 
+            self._tick_count += 1
+            if not self._diag_logged and self._tick_count % 10 == 0:
+                print(
+                    f"[PPG] tick #{self._tick_count}: data shape={data.shape}  board_id={board_id}"
+                )
+
             if data.shape[1] < 8:
+                if not self._diag_logged and self._tick_count == 15:
+                    print(
+                        f"[PPG] No ANCILLARY data after 15 ticks — PPG not available for this transport (board_id={board_id})"
+                    )
+                    self._diag_logged = True
                 return {"ppg_available": False}
 
             ppg_chans = BoardShim.get_ppg_channels(
@@ -129,7 +142,7 @@ class PPGEngine:
 
             # Prefer IR channel (index 1) — most stable for forehead PPG.
             # Fall back to index 0 if only one channel is available.
-            ir_idx   = ppg_chans[min(1, len(ppg_chans) - 1)]
+            ir_idx = ppg_chans[min(1, len(ppg_chans) - 1)]
             ir_chunk = data[ir_idx]
             self._buffer.extend(ir_chunk.tolist())
 
@@ -140,8 +153,8 @@ class PPGEngine:
         if len(self._buffer) < _PPG_SR * 4:
             return {"ppg_available": False}
 
-        arr   = np.array(self._buffer, dtype=np.float64)
-        arr   = arr - np.mean(arr)                      # remove DC offset
+        arr = np.array(self._buffer, dtype=np.float64)
+        arr = arr - np.mean(arr)  # remove DC offset
         peaks = _detect_peaks(arr, _PPG_SR, _PEAK_THRESH)
 
         if len(peaks) < _MIN_BEATS:
@@ -150,14 +163,14 @@ class PPGEngine:
             return self._emit(available=True)
 
         # ── Inter-beat intervals ──────────────────────────────────────────────
-        ibis_raw = np.diff(peaks) / _PPG_SR             # seconds
-        ibis     = ibis_raw[(ibis_raw >= _MIN_IBI_S) & (ibis_raw <= _MAX_IBI_S)]
+        ibis_raw = np.diff(peaks) / _PPG_SR  # seconds
+        ibis = ibis_raw[(ibis_raw >= _MIN_IBI_S) & (ibis_raw <= _MAX_IBI_S)]
 
         if len(ibis) < 2:
             self._advance_phase()
             return self._emit(available=True)
 
-        hr    = float(60.0 / np.mean(ibis))
+        hr = float(60.0 / np.mean(ibis))
         rmssd = float(np.sqrt(np.mean(np.diff(ibis * 1000.0) ** 2)))  # ms
 
         # ── Respiratory rate via RSA spectral method ──────────────────────────
@@ -166,14 +179,13 @@ class PPGEngine:
         # ── Cardiac phase tracking (Bible Ch.2 §2.9 §2.5) ─────────────────────────────
         now = time.monotonic()
         samples_since_peak = len(arr) - int(peaks[-1])
-        peak_age_s         = samples_since_peak / _PPG_SR
+        peak_age_s = samples_since_peak / _PPG_SR
         self._last_peak_time = now - peak_age_s
         current_mean_ibi = float(np.mean(ibis))
         if self._mean_ibi_s > 0:
             self._mean_ibi_s = (
-                (1 - self._ibi_ema_alpha) * self._mean_ibi_s
-                + self._ibi_ema_alpha * current_mean_ibi
-            )
+                1 - self._ibi_ema_alpha
+            ) * self._mean_ibi_s + self._ibi_ema_alpha * current_mean_ibi
         else:
             self._mean_ibi_s = current_mean_ibi
 
@@ -192,7 +204,8 @@ class PPGEngine:
         if self._calibrated and self._baseline_rmssd and self._baseline_rmssd > 0:
             relative_rmssd = (rmssd - self._baseline_rmssd) / self._baseline_rmssd
             auto_depth = 1.0 / (
-                1.0 + np.exp(
+                1.0
+                + np.exp(
                     -_AUTONOMIC_SIGMOID_SLOPE
                     * (relative_rmssd - _AUTONOMIC_SIGMOID_CENTER)
                 )
@@ -203,8 +216,8 @@ class PPGEngine:
 
         # ── Advance breath phase clock ────────────────────────────────────────
         self._last_breath_rate = breath_rate
-        self._last_hr          = hr
-        self._last_rmssd       = rmssd
+        self._last_hr = hr
+        self._last_rmssd = rmssd
         self._advance_phase()
 
         return self._emit(available=True)
@@ -222,32 +235,38 @@ class PPGEngine:
         self._last_tick_t = now
 
     def _emit(self, available: bool) -> dict:
-        now         = time.monotonic()
-        peak_age_ms = (now - self._last_peak_time) * 1000.0 if self._last_peak_time > 0 else 0.0
+        now = time.monotonic()
+        peak_age_ms = (
+            (now - self._last_peak_time) * 1000.0 if self._last_peak_time > 0 else 0.0
+        )
         if self._mean_ibi_s > 0:
-            cardiac_phase    = min(1.0, peak_age_ms / (self._mean_ibi_s * 1000.0))
-            diastole_end_ms  = self._mean_ibi_s * 1000.0 * _DIASTOLE_END_FRAC
+            cardiac_phase = min(1.0, peak_age_ms / (self._mean_ibi_s * 1000.0))
+            diastole_end_ms = self._mean_ibi_s * 1000.0 * _DIASTOLE_END_FRAC
             cardiac_diastole = float(_SYSTOLE_GUARD_MS) < peak_age_ms < diastole_end_ms
         else:
-            cardiac_phase    = 0.5
-            cardiac_diastole = True   # permissive default when no cardiac data
+            cardiac_phase = 0.5
+            cardiac_diastole = True  # permissive default when no cardiac data
         return {
-            "ppg_available":           available,
-            "ppg_heart_rate":          round(self._last_hr,                  1),
-            "ppg_hrv_rmssd":           round(self._last_rmssd,               1),
-            "ppg_breath_rate":         round(self._last_breath_rate,         4),
-            "ppg_breath_phase":        round(self._breath_phase,             4),
-            "ppg_cardiac_phase":       round(cardiac_phase,                  3),
-            "ppg_cardiac_diastole":    cardiac_diastole,
-            "ppg_last_peak_age_ms":    round(peak_age_ms,                    1),
-            "ppg_autonomic_depth":     round(self._current_autonomic_depth,  3),
-            "ppg_autonomic_baseline":  (round(self._baseline_rmssd, 1)
-                                        if self._baseline_rmssd is not None else None),
+            "ppg_available": available,
+            "ppg_heart_rate": round(self._last_hr, 1),
+            "ppg_hrv_rmssd": round(self._last_rmssd, 1),
+            "ppg_breath_rate": round(self._last_breath_rate, 4),
+            "ppg_breath_phase": round(self._breath_phase, 4),
+            "ppg_cardiac_phase": round(cardiac_phase, 3),
+            "ppg_cardiac_diastole": cardiac_diastole,
+            "ppg_last_peak_age_ms": round(peak_age_ms, 1),
+            "ppg_autonomic_depth": round(self._current_autonomic_depth, 3),
+            "ppg_autonomic_baseline": (
+                round(self._baseline_rmssd, 1)
+                if self._baseline_rmssd is not None
+                else None
+            ),
             "ppg_autonomic_calibrated": self._calibrated,
         }
 
 
 # ── Module-level helpers ───────────────────────────────────────────────────────
+
 
 def _detect_peaks(arr: np.ndarray, sr: int, thresh_factor: float) -> np.ndarray:
     """
@@ -264,7 +283,7 @@ def _detect_peaks(arr: np.ndarray, sr: int, thresh_factor: float) -> np.ndarray:
     np.ndarray of integer sample indices of detected peaks.
     """
     threshold = float(np.std(arr)) * thresh_factor
-    min_dist  = int(sr * _MIN_IBI_S)   # samples equivalent to 300 ms
+    min_dist = int(sr * _MIN_IBI_S)  # samples equivalent to 300 ms
 
     peaks: list[int] = []
     i = 1
@@ -273,7 +292,7 @@ def _detect_peaks(arr: np.ndarray, sr: int, thresh_factor: float) -> np.ndarray:
             # Enforce refractory period: only accept if far enough from last peak
             if not peaks or (i - peaks[-1]) >= min_dist:
                 peaks.append(i)
-                i += min_dist          # skip the refractory window
+                i += min_dist  # skip the refractory window
                 continue
         i += 1
 
@@ -290,14 +309,14 @@ def _extract_resp_rate(ibis: np.ndarray, last_rate: float) -> float:
     has insufficient peaks or the series is too short.
     """
     if len(ibis) < 6:
-        return last_rate or 0.15   # 9 breaths/min safe default
+        return last_rate or 0.15  # 9 breaths/min safe default
 
     # Approximate sample rate of IBI series (mean heart rate)
     ibi_sr = float(1.0 / np.mean(ibis))  # Hz (e.g. 1.0 at 60 BPM)
 
-    n      = len(ibis)
-    freqs  = np.fft.rfftfreq(n, d=1.0 / ibi_sr)
-    power  = np.abs(np.fft.rfft(ibis - np.mean(ibis))) ** 2
+    n = len(ibis)
+    freqs = np.fft.rfftfreq(n, d=1.0 / ibi_sr)
+    power = np.abs(np.fft.rfft(ibis - np.mean(ibis))) ** 2
 
     resp_mask = (freqs >= _RESP_LO_HZ) & (freqs <= _RESP_HI_HZ)
     if not np.any(resp_mask):

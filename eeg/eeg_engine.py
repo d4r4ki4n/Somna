@@ -1021,6 +1021,20 @@ class EEGEngine:
 
         # Spin up PPG and IMU engines for real hardware (not synthetic)
         if self.board_id != -1:
+            # PPG requires ANCILLARY preset — only available on BLED transport
+            if self.board_id in (22,):
+                try:
+                    self.board.config_board("p50")
+                    print("[EEG] Muse 2 BLED ANCILLARY preset enabled (PPG + 5th EEG)")
+                except Exception as cb_e:
+                    print(f"[EEG] config_board p50 failed: {cb_e}")
+            elif self.board_id in (45,):
+                try:
+                    self.board.config_board("p61")
+                    print("[EEG] Muse S BLED ANCILLARY preset enabled (PPG)")
+                except Exception as cb_e:
+                    print(f"[EEG] config_board p61 failed: {cb_e}")
+
             try:
                 from eeg.ppg_engine import PPGEngine
 
@@ -1035,21 +1049,6 @@ class EEGEngine:
                 print("[EEG] IMU engine started.")
             except Exception as imu_e:
                 print(f"[EEG] IMU engine unavailable: {imu_e}")
-
-            if self.board_id in (22, 38):
-                try:
-                    self.board.config_board("p50")
-                    print(
-                        "[EEG] Muse 2 ANCILLARY preset enabled (PPG + 5th EEG channel)"
-                    )
-                except Exception as cb_e:
-                    print(f"[EEG] config_board p50 failed: {cb_e}")
-            elif self.board_id in (39, 45):
-                try:
-                    self.board.config_board("p61")
-                    print("[EEG] Muse S ANCILLARY preset enabled (PPG)")
-                except Exception as cb_e:
-                    print(f"[EEG] config_board p61 failed: {cb_e}")
 
         device_name = self._device_name()
         patch_live(

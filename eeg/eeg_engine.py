@@ -962,6 +962,17 @@ class EEGEngine:
     def is_alive(self):
         return self._thread is not None and self._thread.is_alive()
 
+    _BOARD_NAMES = {
+        -1: "Synthetic",
+        22: "Muse 2 (BLED)",
+        38: "Muse 2",
+        39: "Muse S",
+        45: "Muse S (BLED)",
+    }
+
+    def _device_name(self) -> str:
+        return self._BOARD_NAMES.get(self.board_id, f"Board {self.board_id}")
+
     def _release_board(self) -> None:
         if self.board is None:
             return
@@ -1025,9 +1036,26 @@ class EEGEngine:
             except Exception as imu_e:
                 print(f"[EEG] IMU engine unavailable: {imu_e}")
 
+            if self.board_id in (22, 38):
+                try:
+                    self.board.config_board("p50")
+                    print(
+                        "[EEG] Muse 2 ANCILLARY preset enabled (PPG + 5th EEG channel)"
+                    )
+                except Exception as cb_e:
+                    print(f"[EEG] config_board p50 failed: {cb_e}")
+            elif self.board_id in (39, 45):
+                try:
+                    self.board.config_board("p61")
+                    print("[EEG] Muse S ANCILLARY preset enabled (PPG)")
+                except Exception as cb_e:
+                    print(f"[EEG] config_board p61 failed: {cb_e}")
+
+        device_name = self._device_name()
         patch_live(
             {
                 "eeg_connected": True,
+                "eeg_device_name": device_name,
                 "eeg_quality": "good",
                 "eeg_confidence": "none",
                 "eeg_entrainment_confidence": "unavailable",
@@ -1035,7 +1063,7 @@ class EEGEngine:
                 "eeg_entrainment_trend": "insufficient_data",
             }
         )
-        print(f"[EEG] Connected — board_id={self.board_id}")
+        print(f"[EEG] Connected — board_id={self.board_id}  device={device_name}")
 
         eeg_channels = self._BoardShim.get_eeg_channels(self.board_id)
         sampling_rate = self._BoardShim.get_sampling_rate(self.board_id)

@@ -1358,6 +1358,7 @@ class SomnaAgent:
         self._sz_active: bool = False
         self._sz_phase: str = ""
         self._sz_phase_start: float = 0.0
+        self._sz_phase_before_pause: str = ""
         self._sz_samples: list = []  # collected (ts, eeg_dict) snapshots
 
         # ── Idle / planning / nudge / console state ───────────────────────────
@@ -4508,6 +4509,20 @@ class SomnaAgent:
         if self._sz_phase == "complete":
             return
 
+        if not state.get("eeg_connected"):
+            if self._sz_phase not in ("paused", "orient"):
+                print(
+                    f"[Agent] SZ paused — EEG disconnected at phase '{self._sz_phase}'"
+                )
+                self._sz_phase_before_pause = self._sz_phase
+                self._sz_phase = "paused"
+            return
+
+        if self._sz_phase == "paused":
+            print("[Agent] SZ resumed — EEG reconnected")
+            self._sz_phase = self._sz_phase_before_pause
+            self._sz_phase_start = time.time()
+
         elapsed = time.time() - self._sz_phase_start
         eeg = {
             "delta": float(state.get("eeg_delta") or 0),
@@ -4642,9 +4657,9 @@ class SomnaAgent:
         else:
             baselines["trance_susceptibility"] = "low"
 
-        baselines["calibrated_utc"] = datetime.datetime.utcnow().isoformat(
-            timespec="seconds"
-        )
+        baselines["calibrated_utc"] = datetime.datetime.now(
+            datetime.timezone.utc
+        ).isoformat(timespec="seconds")
         baselines["sample_count"] = len(self._sz_samples)
 
         self._update_profile({"eeg_baselines": baselines})

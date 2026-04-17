@@ -120,18 +120,7 @@ class PPGEngine:
                 n, BrainFlowPresets.ANCILLARY_PRESET
             )
 
-            self._tick_count += 1
-            if not self._diag_logged and self._tick_count % 10 == 0:
-                print(
-                    f"[PPG] tick #{self._tick_count}: data shape={data.shape}  board_id={board_id}"
-                )
-
             if data.shape[1] < 8:
-                if not self._diag_logged and self._tick_count == 15:
-                    print(
-                        f"[PPG] No ANCILLARY data after 15 ticks — PPG not available for this transport (board_id={board_id})"
-                    )
-                    self._diag_logged = True
                 return {"ppg_available": False}
 
             ppg_chans = BoardShim.get_ppg_channels(

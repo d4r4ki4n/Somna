@@ -1004,6 +1004,20 @@ class EEGEngine:
             try:
                 self.board = self._BoardShim(self.board_id, self.params)
                 self.board.prepare_session()
+                # Muse 2: enable ANCILLARY preset for PPG before start_stream
+                if self.board_id in (22, 38):
+                    try:
+                        resp = self.board.config_board("p50")
+                        print(f"[EEG] config_board p50 response: {resp}")
+                    except Exception as cb_e:
+                        print(f"[EEG] config_board p50 failed: {cb_e}")
+                elif self.board_id in (39, 45):
+                    try:
+                        resp = self.board.config_board("p61")
+                        print(f"[EEG] config_board p61 response: {resp}")
+                    except Exception as cb_e:
+                        print(f"[EEG] config_board p61 failed: {cb_e}")
+                self.board.start_stream(450_000)
                 break
             except Exception as e:
                 print(
@@ -1022,20 +1036,6 @@ class EEGEngine:
 
         # Spin up PPG and IMU engines for real hardware (not synthetic)
         if self.board_id != -1:
-            # Muse 2: enable ANCILLARY preset for PPG data via config_board
-            if self.board_id in (22, 38):
-                try:
-                    self.board.config_board("p50")
-                    print("[EEG] Muse 2 ANCILLARY preset enabled (PPG + 5th EEG)")
-                except Exception as cb_e:
-                    print(f"[EEG] config_board p50 failed: {cb_e}")
-            elif self.board_id in (39, 45):
-                try:
-                    self.board.config_board("p61")
-                    print("[EEG] Muse S ANCILLARY preset enabled (PPG)")
-                except Exception as cb_e:
-                    print(f"[EEG] config_board p61 failed: {cb_e}")
-
             try:
                 from eeg.ppg_engine import PPGEngine
 

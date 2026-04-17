@@ -26,78 +26,104 @@ from ipc import patch_live
 
 INTERPOLATABLE = {
     # Audio
-    "beat_frequency", "carrier_frequency", "volume",
+    "beat_frequency",
+    "carrier_frequency",
+    "volume",
     "noise_volume",
     # Veil / background
-    "veil_opacity", "veil_scroll_speed_x", "veil_scroll_speed_y",
+    "veil_opacity",
+    "veil_scroll_speed_x",
+    "veil_scroll_speed_y",
     "slideshow_interval",
     # Text timing
-    "center_flash_on_time", "center_flash_off_time",
-    "flash_duty_cycle", "flash_variance",
+    "center_flash_on_time",
+    "center_flash_off_time",
+    "flash_duty_cycle",
+    "flash_variance",
     # Shadows
-    "shadow_opacity", "shadow_flash_on_time", "shadow_flash_off_time",
+    "shadow_opacity",
+    "shadow_flash_on_time",
+    "shadow_flash_off_time",
     # Spirals — all numeric properties interpolate smoothly
-    "spiral_opacity", "spiral_tightness", "spiral_chaos",
-    "spiral_count", "spiral_thickness", "spiral_speed_multiplier",
+    "spiral_opacity",
+    "spiral_tightness",
+    "spiral_chaos",
+    "spiral_count",
+    "spiral_thickness",
+    "spiral_speed_multiplier",
+    # TTS FX chain (entrainment_effects.md §2)
+    "tts_reverb_wet",
+    "tts_reverb_room_ms",
+    "tts_delay_ms",
+    "tts_delay_feedback",
 }
 
 INSTANT_ONLY = {
-    "spiral_style", "font_switch_mode", "veil_mode",
-    "center_flash_sync_to_beat", "spiral_show_text", "spiral_color_mode",
-    "start_fullscreen", "beat_sync_master", "phrases",
-    "audio_muted",      # bool on/off switch for binaural + noise layer
-    "beat_type",        # "binaural" | "isochronic" | "both"
-    "carrier_waveform", # "sine" | "square" | "triangle" | "sawtooth"
-    "noise_color",      # string color name — switches instantly
-    "tts_enabled",      # user can toggle voice on/off mid-session
-    "tts_subliminal",   # user can toggle silent-sub layer mid-session
+    "spiral_style",
+    "font_switch_mode",
+    "veil_mode",
+    "center_flash_sync_to_beat",
+    "spiral_show_text",
+    "spiral_color_mode",
+    "start_fullscreen",
+    "beat_sync_master",
+    "phrases",
+    "audio_muted",  # bool on/off switch for binaural + noise layer
+    "beat_type",  # "binaural" | "isochronic" | "both"
+    "carrier_waveform",  # "sine" | "square" | "triangle" | "sawtooth"
+    "noise_color",  # string color name — switches instantly
+    "tts_enabled",  # user can toggle voice on/off mid-session
+    "tts_subliminal",  # user can toggle silent-sub layer mid-session
+    "tts_duck_ms",  # int 0-200 — audio duck duration ms
+    "tts_duck_trigger",  # one-shot: "next" arms duck, cleared by audio engine
 }
 
 # Application-level fallbacks — used if not set in session defaults or timeline
 APP_DEFAULTS = {
     # Audio
-    "beat_frequency":            10.0,
-    "carrier_frequency":         200.0,
-    "volume":                    80.0,
+    "beat_frequency": 10.0,
+    "carrier_frequency": 200.0,
+    "volume": 80.0,
     # Veil / background
-    "veil_opacity":              45.0,
-    "veil_scroll_speed_x":       1.2,
-    "veil_scroll_speed_y":       0.8,
-    "veil_mode":                 None,
-    "slideshow_interval":        3.0,
+    "veil_opacity": 45.0,
+    "veil_scroll_speed_x": 1.2,
+    "veil_scroll_speed_y": 0.8,
+    "veil_mode": None,
+    "slideshow_interval": 3.0,
     # Text timing
-    "center_flash_on_time":      120,
-    "center_flash_off_time":     80,
+    "center_flash_on_time": 120,
+    "center_flash_off_time": 80,
     "center_flash_sync_to_beat": True,
-    "flash_duty_cycle":          0.38,
-    "flash_variance":            0.22,
+    "flash_duty_cycle": 0.38,
+    "flash_variance": 0.22,
     # Shadows
-    "shadow_opacity":            25,
-    "shadow_flash_on_time":      40,
-    "shadow_flash_off_time":     180,
+    "shadow_opacity": 25,
+    "shadow_flash_on_time": 40,
+    "shadow_flash_off_time": 180,
     # Spirals
-    "spiral_style":              "tunnel_dream",
-    "spiral_count":              4,
-    "spiral_opacity":            88,
-    "spiral_tightness":          6.0,
-    "spiral_chaos":              0.1,
-    "spiral_thickness":          14,
-    "spiral_speed_multiplier":   1.0,
-    "spiral_color_mode":         "rainbow",
-    "spiral_show_text":          False,
+    "spiral_style": "tunnel_dream",
+    "spiral_count": 4,
+    "spiral_opacity": 88,
+    "spiral_tightness": 6.0,
+    "spiral_chaos": 0.1,
+    "spiral_thickness": 14,
+    "spiral_speed_multiplier": 1.0,
+    "spiral_color_mode": "rainbow",
+    "spiral_show_text": False,
     # Text / font
-    "font_switch_mode":          "intelligent",
+    "font_switch_mode": "intelligent",
     # Affirmations
-    "phrases":                   None,
+    "phrases": None,
     # Audio on/off — sessions default to beats ON; user "Stop Beats" creates a lock
-    "audio_muted":               False,
-    "beat_type":                 "binaural",
-    "noise_volume":              30.0,
-    "noise_color":               "pink",
+    "audio_muted": False,
+    "beat_type": "binaural",
+    "noise_volume": 30.0,
+    "noise_color": "pink",
 }
 
 
 # ── Easing functions ──────────────────────────────────────────────────────────
+
 
 def _ease(t: float, curve: str) -> float:
     """t is 0.0→1.0 progress. Returns eased 0.0→1.0."""
@@ -111,8 +137,8 @@ def _ease(t: float, curve: str) -> float:
     if curve == "ease_out":
         return 1.0 - (1.0 - t) ** 2
     if curve == "ease_in_out":
-        return t * t * (3.0 - 2.0 * t)   # smoothstep
-    return t   # fallback to linear
+        return t * t * (3.0 - 2.0 * t)  # smoothstep
+    return t  # fallback to linear
 
 
 def _interpolate(a: float, b: float, t: float, curve: str) -> float:
@@ -120,6 +146,7 @@ def _interpolate(a: float, b: float, t: float, curve: str) -> float:
 
 
 # ── Session loader ────────────────────────────────────────────────────────────
+
 
 class Session:
     """Parsed representation of a session.yaml."""
@@ -134,7 +161,7 @@ class Session:
             with open(self.yaml_file, encoding="utf-8") as f:
                 raw = yaml.safe_load(f) or {}
 
-        self.name: str        = raw.get("name", session_path.name)
+        self.name: str = raw.get("name", session_path.name)
         self.description: str = raw.get("description", "")
         self.duration: Optional[float] = raw.get("duration", None)
 
@@ -162,11 +189,11 @@ class Session:
             # Also collect any top-level non-meta keys (focus_flow / shorthand format)
             for k, v in entry.items():
                 if k not in _meta:
-                    params.setdefault(k, v)   # nested params: wins on conflict
+                    params.setdefault(k, v)  # nested params: wins on conflict
             kf = {
-                "t":      float(entry["t"]),
-                "label":  entry.get("label", ""),
-                "ease":   entry.get("ease", "linear"),
+                "t": float(entry["t"]),
+                "label": entry.get("label", ""),
+                "ease": entry.get("ease", "linear"),
                 "params": params,
             }
             kfs.append(kf)
@@ -227,6 +254,7 @@ class Session:
 
 # ── Timeline Runner ───────────────────────────────────────────────────────────
 
+
 class TimelineRunner(threading.Thread):
     """
     Background thread that drives session playback.
@@ -237,20 +265,20 @@ class TimelineRunner(threading.Thread):
     Call pause() / resume() to control playback.
     """
 
-    TICK_MS = 100   # ms between timeline writes
+    TICK_MS = 100  # ms between timeline writes
 
     def __init__(self, root: Path):
         super().__init__(daemon=True, name="TimelineRunner")
-        self.root       = root
-        self.live_path  = root / "live_control.json"
-        self._lock      = threading.RLock()   # reentrant — allows load inside tick
-        self._stop_evt  = threading.Event()
+        self.root = root
+        self.live_path = root / "live_control.json"
+        self._lock = threading.RLock()  # reentrant — allows load inside tick
+        self._stop_evt = threading.Event()
 
         # Playback state
-        self._session:   Optional[Session] = None
-        self._paused:    bool              = True
-        self._elapsed:   float             = 0.0   # session time in seconds
-        self._wall_last: float             = 0.0   # wall clock at last tick
+        self._session: Optional[Session] = None
+        self._paused: bool = True
+        self._elapsed: float = 0.0  # session time in seconds
+        self._wall_last: float = 0.0  # wall clock at last tick
 
         # User keyframe lock: param → value the user set
         self._user_locks: Dict[str, Any] = {}
@@ -262,10 +290,10 @@ class TimelineRunner(threading.Thread):
         self._loop_counters: Dict[int, int] = {}
 
         # Playlist state — loaded from live_control.json
-        self._playlist:       List[str] = []
-        self._playlist_mode:  str       = "sequential"
-        self._playlist_index: int       = 0
-        self._session_ended:  bool      = False   # one-shot flag
+        self._playlist: List[str] = []
+        self._playlist_mode: str = "sequential"
+        self._playlist_index: int = 0
+        self._session_ended: bool = False  # one-shot flag
 
         # Fractionation state machine — None when inactive
         # Keys: cycles_total, cycle_idx, phase, phase_wall, depth_hz,
@@ -277,11 +305,11 @@ class TimelineRunner(threading.Thread):
 
     def load_session(self, session_path: Path):
         with self._lock:
-            self._session       = Session(session_path)
-            self._elapsed       = 0.0
-            self._wall_last     = time.time()
-            self._user_locks    = {}
-            self._last_written  = {}
+            self._session = Session(session_path)
+            self._elapsed = 0.0
+            self._wall_last = time.time()
+            self._user_locks = {}
+            self._last_written = {}
             self._loop_counters = {}
             # Seed loop counters from session
             for i, loop in enumerate(self._session.loops):
@@ -303,14 +331,14 @@ class TimelineRunner(threading.Thread):
     def resume(self):
         with self._lock:
             self._wall_last = time.time()
-            self._paused    = False
+            self._paused = False
         print("[Timeline] Resumed")
 
     def seek(self, t: float):
         with self._lock:
-            self._elapsed      = max(0.0, t)
-            self._wall_last    = time.time()
-            self._user_locks   = {}   # locks don't survive a seek
+            self._elapsed = max(0.0, t)
+            self._wall_last = time.time()
+            self._user_locks = {}  # locks don't survive a seek
             self._loop_counters = {}
             if self._session:
                 for i, loop in enumerate(self._session.loops):
@@ -351,7 +379,7 @@ class TimelineRunner(threading.Thread):
                 self._tick()
 
             elapsed_ms = (time.time() - start) * 1000
-            sleep_ms   = max(1, self.TICK_MS - elapsed_ms)
+            sleep_ms = max(1, self.TICK_MS - elapsed_ms)
             time.sleep(sleep_ms / 1000)
 
     # ── External command handling ──────────────────────────────────────────────
@@ -370,19 +398,19 @@ class TimelineRunner(threading.Thread):
                 return
 
             if cmd == "pause":
-                self._paused    = True
+                self._paused = True
                 print("[Timeline] Paused via command")
 
             elif cmd == "resume":
                 self._wall_last = time.time()
-                self._paused    = False
+                self._paused = False
                 print("[Timeline] Resumed via command")
 
             elif cmd == "restart":
-                self._elapsed       = 0.0
-                self._wall_last     = time.time()
-                self._paused        = False
-                self._user_locks    = {}
+                self._elapsed = 0.0
+                self._wall_last = time.time()
+                self._paused = False
+                self._user_locks = {}
                 self._loop_counters = {}
                 self._session_ended = False
                 if self._session:
@@ -395,7 +423,7 @@ class TimelineRunner(threading.Thread):
                 session_name = data.get("session_folder", "default")
                 session_path = self.root / "sessions" / session_name
                 if session_path.exists():
-                    self.load_session(session_path)   # RLock lets us re-enter
+                    self.load_session(session_path)  # RLock lets us re-enter
                     print(f"[Timeline] Loaded session '{session_name}' via command")
                 else:
                     print(f"[Timeline] Session '{session_name}' not found")
@@ -420,9 +448,9 @@ class TimelineRunner(threading.Thread):
                     seek_to = max(0.0, min(seek_to, self._session.duration))
                 else:
                     seek_to = max(0.0, seek_to)
-                self._elapsed       = seek_to
-                self._wall_last     = time.time()
-                self._user_locks    = {}
+                self._elapsed = seek_to
+                self._wall_last = time.time()
+                self._user_locks = {}
                 self._loop_counters = {}
                 self._session_ended = False
                 print(f"[Timeline] Seeked to {seek_to:.1f}s via command")
@@ -431,56 +459,65 @@ class TimelineRunner(threading.Thread):
                 if self._frac is not None:
                     print("[Timeline] Fractionation already active — ignoring.")
                 else:
-                    opts      = data.get("fractionation_opts") or {}
-                    curr_hz   = float(data.get("beat_frequency",          6.0))
-                    curr_spd  = float(data.get("spiral_speed_multiplier", 1.0))
-                    curr_chs  = float(data.get("spiral_chaos",            0.12))
-                    curr_td   = float(data.get("trail_decay",             0.0))
-                    n_cycles  = int(opts.get("cycles",               3))
+                    opts = data.get("fractionation_opts") or {}
+                    curr_hz = float(data.get("beat_frequency", 6.0))
+                    curr_spd = float(data.get("spiral_speed_multiplier", 1.0))
+                    curr_chs = float(data.get("spiral_chaos", 0.12))
+                    curr_td = float(data.get("trail_decay", 0.0))
+                    n_cycles = int(opts.get("cycles", 3))
                     # Target depth for first induction: 1.5 Hz below current
-                    depth_hz  = max(curr_hz - float(opts.get("induction_drop_hz", 1.5)), 1.5)
-                    emerge_hz = min(depth_hz + float(opts.get("emerge_hz_boost", 2.5)), 11.0)
+                    depth_hz = max(
+                        curr_hz - float(opts.get("induction_drop_hz", 1.5)), 1.5
+                    )
+                    emerge_hz = min(
+                        depth_hz + float(opts.get("emerge_hz_boost", 2.5)), 11.0
+                    )
                     self._frac = {
                         # --- configuration ---
-                        "cycles_total":          n_cycles,
-                        "emerge_hz_boost":       float(opts.get("emerge_hz_boost",      2.5)),
-                        "induction_timeout_s":   float(opts.get("induction_timeout_s",  300.0)),
-                        "hold_s":                float(opts.get("hold_s",               180.0)),
-                        "emerge_s":              float(opts.get("emerge_s",             30.0)),
-                        "emerge_ramp_s":         15.0,   # portion spent ramping up
+                        "cycles_total": n_cycles,
+                        "emerge_hz_boost": float(opts.get("emerge_hz_boost", 2.5)),
+                        "induction_timeout_s": float(
+                            opts.get("induction_timeout_s", 300.0)
+                        ),
+                        "hold_s": float(opts.get("hold_s", 180.0)),
+                        "emerge_s": float(opts.get("emerge_s", 30.0)),
+                        "emerge_ramp_s": 15.0,  # portion spent ramping up
                         # DEEP duration per cycle — last cycle is longest
-                        "deep_s":                float(opts.get("deep_s",              240.0)),
+                        "deep_s": float(opts.get("deep_s", 240.0)),
                         # REINDUCE timeout shortens: cycle 0=300s, 1=120s, 2=90s, 3+=60s
-                        "reinduce_timeouts":     [300.0, 120.0, 90.0, 60.0, 45.0],
+                        "reinduce_timeouts": [300.0, 120.0, 90.0, 60.0, 45.0],
                         # --- state ---
-                        "phase":                 "INDUCTION",
-                        "cycle_idx":             0,
-                        "phase_wall":            time.time(),
+                        "phase": "INDUCTION",
+                        "cycle_idx": 0,
+                        "phase_wall": time.time(),
                         # --- frequency ---
-                        "start_hz":              curr_hz,
-                        "depth_hz":              depth_hz,   # deepens -0.5 Hz each cycle
-                        "emerge_hz":             emerge_hz,
+                        "start_hz": curr_hz,
+                        "depth_hz": depth_hz,  # deepens -0.5 Hz each cycle
+                        "emerge_hz": emerge_hz,
                         # --- EEG gating ---
-                        "baseline_theta_alpha":  None,
-                        "baseline_samples":      [],        # rolling 30-s window
-                        "baseline_ready":        False,
-                        "prev_peak_ta":          0.0,       # best TA ratio last cycle
-                        "curr_peak_ta":          0.0,       # tracking during REINDUCE
-                        "ta_above_thresh_since": None,      # for INDUCTION gate
+                        "baseline_theta_alpha": None,
+                        "baseline_samples": [],  # rolling 30-s window
+                        "baseline_ready": False,
+                        "prev_peak_ta": 0.0,  # best TA ratio last cycle
+                        "curr_peak_ta": 0.0,  # tracking during REINDUCE
+                        "ta_above_thresh_since": None,  # for INDUCTION gate
                         # --- visual preservation ---
-                        "base_spiral_speed":     curr_spd,
-                        "base_spiral_chaos":     curr_chs,
-                        "base_trail_decay":      curr_td,
+                        "base_spiral_speed": curr_spd,
+                        "base_spiral_chaos": curr_chs,
+                        "base_trail_decay": curr_td,
                     }
                     data["fractionation_active"] = True
-                    data["fractionation_phase"]  = "INDUCTION"
-                    data["fractionation_cycle"]  = 1
-                    print(f"[Timeline] Fractionation started: {n_cycles} cycles, "
-                          f"start={curr_hz:.1f}Hz → depth={depth_hz:.1f}Hz → "
-                          f"emerge={emerge_hz:.1f}Hz")
+                    data["fractionation_phase"] = "INDUCTION"
+                    data["fractionation_cycle"] = 1
+                    print(
+                        f"[Timeline] Fractionation started: {n_cycles} cycles, "
+                        f"start={curr_hz:.1f}Hz → depth={depth_hz:.1f}Hz → "
+                        f"emerge={emerge_hz:.1f}Hz"
+                    )
 
             elif cmd == "stop":
                 import pygame as _pg
+
                 print("[Timeline] Stop command received — quitting display.")
                 _pg.event.post(_pg.event.Event(_pg.QUIT))
 
@@ -511,7 +548,7 @@ class TimelineRunner(threading.Thread):
             if not self._session_ended:
                 self._session_ended = True
                 self._advance_playlist()
-                return   # load_session resets state; next tick starts fresh
+                return  # load_session resets state; next tick starts fresh
         else:
             self._session_ended = False
 
@@ -539,7 +576,7 @@ class TimelineRunner(threading.Thread):
         """Pull playlist keys from live_control.json into internal state."""
         pl = data.get("playlist", [])
         if isinstance(pl, list):
-            self._playlist      = [str(s) for s in pl]
+            self._playlist = [str(s) for s in pl]
             self._playlist_mode = str(data.get("playlist_mode", "sequential"))
             self._playlist_index = int(data.get("playlist_index", 0))
 
@@ -588,14 +625,15 @@ class TimelineRunner(threading.Thread):
             self._paused = True
             return
 
-        n    = len(self._playlist)
-        idx  = self._playlist_index
+        n = len(self._playlist)
+        idx = self._playlist_index
         mode = self._playlist_mode
 
         if mode == "loop_one":
-            next_idx = idx          # stay on same session
+            next_idx = idx  # stay on same session
         elif mode == "shuffle":
             import random
+
             candidates = [i for i in range(n) if i != idx] or list(range(n))
             next_idx = random.choice(candidates)
         elif mode == "loop":
@@ -613,8 +651,10 @@ class TimelineRunner(threading.Thread):
         if session_path.exists():
             self.load_session(session_path)
             self._paused = False
-            print(f"[Timeline] Playlist → [{next_idx}/{n-1}] '{session_name}' "
-                  f"(mode={mode})")
+            print(
+                f"[Timeline] Playlist → [{next_idx}/{n - 1}] '{session_name}' "
+                f"(mode={mode})"
+            )
         else:
             print(f"[Timeline] Playlist: session '{session_name}' not found, skipping")
             self._paused = True
@@ -628,12 +668,12 @@ class TimelineRunner(threading.Thread):
         Returns adjusted t.
         """
         for i, loop in enumerate(self._session.loops):
-            from_t  = float(loop["from_t"])
-            to_t    = float(loop["to_t"])
-            count   = self._loop_counters.get(i, 0)
+            from_t = float(loop["from_t"])
+            to_t = float(loop["to_t"])
+            count = self._loop_counters.get(i, 0)
 
             if count == 0:
-                continue   # loop exhausted, skip
+                continue  # loop exhausted, skip
 
             if t >= to_t and t > from_t:
                 if count == -1:
@@ -642,8 +682,10 @@ class TimelineRunner(threading.Thread):
                     return from_t + (t - to_t)
                 elif count > 1:
                     self._loop_counters[i] = count - 1
-                    print(f"[Timeline] Loop '{loop.get('label', i)}' "
-                          f"rewinding ({self._loop_counters[i]} remaining)")
+                    print(
+                        f"[Timeline] Loop '{loop.get('label', i)}' "
+                        f"rewinding ({self._loop_counters[i]} remaining)"
+                    )
                     return from_t + (t - to_t)
                 else:
                     # Last pass — let it through, mark exhausted
@@ -699,14 +741,15 @@ class TimelineRunner(threading.Thread):
             return result
 
         progress = (t - prev_kf["t"]) / segment_duration
-        ease     = next_kf.get("ease", "linear")
+        ease = next_kf.get("ease", "linear")
 
         for param, target in next_kf["params"].items():
             source = prev_kf["params"].get(param, self._session.defaults.get(param))
 
             if param in INTERPOLATABLE and source is not None:
-                result[param] = _interpolate(float(source), float(target),
-                                             progress, ease)
+                result[param] = _interpolate(
+                    float(source), float(target), progress, ease
+                )
             else:
                 # Instant-only: hold prev value until we reach next_kf["t"]
                 result[param] = prev_kf["params"].get(
@@ -748,29 +791,33 @@ class TimelineRunner(threading.Thread):
 
         After last DEEP: COMPLETE — fractionation_active → False, beat stays.
         """
-        f     = self._frac
-        now   = time.time()
-        el    = now - f["phase_wall"]
+        f = self._frac
+        now = time.time()
+        el = now - f["phase_wall"]
         phase = f["phase"]
 
         # ── Read live EEG data for gating ─────────────────────────────────
-        live        = self._read_live()
-        eeg_theta   = live.get("eeg_theta",   0.0) or 0.0
-        eeg_alpha   = live.get("eeg_alpha",   0.0) or 0.0
+        live = self._read_live()
+        eeg_theta = live.get("eeg_theta", 0.0) or 0.0
+        eeg_alpha = live.get("eeg_alpha", 0.0) or 0.0
         eeg_quality = live.get("eeg_quality", "unknown")
-        eeg_ok      = eeg_quality in ("good", "fair") and eeg_alpha > 0.0
-        ta_ratio    = (eeg_theta / eeg_alpha) if (eeg_ok and eeg_alpha > 0) else 0.0
+        eeg_ok = eeg_quality in ("good", "fair") and eeg_alpha > 0.0
+        ta_ratio = (eeg_theta / eeg_alpha) if (eeg_ok and eeg_alpha > 0) else 0.0
 
         # ── Baseline capture (first 30 s of INDUCTION) ────────────────────
         if not f["baseline_ready"] and eeg_ok and ta_ratio > 0:
             f["baseline_samples"].append(ta_ratio)
-            if len(f["baseline_samples"]) >= 10:   # 10 ticks × 100ms = ~1 s of data
-                f["baseline_theta_alpha"] = sum(f["baseline_samples"]) / len(f["baseline_samples"])
+            if len(f["baseline_samples"]) >= 10:  # 10 ticks × 100ms = ~1 s of data
+                f["baseline_theta_alpha"] = sum(f["baseline_samples"]) / len(
+                    f["baseline_samples"]
+                )
                 f["baseline_ready"] = True
-                print(f"[Timeline] Frac baseline TA ratio: {f['baseline_theta_alpha']:.3f}")
+                print(
+                    f"[Timeline] Frac baseline TA ratio: {f['baseline_theta_alpha']:.3f}"
+                )
 
-        baseline_ta   = f["baseline_theta_alpha"] or 0.5
-        ta_thresh     = baseline_ta * 1.2
+        baseline_ta = f["baseline_theta_alpha"] or 0.5
+        ta_thresh = baseline_ta * 1.2
 
         # ── Phase transition logic ─────────────────────────────────────────
         if phase == "INDUCTION":
@@ -794,7 +841,7 @@ class TimelineRunner(threading.Thread):
 
         elif phase == "EMERGE" and el >= f["emerge_s"]:
             # Deepen for next cycle: 0.5 Hz lower, min 1.5 Hz
-            f["depth_hz"]  = max(f["depth_hz"] - 0.5, 1.5)
+            f["depth_hz"] = max(f["depth_hz"] - 0.5, 1.5)
             f["emerge_hz"] = min(f["depth_hz"] + f["emerge_hz_boost"], 11.0)
             f["curr_peak_ta"] = 0.0
             self._frac_advance("REINDUCE", now)
@@ -805,9 +852,10 @@ class TimelineRunner(threading.Thread):
             if ta_ratio > f["curr_peak_ta"]:
                 f["curr_peak_ta"] = ta_ratio
             # EEG gate: ratio exceeds previous cycle peak
-            prev_peak    = f["prev_peak_ta"]
-            ri_timeout   = f["reinduce_timeouts"][
-                min(f["cycle_idx"], len(f["reinduce_timeouts"]) - 1)]
+            prev_peak = f["prev_peak_ta"]
+            ri_timeout = f["reinduce_timeouts"][
+                min(f["cycle_idx"], len(f["reinduce_timeouts"]) - 1)
+            ]
             eeg_gated = eeg_ok and prev_peak > 0 and ta_ratio >= prev_peak * 1.05
             if eeg_gated or el >= ri_timeout:
                 f["prev_peak_ta"] = f["curr_peak_ta"]
@@ -828,58 +876,68 @@ class TimelineRunner(threading.Thread):
         cycle_n = f["cycle_idx"] + 1
         result: Dict[str, Any] = {
             "fractionation_active": True,
-            "fractionation_phase":  phase if phase == "COMPLETE" else f"{phase}_{cycle_n}",
-            "fractionation_cycle":  cycle_n,
+            "fractionation_phase": phase
+            if phase == "COMPLETE"
+            else f"{phase}_{cycle_n}",
+            "fractionation_cycle": cycle_n,
         }
 
         if phase == "INDUCTION":
             t = min(el / max(f["induction_timeout_s"], 1.0), 1.0)
-            result["beat_frequency"]          = f["start_hz"] + (f["depth_hz"] - f["start_hz"]) * t
+            result["beat_frequency"] = (
+                f["start_hz"] + (f["depth_hz"] - f["start_hz"]) * t
+            )
             result["spiral_speed_multiplier"] = f["base_spiral_speed"]
-            result["spiral_chaos"]            = f["base_spiral_chaos"]
-            result["trail_decay"]             = f["base_trail_decay"]
+            result["spiral_chaos"] = f["base_spiral_chaos"]
+            result["trail_decay"] = f["base_trail_decay"]
 
         elif phase == "HOLD":
-            result["beat_frequency"]          = f["depth_hz"]
+            result["beat_frequency"] = f["depth_hz"]
             result["spiral_speed_multiplier"] = f["base_spiral_speed"]
-            result["spiral_chaos"]            = f["base_spiral_chaos"]
-            result["trail_decay"]             = f["base_trail_decay"]
+            result["spiral_chaos"] = f["base_spiral_chaos"]
+            result["trail_decay"] = f["base_trail_decay"]
 
         elif phase == "EMERGE":
             # First emerge_ramp_s: ramp beat up to emerge_hz; then hold there
             ramp_s = f["emerge_ramp_s"]
             if el < ramp_s:
                 t = el / ramp_s
-                result["beat_frequency"] = f["depth_hz"] + (f["emerge_hz"] - f["depth_hz"]) * t
+                result["beat_frequency"] = (
+                    f["depth_hz"] + (f["emerge_hz"] - f["depth_hz"]) * t
+                )
             else:
                 result["beat_frequency"] = f["emerge_hz"]
             # Visual jolt: sharp geometry, no trails — bottom-up orienting response
             result["spiral_speed_multiplier"] = f["base_spiral_speed"] + 0.3
-            result["spiral_chaos"]            = 0.0
-            result["trail_decay"]             = 0.0
+            result["spiral_chaos"] = 0.0
+            result["trail_decay"] = 0.0
 
         elif phase == "REINDUCE":
-            ri_dur = f["reinduce_timeouts"][min(f["cycle_idx"], len(f["reinduce_timeouts"]) - 1)]
+            ri_dur = f["reinduce_timeouts"][
+                min(f["cycle_idx"], len(f["reinduce_timeouts"]) - 1)
+            ]
             t = min(el / max(ri_dur, 1.0), 1.0)
-            result["beat_frequency"]          = f["emerge_hz"] + (f["depth_hz"] - f["emerge_hz"]) * t
+            result["beat_frequency"] = (
+                f["emerge_hz"] + (f["depth_hz"] - f["emerge_hz"]) * t
+            )
             # Restore visuals gradually during re-induction
             result["spiral_speed_multiplier"] = f["base_spiral_speed"] + 0.3 * (1.0 - t)
-            result["spiral_chaos"]            = f["base_spiral_chaos"] * t
-            result["trail_decay"]             = f["base_trail_decay"] * t
+            result["spiral_chaos"] = f["base_spiral_chaos"] * t
+            result["trail_decay"] = f["base_trail_decay"] * t
 
         elif phase == "DEEP":
-            result["beat_frequency"]          = f["depth_hz"]
+            result["beat_frequency"] = f["depth_hz"]
             result["spiral_speed_multiplier"] = f["base_spiral_speed"]
-            result["spiral_chaos"]            = f["base_spiral_chaos"]
-            result["trail_decay"]             = f["base_trail_decay"]
+            result["spiral_chaos"] = f["base_spiral_chaos"]
+            result["trail_decay"] = f["base_trail_decay"]
 
         elif phase == "COMPLETE":
-            result["beat_frequency"]          = f["depth_hz"]
+            result["beat_frequency"] = f["depth_hz"]
             result["spiral_speed_multiplier"] = f["base_spiral_speed"]
-            result["spiral_chaos"]            = f["base_spiral_chaos"]
-            result["trail_decay"]             = f["base_trail_decay"]
-            result["fractionation_active"]    = False
-            result["fractionation_phase"]     = "complete"
+            result["spiral_chaos"] = f["base_spiral_chaos"]
+            result["trail_decay"] = f["base_trail_decay"]
+            result["fractionation_active"] = False
+            result["fractionation_phase"] = "complete"
             self._frac = None
             print("[Timeline] Fractionation complete.")
 
@@ -888,9 +946,11 @@ class TimelineRunner(threading.Thread):
     def _frac_advance(self, new_phase: str, now: float) -> None:
         """Transition self._frac to new_phase and reset the phase clock."""
         f = self._frac
-        print(f"[Timeline] Frac {f['phase']} → {new_phase} "
-              f"(cycle {f['cycle_idx'] + 1}/{f['cycles_total']})")
-        f["phase"]      = new_phase
+        print(
+            f"[Timeline] Frac {f['phase']} → {new_phase} "
+            f"(cycle {f['cycle_idx'] + 1}/{f['cycles_total']})"
+        )
+        f["phase"] = new_phase
         f["phase_wall"] = now
         f["ta_above_thresh_since"] = None
 
@@ -937,12 +997,10 @@ class TimelineRunner(threading.Thread):
             return
 
         expired = [
-            param for param in list(self._user_locks)
-            if param in just_crossed["params"]
+            param for param in list(self._user_locks) if param in just_crossed["params"]
         ]
         for param in expired:
-            print(f"[Timeline] Lock expired: {param} → "
-                  f"resuming from keyframe value")
+            print(f"[Timeline] Lock expired: {param} → resuming from keyframe value")
             del self._user_locks[param]
 
     # ── live_control.json I/O ─────────────────────────────────────────────────
@@ -962,29 +1020,31 @@ class TimelineRunner(threading.Thread):
             patch: Dict[str, Any] = {}
             for param, value in values.items():
                 if param == "phrases":
-                    patch["phrases_active"]    = value
+                    patch["phrases_active"] = value
                     patch["affirmations_pool"] = self._session.get_phrases(value)
                 else:
                     patch[param] = value
 
-            patch.update({
-                "session_name":          self._session.name,
-                "session_folder":        self._session.path.name,
-                "session_time":          round(self._elapsed, 1),
-                "session_duration":      self._session.duration,
-                "timeline_label":        self.current_label,
-                "timeline_paused":       self._paused,
-                "timeline_locked_params": list(self._user_locks.keys()),
-                "playlist_index":        self._playlist_index,
-            })
+            patch.update(
+                {
+                    "session_name": self._session.name,
+                    "session_folder": self._session.path.name,
+                    "session_time": round(self._elapsed, 1),
+                    "session_duration": self._session.duration,
+                    "timeline_label": self.current_label,
+                    "timeline_paused": self._paused,
+                    "timeline_locked_params": list(self._user_locks.keys()),
+                    "playlist_index": self._playlist_index,
+                }
+            )
             patch_live(patch)
-            self._last_written = {k: v for k, v in values.items()
-                                  if k != "phrases"}
+            self._last_written = {k: v for k, v in values.items() if k != "phrases"}
         except Exception as e:
             print(f"[Timeline] Write failed: {e}")
 
 
 # ── Convenience factory ───────────────────────────────────────────────────────
+
 
 def make_runner(root: Path, session_name: str = "default") -> TimelineRunner:
     """Create, load, and return a ready-to-start TimelineRunner."""
@@ -993,6 +1053,8 @@ def make_runner(root: Path, session_name: str = "default") -> TimelineRunner:
     if session_path.exists():
         runner.load_session(session_path)
     else:
-        print(f"[Timeline] Session '{session_name}' not found — "
-              f"runner idle until load_session() is called")
+        print(
+            f"[Timeline] Session '{session_name}' not found — "
+            f"runner idle until load_session() is called"
+        )
     return runner

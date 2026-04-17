@@ -151,6 +151,15 @@ class BinauralAudioEngine:
         self._last_tmr_cue_ts: float = 0.0
         self._tmr_cue_mgr = _CueManager() if _TMR_AVAILABLE else None
 
+        # Audio duck / pattern interrupt (entrainment_effects.md §1)
+        self._ch_tts = pygame.mixer.Channel(4)
+        self._tts_was_busy = False
+        self._duck_armed = False
+        self._duck_restore_ts: float = 0.0
+        self._last_duck_ts: float = 0.0
+        self._saved_vol_active: float | None = None
+        self._saved_vol_noise: float | None = None
+
         # ── GENUS rectangular pulse state (Bible Ch.4 Addendum A / genus_protocol.md) ──────────
         # Rectangular 1ms ON / 24ms OFF click train at 40 Hz.  Separate from the
         # normal binaural/isochronic path; activated by genus_active flag.
@@ -742,6 +751,41 @@ class BinauralAudioEngine:
                             content_hash=tmr_cmd.get("content_hash", "0" * 32),
                             gain=float(tmr_cmd.get("gain", 0.12)),
                         )
+
+                # ── Audio duck / pattern interrupt (entrainment_effects.md §1) ───
+                duck_ms = int(cfg.get("tts_duck_ms", 0) or 0)
+                duck_trigger = cfg.get("tts_duck_trigger")
+                if duck_trigger == "next" and duck_ms > 0:
+                    self._duck_armed = True
+
+                tts_busy = self._ch_tts.get_busy()
+                if self._duck_armed and tts_busy and not self._tts_was_busy:
+                    now_mono = time.monotonic()
+                    if now_mono - self._last_duck_ts >= 30.0 and not muted:
+                        effective_ms = min(duck_ms, 200)
+                        self._saved_vol_active = self._active.get_volume()
+                        self._saved_vol_noise = self._noise_chan.get_volume()
+                        self._active.set_volume(0.0)
+                        self._noise_chan.set_volume(0.0)
+                        self._duck_restore_ts = now_mono + effective_ms / 1000.0
+                        self._last_duck_ts = now_mono
+                    self._duck_armed = False
+                    try:
+                        patch_live({"tts_duck_trigger": None})
+                    except Exception:
+                        pass
+                self._tts_was_busy = tts_busy
+
+                # Restore volumes after duck duration expires
+                if self._duck_restore_ts > 0:
+                    if time.monotonic() >= self._duck_restore_ts:
+                        if self._saved_vol_active is not None:
+                            self._active.set_volume(self._saved_vol_active)
+                        if self._saved_vol_noise is not None and self._noise_sound:
+                            self._noise_chan.set_volume(self._saved_vol_noise)
+                        self._duck_restore_ts = 0.0
+                        self._saved_vol_active = None
+                        self._saved_vol_noise = None
 
                 now = time.monotonic()
 

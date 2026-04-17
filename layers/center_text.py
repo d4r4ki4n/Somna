@@ -18,36 +18,36 @@ class CenterTextLayer:
 
     def __init__(self, config: dict, tts_engine=None):
         self.config = config
-        self.pool   = PhrasePool(config)
+        self.pool = PhrasePool(config)
         self.current = self.pool.pick()
-        self.timer   = 0
+        self.timer = 0
         self.visible = True
-        self.font_pool    = self._load_fonts()
+        self.font_pool = self._load_fonts()
         self.current_font = None
         self._switch_font()
         self._tts = tts_engine
 
         # Phase-cascade delivery gate (Bible Ch.4 §4.6). Created once; reads config live.
         self._delivery_gate = DeliveryGate()
-        self._gate_diag_interval_s = 5.0   # write diagnostics to config every 5 s
-        self._gate_diag_last_t     = 0.0
+        self._gate_diag_interval_s = 5.0  # write diagnostics to config every 5 s
+        self._gate_diag_last_t = 0.0
 
         # Semantic cascade 200ms delay (Bible Ch.6 §6.6 §4 — Shadows must precede CenterText)
         # When a semantic cascade fires: shadow prime is set immediately; the center
         # phrase is held for _CASCADE_DELAY_MS before flashing (Delavari et al. 2025).
-        self._CASCADE_DELAY_MS  = 200
-        self._cascade_pending_ms: float = 0.0   # countdown to cascade flash
-        self._cascade_phrase: str       = ""     # center phrase to show when ready
+        self._CASCADE_DELAY_MS = 200
+        self._cascade_pending_ms: float = 0.0  # countdown to cascade flash
+        self._cascade_phrase: str = ""  # center phrase to show when ready
 
         # When TTS is playing, we lock the display on that phrase for the
         # duration of the audio clip instead of running the normal flash timer.
-        self._tts_lock_ms = 0.0   # ms remaining in current TTS voice lock
+        self._tts_lock_ms = 0.0  # ms remaining in current TTS voice lock
         # Dedup timestamp: last tts_playing_ts we acted on (panel-owned TTS path)
         self._last_tts_ts: float = 0.0
 
         # Surface cache — rebuilt only when phrase, font, or visibility changes
-        self._cached_surf    = None
-        self._cache_key      = None
+        self._cached_surf = None
+        self._cache_key = None
 
     def _load_fonts(self):
         session = self.config.get("session_folder", "default")
@@ -63,10 +63,10 @@ class CenterTextLayer:
         sync = self.config.get("center_flash_sync_to_beat", True)
         if sync and beat_freq > 0.1:
             cycle_ms = 1000.0 / beat_freq
-            duty     = self.config.get("flash_duty_cycle", 0.38)
-            var      = self.config.get("flash_variance", 0.22)
-            jitter   = random.uniform(-var, var)
-            on_time  = cycle_ms * duty * (1 + jitter)
+            duty = self.config.get("flash_duty_cycle", 0.38)
+            var = self.config.get("flash_variance", 0.22)
+            jitter = random.uniform(-var, var)
+            on_time = cycle_ms * duty * (1 + jitter)
             off_time = cycle_ms * (1 - duty) * (1 - jitter)
             # Floor clamp keeps center text supraliminal at high beat frequencies
             on_floor = int(self.config.get("center_flash_on_floor_ms", 60))
@@ -97,8 +97,8 @@ class CenterTextLayer:
         if self._tts_lock_ms > 0:
             self._tts_lock_ms -= dt * 1000
             if self._tts_lock_ms <= 0:
-                self.visible      = False
-                self.timer        = 0
+                self.visible = False
+                self.timer = 0
                 self._cached_surf = None
             return
 
@@ -111,8 +111,8 @@ class CenterTextLayer:
                 result = self._tts.poll_ready()
                 if result is not None:
                     phrase, dur_ms = result
-                    self.current      = phrase
-                    self.visible      = True
+                    self.current = phrase
+                    self.visible = True
                     self._tts_lock_ms = dur_ms
                     self._cached_surf = None
                     self._switch_font()
@@ -120,12 +120,12 @@ class CenterTextLayer:
             else:
                 # Control-panel-owned TTS: sync via tts_playing in live_control.json
                 phrase = self.config.get("tts_playing")
-                ts     = float(self.config.get("tts_playing_ts", 0) or 0)
+                ts = float(self.config.get("tts_playing_ts", 0) or 0)
                 dur_ms = float(self.config.get("tts_playing_ms", 0) or 0)
                 if phrase and dur_ms > 0 and ts > self._last_tts_ts:
                     self._last_tts_ts = ts
-                    self.current      = phrase
-                    self.visible      = True
+                    self.current = phrase
+                    self.visible = True
                     self._tts_lock_ms = dur_ms
                     self._cached_surf = None
                     self._switch_font()
@@ -142,35 +142,44 @@ class CenterTextLayer:
             # Always expire visibility using the legacy on-time duration
             if self.timer > on_time:
                 self.visible = False
-                self.timer   = 0
+                self.timer = 0
                 self._cached_surf = None
         else:
+            # Beat-phase locked firing: when center_flash_sync_to_beat is on,
+            # wait for beat_phase to cross 0 (downbeat) before firing. This
+            # locks the text flash to the binaural beat rhythm precisely.
+            beat_phase = float(self.config.get("beat_phase", 0.0) or 0.0)
+            sync = self.config.get("center_flash_sync_to_beat", True)
+            on_downbeat = (not sync) or beat_phase < 0.05
+
             gate_result = self._delivery_gate.should_fire(self.config)
             if gate_result["mode"] == "disabled":
-                # Legacy path: fixed off-time duration
-                if self.timer > off_time:
+                # Legacy path: fixed off-time duration + beat sync
+                if self.timer > off_time and on_downbeat:
                     self._trigger_flash()
-            elif gate_result["fire"] and self._cascade_pending_ms <= 0:
+            elif gate_result["fire"] and self._cascade_pending_ms <= 0 and on_downbeat:
                 # Phase-gated path: fire when gate opens (or timeout fallback)
                 self.timer = 0
                 self.config["phase_gate_last_reason"] = gate_result["reason"]
-                self.config["phase_gate_mode"]        = gate_result["mode"]
+                self.config["phase_gate_mode"] = gate_result["mode"]
 
                 # ── Semantic cascade path (Bible Ch.6 §6.6) ────────────────────────────
                 # When semantic_selector_enabled, prime Shadows immediately and
                 # defer CenterText by CASCADE_DELAY_MS (≥200ms per Delavari 2025).
                 cascade = self.config.get("semantic_cascade")
-                if (self.config.get("semantic_selector_enabled", False)
-                        and isinstance(cascade, dict)
-                        and cascade.get("center_phrase")):
+                if (
+                    self.config.get("semantic_selector_enabled", False)
+                    and isinstance(cascade, dict)
+                    and cascade.get("center_phrase")
+                ):
                     # t=0: inject shadow prime (ShadowsLayer reads on next refresh)
-                    self.config["_shadow_prime_word"]    = cascade["shadow_word"]
+                    self.config["_shadow_prime_word"] = cascade["shadow_word"]
                     self.config["_shadow_prime_pending"] = True
                     # Queue voice phrase for agent/TTS to pick up
                     if cascade.get("voice_phrase"):
                         self.config["semantic_voice_phrase"] = cascade["voice_phrase"]
                     # t+200ms: CenterText fires with cascade center_phrase
-                    self._cascade_phrase     = cascade["center_phrase"]
+                    self._cascade_phrase = cascade["center_phrase"]
                     self._cascade_pending_ms = float(self._CASCADE_DELAY_MS)
                 else:
                     # Standard (non-semantic) phase-gated flash
@@ -190,7 +199,7 @@ class CenterTextLayer:
                  When None, draws from the phrase pool as usual.
         """
         self.visible = True
-        self.timer   = 0
+        self.timer = 0
         self.current = phrase if phrase else self.pool.pick()
         if self.config.get("font_switch_mode", "intelligent") == "intelligent":
             self._switch_font()
@@ -226,29 +235,33 @@ class CenterTextLayer:
                 s = pygame.Surface((1, 1), pygame.SRCALPHA)
                 s.set_alpha(0)
                 self._cached_surf = s
-                self._cache_key   = ("hidden",)
+                self._cache_key = ("hidden",)
             return self._cached_surf
 
-        color  = self._color()
+        color = self._color()
         screen = pygame.display.get_surface()
-        max_w  = int(screen.get_width() * 0.88)
-        key    = (self.current, self.current_font, color, max_w)
+        max_w = int(screen.get_width() * 0.88)
+        key = (self.current, self.current_font, color, max_w)
 
         if self._cached_surf is None or self._cache_key != key:
-            font = (pygame.font.Font(self.current_font, 140)
-                    if self.current_font
-                    else pygame.font.SysFont("arialblack", 140, bold=True))
+            font = (
+                pygame.font.Font(self.current_font, 140)
+                if self.current_font
+                else pygame.font.SysFont("arialblack", 140, bold=True)
+            )
 
             lines = self._wrap(self.current.upper(), font, max_w)
 
             if len(lines) == 1:
                 self._cached_surf = font.render(lines[0], True, color)
             else:
-                line_surfs  = [font.render(ln, True, color) for ln in lines]
-                gap         = 12
-                total_h     = sum(s.get_height() for s in line_surfs) + gap * (len(line_surfs) - 1)
-                total_w     = max(s.get_width() for s in line_surfs)
-                surf        = pygame.Surface((total_w, total_h), pygame.SRCALPHA)
+                line_surfs = [font.render(ln, True, color) for ln in lines]
+                gap = 12
+                total_h = sum(s.get_height() for s in line_surfs) + gap * (
+                    len(line_surfs) - 1
+                )
+                total_w = max(s.get_width() for s in line_surfs)
+                surf = pygame.Surface((total_w, total_h), pygame.SRCALPHA)
                 y = 0
                 for ls in line_surfs:
                     surf.blit(ls, ((total_w - ls.get_width()) // 2, y))

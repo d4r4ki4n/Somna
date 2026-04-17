@@ -829,6 +829,11 @@ _ADJUSTABLE_PARAMS = {
     "breath_mod": "bool — enable passive respiratory entrainment: carrier amplitude modulated at breath_rate Hz (Goheen 2024 mechanism). Enable when beat ≤ 9 Hz and session ≥ 2 min.",
     "breath_rate": "float 0.04–0.20 Hz — breathing modulation rate. Population default 0.10 (6 bpm). Use transitions to ramp: start 0.12 → target 0.10 over 3 min. Match to beat depth: alpha→0.12, theta→0.10, delta→0.07.",
     "breath_depth": "float 0.0–0.50 — modulation depth as fraction of carrier amplitude. Start 0.15, ramp to 0.25 once entrainment is evident (alpha rising, beta falling).",
+    "tts_duck_ms": "int 0–200 — audio duck duration in ms. 0=disabled. 50–150=active range. Brief silence on channels 0-2 when TTS fires, triggering orienting response. Overuse destroys the effect. Use only for critical mantras or phase-transition commands.",
+    "tts_reverb_wet": "float 0.0–1.0 — reverb wet/dry mix for TTS voice. 0=dry (default). 0.3=subtle room. 0.7=large hall. Increases psychological distance and dissociative quality.",
+    "tts_reverb_room_ms": "int 20–500 — reverb tail length in ms. Default 80. Longer = larger perceived space.",
+    "tts_delay_ms": "int 0–300 — echo delay in ms for TTS. 0=disabled. 80–120=active range. Creates dissociative echo reinforcing commands.",
+    "tts_delay_feedback": "float 0.0–0.8 — echo feedback gain. 0=single echo. 0.5=2-3 echoes. Higher = more repetition.",
 }
 
 _SYSTEM_BASE = """You are an adaptive session operator for Somna, a hypnotic entrainment \
@@ -5874,6 +5879,12 @@ class SomnaAgent:
         if needs_response:
             patch["user_response"] = None
             patch["response_timestamp"] = None
+
+        # Audio duck / pattern interrupt — arm duck when style includes duck=True
+        if resolved_style.get("duck"):
+            patch["tts_duck_trigger"] = "next"
+            if "tts_duck_ms" not in resolved_style:
+                patch["tts_duck_ms"] = 80
 
         self._write_live(patch)
 

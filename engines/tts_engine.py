@@ -64,12 +64,13 @@ import pygame
 from layers.phrase_pool import PhrasePool
 
 # ── Mixer channel allocation ──────────────────────────────────────────────────
-_CH_TTS   = 4   # audible TTS
-_CH_SUBLI = 5   # subliminal layer
-_MIN_CH   = 6
+_CH_TTS = 4  # audible TTS
+_CH_SUBLI = 5  # subliminal layer
+_MIN_CH = 6
 
 
 # ── Backends ──────────────────────────────────────────────────────────────────
+
 
 class _Backend(ABC):
     @abstractmethod
@@ -82,18 +83,19 @@ class _Backend(ABC):
 
 
 class _EdgeBackend(_Backend):
-    def __init__(self, voice: str = "en-US-JennyNeural",
-                 pitch: str = "+0Hz", rate: str = "+0%"):
+    def __init__(
+        self, voice: str = "en-US-JennyNeural", pitch: str = "+0Hz", rate: str = "+0%"
+    ):
         self.voice = voice
         self.pitch = pitch or "+0Hz"
-        self.rate  = rate  or "+0%"
+        self.rate = rate or "+0%"
 
     def synthesize(self, text: str) -> bytes:
         import asyncio
         import edge_tts
 
         pitch = self.pitch
-        rate  = self.rate
+        rate = self.rate
 
         async def _run() -> bytes:
             kwargs: dict = {}
@@ -116,24 +118,37 @@ class _EdgeBackend(_Backend):
 
 
 class _OpenAIBackend(_Backend):
-    def __init__(self, api_key: str, voice: str = "nova",
-                 model: str = "tts-1",
-                 base_url: str = "https://api.openai.com/v1"):
-        self.api_key  = api_key
-        self.voice    = voice
-        self.model    = model
+    def __init__(
+        self,
+        api_key: str,
+        voice: str = "nova",
+        model: str = "tts-1",
+        base_url: str = "https://api.openai.com/v1",
+    ):
+        self.api_key = api_key
+        self.voice = voice
+        self.model = model
         self.base_url = base_url.rstrip("/")
 
     def synthesize(self, text: str) -> bytes:
         import json, urllib.request
-        payload = json.dumps({
-            "model": self.model, "input": text,
-            "voice": self.voice, "response_format": "wav",
-        }).encode()
+
+        payload = json.dumps(
+            {
+                "model": self.model,
+                "input": text,
+                "voice": self.voice,
+                "response_format": "wav",
+            }
+        ).encode()
         req = urllib.request.Request(
-            f"{self.base_url}/audio/speech", data=payload,
-            headers={"Authorization": f"Bearer {self.api_key}",
-                     "Content-Type": "application/json"})
+            f"{self.base_url}/audio/speech",
+            data=payload,
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+        )
         with urllib.request.urlopen(req, timeout=20) as r:
             return r.read()
 
@@ -143,6 +158,7 @@ class _OpenAIBackend(_Backend):
 
 
 # ── SSB subliminal (Lowry method) ─────────────────────────────────────────────
+
 
 def _ssb_modulate(audio_bytes: bytes, carrier_hz: float = 17500.0) -> Optional[bytes]:
     """
@@ -159,15 +175,18 @@ def _ssb_modulate(audio_bytes: bytes, carrier_hz: float = 17500.0) -> Optional[b
 
     SR = 44100
     try:
-        decoded = miniaudio.decode(audio_bytes,
-                                   output_format=miniaudio.SampleFormat.FLOAT32,
-                                   nchannels=1, sample_rate=SR)
+        decoded = miniaudio.decode(
+            audio_bytes,
+            output_format=miniaudio.SampleFormat.FLOAT32,
+            nchannels=1,
+            sample_rate=SR,
+        )
         s = np.frombuffer(decoded.samples, dtype=np.float32).copy()
     except Exception as e:
         print(f"[TTS] Subliminal decode error: {e}")
         return None
 
-    nyq    = SR / 2.0
+    nyq = SR / 2.0
     cutoff = min(carrier_hz / 2.0, nyq - carrier_hz) * 0.95
     if cutoff <= 0:
         print(f"[TTS] Carrier {carrier_hz:.0f} Hz too high for {SR} Hz sample rate")
@@ -175,11 +194,15 @@ def _ssb_modulate(audio_bytes: bytes, carrier_hz: float = 17500.0) -> Optional[b
 
     try:
         from scipy import signal as sig
-        b, a = sig.butter(4,  80.0   / nyq, btype="high"); s = sig.filtfilt(b, a, s)
-        b, a = sig.butter(8, cutoff  / nyq, btype="low");  s = sig.filtfilt(b, a, s)
-        t    = np.arange(len(s), dtype=np.float64) / SR
-        s    = 2.0 * s * np.cos(2.0 * np.pi * carrier_hz * t)
-        b, a = sig.butter(8, carrier_hz / nyq, btype="high"); s = sig.filtfilt(b, a, s)
+
+        b, a = sig.butter(4, 80.0 / nyq, btype="high")
+        s = sig.filtfilt(b, a, s)
+        b, a = sig.butter(8, cutoff / nyq, btype="low")
+        s = sig.filtfilt(b, a, s)
+        t = np.arange(len(s), dtype=np.float64) / SR
+        s = 2.0 * s * np.cos(2.0 * np.pi * carrier_hz * t)
+        b, a = sig.butter(8, carrier_hz / nyq, btype="high")
+        s = sig.filtfilt(b, a, s)
 
         peak = np.max(np.abs(s))
         if peak > 0:
@@ -188,8 +211,10 @@ def _ssb_modulate(audio_bytes: bytes, carrier_hz: float = 17500.0) -> Optional[b
         s16 = (s * 32767.0).clip(-32768, 32767).astype(np.int16)
         buf = io.BytesIO()
         with wave.open(buf, "wb") as wf:
-            wf.setnchannels(1); wf.setsampwidth(2)
-            wf.setframerate(SR); wf.writeframes(s16.tobytes())
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(SR)
+            wf.writeframes(s16.tobytes())
         return buf.getvalue()
     except Exception as e:
         print(f"[TTS] Subliminal processing error: {e}")
@@ -197,6 +222,7 @@ def _ssb_modulate(audio_bytes: bytes, carrier_hz: float = 17500.0) -> Optional[b
 
 
 # ── Entrainment voice effects ─────────────────────────────────────────────────
+
 
 def _apply_beat_mod(pcm: np.ndarray, beat_hz: float, sr: int) -> np.ndarray:
     """Amplitude-modulate *pcm* at *beat_hz* (±25 % depth).
@@ -222,8 +248,9 @@ def _apply_beat_mod(pcm: np.ndarray, beat_hz: float, sr: int) -> np.ndarray:
     return result
 
 
-def _apply_reverb(pcm: np.ndarray, sr: int,
-                  delay_ms: int = 80, decay: float = 0.35) -> np.ndarray:
+def _apply_reverb(
+    pcm: np.ndarray, sr: int, delay_ms: int = 80, decay: float = 0.35
+) -> np.ndarray:
     """Add a single echo layer to create a spacious, dissociative quality.
 
     A short delay + decay produces a room-like presence that doesn't muddy
@@ -247,7 +274,57 @@ def _apply_reverb(pcm: np.ndarray, sr: int,
     return out.clip(-32768, 32767).astype(np.int16)
 
 
+def _apply_reverb_chain(
+    pcm: np.ndarray,
+    sr: int,
+    reverb_wet: float = 0.0,
+    reverb_room_ms: int = 80,
+    delay_ms: int = 0,
+    delay_feedback: float = 0.0,
+) -> np.ndarray:
+    """Full reverb + delay chain for TTS voice processing.
+
+    entrainment_effects.md section 2: Schroeder-style reverb with echo delay.
+    Applied at pre-synthesis time, zero runtime latency.
+
+    Parameters
+    ----------
+    pcm              int16 mono or stereo numpy array.
+    sr               sample rate in Hz.
+    reverb_wet       0.0-1.0 wet/dry mix (0 = dry, 0.7 = large hall).
+    reverb_room_ms   20-500 reverb tail length in ms.
+    delay_ms         0-300 echo delay in ms (0 = disabled).
+    delay_feedback   0.0-0.8 echo feedback gain.
+    """
+    if len(pcm) == 0:
+        return pcm
+    if reverb_wet <= 0.0 and delay_ms <= 0:
+        return pcm
+
+    out = pcm.astype(np.float32).copy()
+
+    if reverb_wet > 0.0:
+        delay_n = max(1, int(sr * reverb_room_ms / 1000))
+        reverb_buf = np.zeros_like(out)
+        if delay_n < len(out):
+            reverb_buf[delay_n:] = out[:-delay_n] * reverb_wet * 0.5
+        tap2 = int(delay_n * 0.67)
+        if 0 < tap2 < len(out):
+            reverb_buf[tap2:] += out[:-tap2] * reverb_wet * 0.3
+        out = out + reverb_buf
+
+    if delay_ms > 0 and delay_feedback > 0.0:
+        delay_n = max(1, int(sr * delay_ms / 1000))
+        echo = np.zeros_like(out)
+        if delay_n < len(out):
+            echo[delay_n:] = out[:-delay_n] * delay_feedback
+        out = out + echo
+
+    return out.clip(-32768, 32767).astype(np.int16)
+
+
 # ── Main engine ───────────────────────────────────────────────────────────────
+
 
 class TTSEngine:
     """
@@ -263,22 +340,22 @@ class TTSEngine:
       - If nothing is ready yet: returns None, display runs normally.
     """
 
-    _PREFETCH = 2   # number of phrases to keep pre-cooked
+    _PREFETCH = 2  # number of phrases to keep pre-cooked
 
     def __init__(self, config: dict):
         self.config = config
-        self._pool  = PhrasePool(config)
+        self._pool = PhrasePool(config)
 
         # Deque of (phrase: str, sound: pygame.Sound, duration_ms: float, subli_sound)
-        self._ready:        deque = deque()
+        self._ready: deque = deque()
         # Priority deque for one-shot agent prompts (checked first by poll_ready)
         self._prompt_ready: deque = deque()
         # Pre-synthesis buffer for HTW (Bible Ch.9 §9.1) — filled before the window opens
         self._presynth_ready: deque = deque()
         self._last_presynth_phrases: list = []
-        self._lock  = threading.Lock()
+        self._lock = threading.Lock()
 
-        self._ch_tts:   Optional[pygame.mixer.Channel] = None
+        self._ch_tts: Optional[pygame.mixer.Channel] = None
         self._ch_subli: Optional[pygame.mixer.Channel] = None
 
         # Cooldown: suppress regular affirmations for N seconds after an agent
@@ -291,7 +368,8 @@ class TTSEngine:
         self._current_session_folder: str = config.get("session_folder", "")
 
         self._thread = threading.Thread(
-            target=self._worker, daemon=True, name="TTSEngine")
+            target=self._worker, daemon=True, name="TTSEngine"
+        )
         self._thread.start()
 
     # ── Public API ────────────────────────────────────────────────────────────
@@ -315,18 +393,20 @@ class TTSEngine:
         if self._ch_subli is not None and self._ch_subli.get_busy():
             return None
 
-        tts_on   = self.config.get("tts_enabled",    False)
+        tts_on = self.config.get("tts_enabled", False)
         subli_on = self.config.get("tts_subliminal", False)
 
         # Check priority queue first (one-shot agent prompts).
         # These play regardless of tts_enabled — voice_mode gates them instead.
         import time as _time
+
         with self._lock:
             if self._prompt_ready:
-                phrase, sound, dur_ms, subli_sound, voice_mode = \
+                phrase, sound, dur_ms, subli_sound, voice_mode = (
                     self._prompt_ready.popleft()
+                )
                 self._ensure_channels()
-                play_tts   = voice_mode in ("tts",   "both")
+                play_tts = voice_mode in ("tts", "both")
                 play_subli = voice_mode in ("subliminal", "both")
                 if play_tts and sound is not None:
                     tts_vol = self.config.get("tts_volume", 65) / 100.0
@@ -394,7 +474,7 @@ class TTSEngine:
         if pygame.mixer.get_num_channels() < _MIN_CH:
             pygame.mixer.set_num_channels(_MIN_CH)
         if self._ch_tts is None:
-            self._ch_tts   = pygame.mixer.Channel(_CH_TTS)
+            self._ch_tts = pygame.mixer.Channel(_CH_TTS)
         if self._ch_subli is None:
             self._ch_subli = pygame.mixer.Channel(_CH_SUBLI)
 
@@ -404,7 +484,7 @@ class TTSEngine:
         if name == "edge":
             try:
                 pitch = (style or {}).get("pitch", "+0Hz") or "+0Hz"
-                rate  = (style or {}).get("rate",  "+0%")  or "+0%"
+                rate = (style or {}).get("rate", "+0%") or "+0%"
                 return _EdgeBackend(
                     voice=self.config.get("tts_voice", "en-US-JennyNeural"),
                     pitch=pitch,
@@ -413,29 +493,45 @@ class TTSEngine:
             except ImportError:
                 print("[TTS] edge-tts not installed. pip install edge-tts")
                 return None
-        api_key  = self.config.get("tts_api_key",  "none")
-        voice    = self.config.get("tts_voice",    "nova")
-        model    = self.config.get("tts_model",    "tts-1")
-        base_url = (self.config.get("tts_api_url", "http://localhost:8020")
-                    if name == "local" else "https://api.openai.com/v1")
-        return _OpenAIBackend(api_key=api_key, voice=voice,
-                              model=model, base_url=base_url)
+        api_key = self.config.get("tts_api_key", "none")
+        voice = self.config.get("tts_voice", "nova")
+        model = self.config.get("tts_model", "tts-1")
+        base_url = (
+            self.config.get("tts_api_url", "http://localhost:8020")
+            if name == "local"
+            else "https://api.openai.com/v1"
+        )
+        return _OpenAIBackend(
+            api_key=api_key, voice=voice, model=model, base_url=base_url
+        )
 
     @staticmethod
-    def _load_sound(audio_bytes: bytes,
-                    beat_mod: bool = False, beat_hz: float = 8.0,
-                    reverb: bool = False) -> Optional[pygame.mixer.Sound]:
+    def _load_sound(
+        audio_bytes: bytes,
+        beat_mod: bool = False,
+        beat_hz: float = 8.0,
+        reverb: bool = False,
+        reverb_wet: float = 0.0,
+        reverb_room_ms: int = 80,
+        delay_ms: int = 0,
+        delay_feedback: float = 0.0,
+    ) -> Optional[pygame.mixer.Sound]:
         """
         Decode + resample to the exact pygame mixer format (44100 Hz stereo s16).
         Applies a 20 ms linear fade-in to eliminate the click at the start of
         each new line caused by an abrupt waveform discontinuity.
 
         Optional post-processing effects:
-          beat_mod  – amplitude modulation at *beat_hz*
-          reverb    – short echo layer for spacious quality
+          beat_mod        - amplitude modulation at *beat_hz*
+          reverb          - short echo layer for spacious quality (legacy)
+          reverb_wet      - 0.0-1.0 reverb wet/dry mix (new FX chain)
+          reverb_room_ms  - 20-500 reverb tail length in ms
+          delay_ms        - 0-300 echo delay in ms
+          delay_feedback  - 0.0-0.8 echo feedback gain
         """
         try:
             import miniaudio
+
             freq, _size, channels = pygame.mixer.get_init()
             decoded = miniaudio.decode(
                 audio_bytes,
@@ -444,8 +540,8 @@ class TTSEngine:
                 sample_rate=freq,
             )
             samples = np.frombuffer(decoded.samples, dtype=np.int16).copy()
-            frames  = len(samples) // channels
-            s2d     = samples.reshape(frames, channels)
+            frames = len(samples) // channels
+            s2d = samples.reshape(frames, channels)
 
             # 20 ms fade-in ramp to eliminate start-of-line click
             fade = min(int(freq * 0.020), frames)
@@ -457,6 +553,15 @@ class TTSEngine:
                 s2d = _apply_beat_mod(s2d, beat_hz, freq)
             if reverb:
                 s2d = _apply_reverb(s2d, freq)
+            if reverb_wet > 0.0 or delay_ms > 0:
+                s2d = _apply_reverb_chain(
+                    s2d,
+                    freq,
+                    reverb_wet=reverb_wet,
+                    reverb_room_ms=reverb_room_ms,
+                    delay_ms=delay_ms,
+                    delay_feedback=delay_feedback,
+                )
 
             buf = io.BytesIO()
             with wave.open(buf, "wb") as wf:
@@ -496,6 +601,10 @@ class TTSEngine:
                 beat_mod=bool(style.get("beat_mod", False)),
                 beat_hz=beat_hz,
                 reverb=bool(style.get("reverb", False)),
+                reverb_wet=float(style.get("reverb_wet", 0.0)),
+                reverb_room_ms=int(style.get("reverb_room_ms", 80)),
+                delay_ms=int(style.get("delay_ms", 0)),
+                delay_feedback=float(style.get("delay_feedback", 0.0)),
             )
             if sound is None:
                 return
@@ -503,16 +612,19 @@ class TTSEngine:
             dur_ms = sound.get_length() * 1000.0
 
             # Subliminal version (always pre-process so toggle works at play time)
-            carrier     = float(self.config.get("tts_subliminal_hz", 16000))
+            carrier = float(self.config.get("tts_subliminal_hz", 16000))
             subli_bytes = _ssb_modulate(audio, carrier)
             subli_sound = self._load_sound(subli_bytes) if subli_bytes else None
 
             with self._lock:
                 self._prompt_ready.append(
-                    (text, sound, dur_ms, subli_sound, voice_mode))
+                    (text, sound, dur_ms, subli_sound, voice_mode)
+                )
 
-            print(f"[TTS] Prompt ready: \"{text[:50]}\" ({dur_ms:.0f} ms) "
-                  f"voice_mode={voice_mode}")
+            print(
+                f'[TTS] Prompt ready: "{text[:50]}" ({dur_ms:.0f} ms) '
+                f"voice_mode={voice_mode}"
+            )
 
         except Exception as e:
             print(f"[TTS] Prompt synthesis error: {e}")
@@ -527,9 +639,9 @@ class TTSEngine:
             # ── Check for unified agent_message ───────────────────────────
             agent_msg = self.config.get("agent_message") or {}
             if isinstance(agent_msg, dict) and agent_msg.get("text"):
-                msg_ts   = float(agent_msg.get("ts", 0) or 0)
+                msg_ts = float(agent_msg.get("ts", 0) or 0)
                 msg_text = agent_msg["text"]
-                via      = agent_msg.get("via", [])
+                via = agent_msg.get("via", [])
                 if ("tts" in via) and msg_ts != getattr(self, "_last_agent_msg_ts", 0):
                     self._last_agent_msg_ts = msg_ts
                     style = agent_msg.get("style") or {}
@@ -569,7 +681,18 @@ class TTSEngine:
                             try:
                                 audio = ps_backend.synthesize(next_phrase)
                                 if audio:
-                                    sound = self._load_sound(audio)
+                                    ps_fx = pool_style
+                                    sound = self._load_sound(
+                                        audio,
+                                        reverb_wet=float(ps_fx.get("reverb_wet", 0.0)),
+                                        reverb_room_ms=int(
+                                            ps_fx.get("reverb_room_ms", 80)
+                                        ),
+                                        delay_ms=int(ps_fx.get("delay_ms", 0)),
+                                        delay_feedback=float(
+                                            ps_fx.get("delay_feedback", 0.0)
+                                        ),
+                                    )
                                     if sound is not None:
                                         dur_ms = sound.get_length() * 1000.0
                                         carrier = float(
@@ -578,11 +701,17 @@ class TTSEngine:
                                         subli_bytes = _ssb_modulate(audio, carrier)
                                         subli_sound = (
                                             self._load_sound(subli_bytes)
-                                            if subli_bytes else None
+                                            if subli_bytes
+                                            else None
                                         )
                                         with self._lock:
                                             self._presynth_ready.append(
-                                                (next_phrase, sound, dur_ms, subli_sound)
+                                                (
+                                                    next_phrase,
+                                                    sound,
+                                                    dur_ms,
+                                                    subli_sound,
+                                                )
                                             )
                             except Exception:
                                 pass
@@ -590,7 +719,7 @@ class TTSEngine:
                         continue
 
             # ── Regular pool pre-fetch ─────────────────────────────────────
-            tts_on   = self.config.get("tts_enabled",    False)
+            tts_on = self.config.get("tts_enabled", False)
             subli_on = self.config.get("tts_subliminal", False)
             with self._lock:
                 buffered = len(self._ready)
@@ -616,7 +745,14 @@ class TTSEngine:
                 if not audio:
                     continue
 
-                sound = self._load_sound(audio)
+                ps_fx = self.config.get("tts_pool_style") or {}
+                sound = self._load_sound(
+                    audio,
+                    reverb_wet=float(ps_fx.get("reverb_wet", 0.0)),
+                    reverb_room_ms=int(ps_fx.get("reverb_room_ms", 80)),
+                    delay_ms=int(ps_fx.get("delay_ms", 0)),
+                    delay_feedback=float(ps_fx.get("delay_feedback", 0.0)),
+                )
                 if sound is None:
                     continue
 
@@ -624,14 +760,14 @@ class TTSEngine:
 
                 # Always pre-process the subliminal so the toggle can be
                 # flipped at any time without stale None entries in the queue.
-                carrier     = float(self.config.get("tts_subliminal_hz", 16000))
+                carrier = float(self.config.get("tts_subliminal_hz", 16000))
                 subli_bytes = _ssb_modulate(audio, carrier)
                 subli_sound = self._load_sound(subli_bytes) if subli_bytes else None
 
                 with self._lock:
                     self._ready.append((phrase, sound, dur_ms, subli_sound))
 
-                print(f"[TTS] Ready: \"{phrase[:40]}\" ({dur_ms:.0f} ms)")
+                print(f'[TTS] Ready: "{phrase[:40]}" ({dur_ms:.0f} ms)')
 
             except Exception as e:
                 print(f"[TTS] Synthesis error: {e}")

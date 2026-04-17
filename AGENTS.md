@@ -435,6 +435,12 @@ When the user moves a slider, the touched param is added to \`timeline_locked_pa
 
 \- \`breath_depth\` — float 0.0–1.0; default 0.5. Amplitude modulation depth; 1.0 = full silence on exhale, 0.0 = no modulation.
 
+\*\*Audio duck / pattern interrupt\*\* — written by agent/timeline, consumed by \`audio_engine.py\`:
+
+\- \`tts_duck_ms\` — int 0–200; default 0 (disabled). Duration of audio duck on channels 0–2 when TTS fires. 50–150 = active range. Hardcoded ceiling at 200 ms. Rate-limited to 1 duck per 30 seconds.
+
+\- \`tts_duck_trigger\` — str null|\"next\"; one-shot command. Agent writes \`\"next\"\` to arm the duck; audio engine clears to null after the next TTS fire. Used to time ducks to specific phrases.
+
 \*\*Fractionation state\*\* — written by \`timeline_runner.py\` fractionation state machine:
 
 \- \`fractionation_active\` — bool; true while a fractionation cycle is running.

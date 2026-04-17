@@ -1612,6 +1612,8 @@ class Conductor:
                 "freq_lead_enabled": True,
                 "freq_lead_mode": "meet",
                 "freq_lead_target_hz": freq,
+                "tts_pool_style": {"rate": "+0%"},
+                "tts_duck_ms": 0,
             }
             # Bible Ch.1 §15.5 — Deploy conditioned anchor during induction
             if self._haptic_connected:
@@ -1629,6 +1631,7 @@ class Conductor:
                     "conductor_phase": new.value,
                     "freq_lead_enabled": True,
                     "freq_lead_mode": "lead",
+                    "tts_pool_style": {"rate": "-10%"},
                 }
             )
 
@@ -1642,6 +1645,7 @@ class Conductor:
                     "freq_lead_enabled": True,
                     "freq_lead_mode": "sustain",
                     "freq_lead_target_hz": self.current_target_freq or 6.0,
+                    "tts_pool_style": {"rate": "-20%"},
                 }
             )
 
@@ -1657,6 +1661,8 @@ class Conductor:
                     "freq_lead_enabled": True,
                     "freq_lead_mode": "meet",
                     "freq_lead_target_hz": self.iaf or 10.0,
+                    "tts_pool_style": {"rate": "+0%"},
+                    "tts_duck_ms": 0,
                 }
             )
             self._say("Rising now. Notice the shift.")
@@ -1674,6 +1680,8 @@ class Conductor:
                     "conductor_phase": new.value,
                     "freq_lead_enabled": True,
                     "freq_lead_mode": "lead",
+                    "tts_pool_style": {"rate": "-35%"},
+                    "tts_duck_ms": 80,
                 }
             )
             self._say("Settling back down.")

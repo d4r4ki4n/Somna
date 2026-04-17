@@ -59,6 +59,7 @@ knowledge_files:
   - "veil_and_spirals.md"
   - "aphantasia.md"
   - "eeg_entrainment.md"
+  - "confusion_induction.md"
   # faa_receptivity.md and adaptive_frequency_leading.md are auto-injected
   # when eeg.enabled is true — no need to list them here.
 

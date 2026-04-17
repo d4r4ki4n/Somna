@@ -4,8 +4,8 @@
 
 # LLM backend
 model:    "HauhauCS_Qwen3.5-35B-A3B-Uncensored-HauhauCS-Aggressive"
-api_key:  ""                           # or set OPENAI_API_KEY env var
-base_url: "http://localhost:8000"  # change for local models, e.g.:
+api_key: ""
+base_url: "http://localhost:8000"
                                         #   http://localhost:11434/v1  (Ollama)
                                         #   http://localhost:1234/v1   (LM Studio)
 
@@ -79,7 +79,6 @@ nudge_fade_minutes:        20    # minutes to ramp opacity from 5% → 60%
 # Server URL is shared with the LLM (SOMNA_LLM_URL env var or base_url above).
 whisper:
   enabled:  true
-  model:    "whisper-1"   # model name as reported by KoboldCpp /v1/audio/transcriptions
   language: "en"
 
 fractionation:
@@ -99,8 +98,8 @@ fractionation:
 #   NEVER use 22 (MUSE_2_BLED_BOARD) — requires a $30 BLED112 dongle.
 eeg:
   enabled:      true   # master enable; set true to inject EEG context into agent
-  synthetic:    true    # use SYNTHETIC_BOARD for dev/testing (no hardware needed)
-  board_id:     38      # 39 = MUSE_S_BOARD; 38 = MUSE_2_BOARD
+  synthetic:    false    # false = real hardware
+  board_id:     38      # 38 = MUSE_2_BOARD (native BLE); 22 = MUSE_2_BLED_BOARD (dongle)
   auto_connect: false   # auto-start EEG engine when the control panel opens
 
 image_gen:

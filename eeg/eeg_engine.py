@@ -1011,7 +1011,8 @@ class EEGEngine:
                 )
                 self._release_board()
                 if attempt < max_retries - 1:
-                    self._stop.wait(timeout=5 * (attempt + 1))
+                    wait_s = 10 if self.params.serial_port else 5
+                    self._stop.wait(timeout=wait_s * (attempt + 1))
         else:
             print("[EEG] Could not connect — giving up.")
             patch_live({"eeg_connected": False, "eeg_quality": "unusable"})
@@ -1021,17 +1022,17 @@ class EEGEngine:
 
         # Spin up PPG and IMU engines for real hardware (not synthetic)
         if self.board_id != -1:
-            # PPG requires ANCILLARY preset — only available on BLED transport
-            if self.board_id in (22,):
+            # Muse 2: enable ANCILLARY preset for PPG data via config_board
+            if self.board_id in (22, 38):
                 try:
                     self.board.config_board("p50")
-                    print("[EEG] Muse 2 BLED ANCILLARY preset enabled (PPG + 5th EEG)")
+                    print("[EEG] Muse 2 ANCILLARY preset enabled (PPG + 5th EEG)")
                 except Exception as cb_e:
                     print(f"[EEG] config_board p50 failed: {cb_e}")
-            elif self.board_id in (45,):
+            elif self.board_id in (39, 45):
                 try:
                     self.board.config_board("p61")
-                    print("[EEG] Muse S BLED ANCILLARY preset enabled (PPG)")
+                    print("[EEG] Muse S ANCILLARY preset enabled (PPG)")
                 except Exception as cb_e:
                     print(f"[EEG] config_board p61 failed: {cb_e}")
 

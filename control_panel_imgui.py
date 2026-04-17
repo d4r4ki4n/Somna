@@ -280,10 +280,13 @@ class ControlPanelImGui:
         self._seek_value: float = 0.0
 
         # Agent console (SpectrogramConsole created above; keep tracking state)
+        # Seed dedup timestamps from live_control.json so stale messages
+        # from a previous session aren't re-logged on startup.
+        _init_live = self._cfg.update()
         self._agent_msg_ts: float = float(
-            (self._live.get("agent_message") or {}).get("ts", 0) or 0
+            (_init_live.get("agent_message") or {}).get("ts", 0) or 0
         )
-        self._last_resp_ts: float = float(self._live.get("response_timestamp") or 0)
+        self._last_resp_ts: float = float(_init_live.get("response_timestamp") or 0)
         self._last_console_ts: float = 0.0
         self._console_input: str = ""
 
@@ -383,10 +386,20 @@ class ControlPanelImGui:
         # Clear orphaned agent state from a previous crashed session
         try:
             live = self._cfg.update()
+            orphan_clear = {}
             if live.get("agent_message"):
-                patch_live({"agent_message": None})
+                orphan_clear["agent_message"] = None
             if live.get("session_time"):
-                patch_live({"session_time": 0})
+                orphan_clear["session_time"] = 0
+            if live.get("response_timestamp"):
+                orphan_clear["response_timestamp"] = None
+                orphan_clear["user_response"] = None
+            if live.get("tts_playing"):
+                orphan_clear["tts_playing"] = None
+                orphan_clear["tts_playing_ts"] = None
+                orphan_clear["tts_playing_ms"] = 0
+            if orphan_clear:
+                patch_live(orphan_clear)
         except Exception:
             pass
 
@@ -1742,8 +1755,19 @@ class ControlPanelImGui:
                 "audio_muted": True,
                 "_agent_launch_display": None,
                 "_timeline_cmd": None,
+                "agent_message": None,
+                "user_response": None,
+                "response_timestamp": None,
+                "tts_playing": None,
+                "tts_playing_ts": None,
+                "tts_playing_ms": 0,
             }
         )
+        if self._tts_engine is not None:
+            with self._tts_engine._lock:
+                self._tts_engine._ready.clear()
+                self._tts_engine._prompt_ready.clear()
+        self._console.clear()
         self._console.reset_waveform()
 
     def _is_agent_running(self) -> bool:

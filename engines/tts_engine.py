@@ -630,10 +630,7 @@ class TTSEngine:
                     (text, sound, dur_ms, subli_sound, voice_mode)
                 )
 
-            print(
-                f'[TTS] Prompt ready: "{text[:50]}" ({dur_ms:.0f} ms) '
-                f"voice_mode={voice_mode}"
-            )
+            pass
 
         except Exception as e:
             print(f"[TTS] Prompt synthesis error: {e}")
@@ -775,8 +772,6 @@ class TTSEngine:
 
                 with self._lock:
                     self._ready.append((phrase, sound, dur_ms, subli_sound))
-
-                print(f'[TTS] Ready: "{phrase[:40]}" ({dur_ms:.0f} ms)')
 
             except Exception as e:
                 print(f"[TTS] Synthesis error: {e}")

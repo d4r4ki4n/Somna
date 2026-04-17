@@ -99,6 +99,9 @@ class PPGEngine:
         self._calibration_start_time: float = 0.0
         self._calibrated: bool = False
         self._current_autonomic_depth: float = 0.0
+        # Staleness tracking — last time fresh metrics were computed
+        self._last_fresh_ts: float = 0.0
+        self._STALE_TIMEOUT_S: float = 5.0
 
     # ── Public interface ───────────────────────────────────────────────────────
 
@@ -213,6 +216,19 @@ class PPGEngine:
 
     # ── Internals ─────────────────────────────────────────────────────────────
 
+    def reset(self) -> None:
+        """Clear all buffers and retained values for post-reconnect clean state."""
+        self._buffer.clear()
+        self._breath_phase = 0.0
+        self._last_tick_t = 0.0
+        self._last_breath_rate = 0.0
+        self._last_hr = 0.0
+        self._last_rmssd = 0.0
+        self._tick_count = 0
+        self._last_peak_time = 0.0
+        self._mean_ibi_s = 0.0
+        self._last_fresh_ts = 0.0
+
     def _advance_phase(self) -> None:
         """Step the breath phase clock by elapsed wall time × breath_rate."""
         now = time.monotonic()
@@ -225,6 +241,30 @@ class PPGEngine:
 
     def _emit(self, available: bool) -> dict:
         now = time.monotonic()
+
+        if available and self._last_hr > 0:
+            self._last_fresh_ts = now
+
+        stale = (now - self._last_fresh_ts) > self._STALE_TIMEOUT_S
+        if stale or not available:
+            return {
+                "ppg_available": False,
+                "ppg_heart_rate": None,
+                "ppg_hrv_rmssd": None,
+                "ppg_breath_rate": None,
+                "ppg_breath_phase": None,
+                "ppg_cardiac_phase": None,
+                "ppg_cardiac_diastole": None,
+                "ppg_last_peak_age_ms": None,
+                "ppg_autonomic_depth": None,
+                "ppg_autonomic_baseline": (
+                    round(self._baseline_rmssd, 1)
+                    if self._baseline_rmssd is not None
+                    else None
+                ),
+                "ppg_autonomic_calibrated": self._calibrated,
+            }
+
         peak_age_ms = (
             (now - self._last_peak_time) * 1000.0 if self._last_peak_time > 0 else 0.0
         )
@@ -234,9 +274,9 @@ class PPGEngine:
             cardiac_diastole = float(_SYSTOLE_GUARD_MS) < peak_age_ms < diastole_end_ms
         else:
             cardiac_phase = 0.5
-            cardiac_diastole = True  # permissive default when no cardiac data
+            cardiac_diastole = True
         return {
-            "ppg_available": available,
+            "ppg_available": True,
             "ppg_heart_rate": round(self._last_hr, 1),
             "ppg_hrv_rmssd": round(self._last_rmssd, 1),
             "ppg_breath_rate": round(self._last_breath_rate, 4),

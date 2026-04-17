@@ -1032,8 +1032,6 @@ class EEGEngine:
             patch_live({"eeg_connected": False, "eeg_quality": "unusable"})
             return
 
-        self.board.start_stream(450_000)
-
         # Spin up PPG and IMU engines for real hardware (not synthetic)
         if self.board_id != -1:
             try:
@@ -1090,13 +1088,58 @@ class EEGEngine:
         self._series_sqi.clear()
         self._session_start_wall = time.time()
         self._faa_baseline_emitted = False
+        _stale_ticks = 0
+        _STALE_SIGNAL_LOST = 3
+        _STALE_RECONNECT = 10
+        _STALE_ALREADY_REPORTED = False
 
         while not self._stop.is_set():
             try:
                 data = self.board.get_current_board_data(window)
                 if data.shape[1] < window:
-                    self._stop.wait(timeout=0.5)
+                    _stale_ticks += 1
+
+                    if (
+                        _stale_ticks == _STALE_SIGNAL_LOST
+                        and not _STALE_ALREADY_REPORTED
+                    ):
+                        _STALE_ALREADY_REPORTED = True
+                        print(
+                            f"[EEG] No data for {_STALE_SIGNAL_LOST}s — "
+                            f"signal lost, clearing stale values"
+                        )
+                        patch_live(
+                            {
+                                "eeg_signal_lost": True,
+                                "ppg_available": False,
+                                "ppg_heart_rate": None,
+                                "ppg_hrv_rmssd": None,
+                                "ppg_breath_rate": None,
+                                "ppg_breath_phase": None,
+                                "ppg_cardiac_phase": None,
+                                "ppg_cardiac_diastole": None,
+                                "ppg_last_peak_age_ms": None,
+                                "ppg_autonomic_depth": None,
+                                "imu_motion_rms": None,
+                                "imu_stillness_index": None,
+                                "imu_motion_contaminated": False,
+                                "imu_head_nod_detected": False,
+                            }
+                        )
+
+                    if _stale_ticks >= _STALE_RECONNECT:
+                        raise RuntimeError(
+                            f"Stream frozen for {_STALE_RECONNECT}s — forcing reconnect"
+                        )
+
+                    self._stop.wait(timeout=1.0)
                     continue
+
+                if _stale_ticks > 0:
+                    print(f"[EEG] Data recovered after {_stale_ticks}s stale period")
+                    patch_live({"eeg_signal_lost": False})
+                _stale_ticks = 0
+                _STALE_ALREADY_REPORTED = False
 
                 eeg_data = data[eeg_channels]
 
@@ -1447,11 +1490,31 @@ class EEGEngine:
                     try:
                         self.board = self._BoardShim(self.board_id, self.params)
                         self.board.prepare_session()
+                        if self.board_id in (22, 38):
+                            try:
+                                self.board.config_board("p50")
+                            except Exception:
+                                pass
+                        elif self.board_id in (39, 45):
+                            try:
+                                self.board.config_board("p61")
+                            except Exception:
+                                pass
                         self.board.start_stream(450_000)
                         reconnected = True
                         self._sqi_tracker._warmup_ctr = SQITracker._WARMUP_TICKS
+                        if self._ppg is not None:
+                            self._ppg.reset()
+                        if self._imu is not None:
+                            self._imu.reset()
                         print(f"[EEG] Reconnected on attempt {attempt + 1}.")
-                        patch_live({"eeg_connected": True})
+                        patch_live(
+                            {
+                                "eeg_connected": True,
+                                "eeg_signal_lost": False,
+                                "ppg_available": False,
+                            }
+                        )
                         break
                     except Exception as re:
                         print(f"[EEG] Reconnect attempt {attempt + 1}/3 failed: {re}")

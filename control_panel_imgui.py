@@ -280,7 +280,10 @@ class ControlPanelImGui:
         self._seek_value: float = 0.0
 
         # Agent console (SpectrogramConsole created above; keep tracking state)
-        self._agent_msg_ts: float = 0.0
+        self._agent_msg_ts: float = float(
+            (self._live.get("agent_message") or {}).get("ts", 0) or 0
+        )
+        self._last_resp_ts: float = float(self._live.get("response_timestamp") or 0)
         self._last_console_ts: float = 0.0
         self._console_input: str = ""
 

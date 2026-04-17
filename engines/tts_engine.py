@@ -367,6 +367,15 @@ class TTSEngine:
         # Session tracking — flush pre-cooked queue on session change
         self._current_session_folder: str = config.get("session_folder", "")
 
+        # Dedup: seed from existing agent_message so stale messages aren't
+        # re-synthesized as "new" on startup.
+        _existing_msg = config.get("agent_message") or {}
+        self._last_agent_msg_ts: float = (
+            float(_existing_msg.get("ts", 0) or 0)
+            if isinstance(_existing_msg, dict)
+            else 0.0
+        )
+
         self._thread = threading.Thread(
             target=self._worker, daemon=True, name="TTSEngine"
         )

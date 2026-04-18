@@ -157,8 +157,6 @@ class BinauralAudioEngine:
         self._duck_armed = False
         self._duck_restore_ts: float = 0.0
         self._last_duck_ts: float = 0.0
-        self._saved_vol_active: float | None = None
-        self._saved_vol_noise: float | None = None
 
         # ── GENUS rectangular pulse state (Bible Ch.4 Addendum A / genus_protocol.md) ──────────
         # Rectangular 1ms ON / 24ms OFF click train at 40 Hz.  Separate from the
@@ -763,8 +761,6 @@ class BinauralAudioEngine:
                     now_mono = time.monotonic()
                     if now_mono - self._last_duck_ts >= 30.0 and not muted:
                         effective_ms = min(duck_ms, 200)
-                        self._saved_vol_active = self._active.get_volume()
-                        self._saved_vol_noise = self._noise_chan.get_volume()
                         self._active.set_volume(0.0)
                         self._noise_chan.set_volume(0.0)
                         self._duck_restore_ts = now_mono + effective_ms / 1000.0
@@ -779,13 +775,17 @@ class BinauralAudioEngine:
                 # Restore volumes after duck duration expires
                 if self._duck_restore_ts > 0:
                     if time.monotonic() >= self._duck_restore_ts:
-                        if self._saved_vol_active is not None:
-                            self._active.set_volume(self._saved_vol_active)
-                        if self._saved_vol_noise is not None and self._noise_sound:
-                            self._noise_chan.set_volume(self._saved_vol_noise)
+                        # Re-apply current engine targets — not snapshots from duck
+                        # start (volume debounce / cfg may have changed during duck).
+                        target_bin = (
+                            self._pending_vol
+                            if self._pending_vol is not None
+                            else self.volume
+                        )
+                        self._active.set_volume(target_bin)
+                        if self._noise_sound and self._noise_color != "off":
+                            self._noise_chan.set_volume(self._noise_vol / 100.0)
                         self._duck_restore_ts = 0.0
-                        self._saved_vol_active = None
-                        self._saved_vol_noise = None
 
                 now = time.monotonic()
 

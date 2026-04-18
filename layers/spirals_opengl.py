@@ -36,6 +36,9 @@ STYLE_MAP = {
     "resonant": 15,
     "nebula": 16,
     "bifurcate": 17,
+    # authoring guide aliases (Reese spiral_authoring_guide.md)
+    "galaxy_arms": 1,
+    "bloom": 9,
     # legacy names
     "zyntaks_hybrid": 2,
     "fan_blade": 2,

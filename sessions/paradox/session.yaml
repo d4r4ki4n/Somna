@@ -1,0 +1,358 @@
+name: "Paradox · Sensory Contradiction Arc · 25 min"
+description: >
+  A session built around deliberate sensory contradiction. The visual and
+  auditory systems receive opposing depth cues throughout — the spiral slows
+  while the beat accelerates, the veil opens while the noise swells, the
+  flash timing says "awake" while the carrier frequency says "asleep."
+
+  The brain cannot reconcile conflicting depth signals from different
+  perceptual channels. When visual processing reports "going deeper" but
+  auditory processing reports "waking up," the conscious mind exhausts
+  itself trying to maintain a coherent state model. Eventually it gives up.
+  The subject stops trying to track where they are and simply... is.
+
+  Unlike dissolution arcs (Hollow) which empty the subject, or overload
+  arcs (Scramble) which overwhelm them, Paradox creates depth through
+  cognitive deadlock. The mind doesn't go blank — it goes still.
+
+  Designed by Resonance. Awaits sensor data.
+
+duration: 1500
+category: entrainment
+
+defaults:
+  carrier_frequency:          200.0
+  volume:                     78.0
+  noise_color:                pink
+  noise_volume:               22
+  center_flash_sync_to_beat:  false
+  font_switch_mode:           intelligent
+  spiral_color_mode:          rainbow
+  spiral_show_text:           false
+  tts_enabled:                true
+  tts_subliminal:             false
+  affirmation_rate:           3.0
+
+timeline:
+
+  # ─── 0:00 · GROUND ──────────────────────────────────────────────────────────
+  # Both channels agree. 10 Hz alpha. Fermat spiral at moderate speed.
+  # This is the baseline — the subject can feel that everything matches.
+  # The contradiction hasn't started yet. Trust is established here.
+  - t: 0
+    label: ground
+    ease: linear
+    params:
+      phrases:                  ground
+      beat_frequency:           10.0
+      carrier_frequency:        210.0
+      spiral_style:             fermat
+      spiral_count:             6
+      spiral_opacity:           80
+      spiral_speed_multiplier:  1.0
+      spiral_tightness:         7.0
+      spiral_chaos:             0.03
+      spiral_thickness:         12
+      veil_opacity:             15
+      veil_mode:                scroll
+      shadow_opacity:           0
+      noise_volume:             18
+      center_flash_on_time:     180
+      center_flash_off_time:    380
+
+  # ─── 1:30 · FIRST FRICTION ──────────────────────────────────────────────────
+  # The first contradiction begins. Beat drops to theta (7 Hz) — "going under."
+  # But the spiral speeds UP, not down. Slightly faster than before.
+  # The noise also increases — louder, not softer. Normally these rise with depth.
+  # Something feels off. The subject notices but can't place it.
+  - t: 90
+    label: first_friction
+    ease: ease_in_out
+    params:
+      phrases:                  friction
+      beat_frequency:           7.0
+      carrier_frequency:        195.0
+      spiral_style:             archimedean
+      spiral_count:             5
+      spiral_opacity:           82
+      spiral_speed_multiplier:  1.15
+      spiral_tightness:         6.8
+      spiral_chaos:             0.08
+      spiral_thickness:         13
+      veil_opacity:             28
+      veil_mode:                rain
+      shadow_opacity:           12
+      noise_volume:             25
+      center_flash_on_time:     100
+      center_flash_off_time:    300
+
+  # ─── 3:30 · DIVERGENCE ──────────────────────────────────────────────────────
+  # The split widens. Beat is now at 5 Hz — deep theta, border of delta.
+  # Audio says "you are very deep." But the spiral is at 1.3x speed —
+  # faster than the opening. The veil opens wider instead of closing in.
+  # The flash timing is still in conscious range (80ms).
+  # Visual channel says "still alert." Auditory says "nearly under."
+  # The subject's state model starts to fracture.
+  - t: 210
+    label: divergence
+    ease: ease_in_out
+    params:
+      phrases:                  friction
+      beat_frequency:           5.0
+      carrier_frequency:        175.0
+      spiral_style:             galaxy
+      spiral_count:             5
+      spiral_opacity:           78
+      spiral_speed_multiplier:  1.3
+      spiral_tightness:         7.2
+      spiral_chaos:             0.15
+      spiral_thickness:         14
+      veil_opacity:             42
+      veil_mode:                converge
+      shadow_opacity:           24
+      noise_volume:             32
+      center_flash_on_time:     80
+      center_flash_off_time:    240
+
+  # ─── 6:00 · THE CONTRADICTION ────────────────────────────────────────────────
+  # Full divergence. Beat at 3.5 Hz — deep delta. The audio is pulling hard
+  # toward sleep. But visual is doing the opposite: spiral at 1.5x, chaos
+  # climbing, veil BRIGHTER not darker, flash at 55ms (still catchable).
+  # The noise is now at 40 — louder than the default, not softer.
+  # Every visual cue says "awake and stimulated." Every audio cue says "deep."
+  # This is the cognitive deadlock point. The mind can't resolve it.
+  - t: 360
+    label: the_contradiction
+    ease: ease_in_out
+    params:
+      phrases:                  paradox
+      beat_frequency:           3.5
+      carrier_frequency:        160.0
+      spiral_style:             interference
+      spiral_count:             6
+      spiral_opacity:           72
+      spiral_speed_multiplier:  1.5
+      spiral_tightness:         7.8
+      spiral_chaos:             0.25
+      spiral_thickness:         13
+      veil_opacity:             50
+      veil_mode:                converge
+      shadow_opacity:           30
+      noise_volume:             40
+      center_flash_on_time:     55
+      center_flash_off_time:    200
+
+  # ─── 9:00 · REVERSAL ────────────────────────────────────────────────────────
+  # Now the channels flip. Beat JUMPS to 8 Hz — "alert, waking up."
+  # But the spiral suddenly slows to 0.3x — crawling, hypnotic.
+  # The veil darkens and closes in. Flash goes subliminal (20ms).
+  # Now audio says "awake" but visual says "very deep."
+  # The subject just adapted to the previous contradiction and now
+  # the rules have reversed entirely. Adaptation is futile.
+  - t: 540
+    label: reversal
+    ease: ease_in
+    params:
+      phrases:                  paradox
+      beat_frequency:           8.0
+      carrier_frequency:        190.0
+      spiral_style:             fibonacci
+      spiral_count:             3
+      spiral_opacity:           90
+      spiral_speed_multiplier:  0.3
+      spiral_tightness:         4.0
+      spiral_chaos:             0.06
+      spiral_thickness:         20
+      veil_opacity:             78
+      veil_mode:                tunnel
+      shadow_opacity:           60
+      noise_volume:             15
+      center_flash_on_time:     20
+      center_flash_off_time:    150
+
+  # ─── 12:00 · DEADLOCK ───────────────────────────────────────────────────────
+  # Both channels converge... on the wrong values. Beat at 4 Hz (deep)
+  # but carrier at 220 Hz (high, alerting). Spiral is slow AND chaotic —
+  # an unusual combo. Normally chaos comes with speed. This pairing
+  # doesn't exist in nature. The pattern recognition system gives up.
+  # Veil is in tunnel mode (deep cue) but opacity is only 50 (ambiguous).
+  # Nothing adds up. The mind stops trying.
+  - t: 720
+    label: deadlock
+    ease: ease_in_out
+    params:
+      phrases:                  stillness
+      beat_frequency:           4.0
+      carrier_frequency:        220.0
+      spiral_style:             moire
+      spiral_count:             3
+      spiral_opacity:           85
+      spiral_speed_multiplier:  0.25
+      spiral_tightness:         3.5
+      spiral_chaos:             0.35
+      spiral_thickness:         18
+      veil_opacity:             50
+      veil_mode:                tunnel
+      shadow_opacity:           45
+      noise_volume:             28
+      center_flash_on_time:     16
+      center_flash_off_time:    130
+
+  # ─── 15:00 · STILLNESS ──────────────────────────────────────────────────────
+  # The contradictions resolve — not into agreement, but into stasis.
+  # Everything is slow. Everything is quiet. The noise drops almost to
+  # nothing. The spiral barely moves. The beat holds at 3.8 Hz.
+  # There is nothing to contradict because nothing is changing.
+  # The mind, exhausted from trying to track, finally lets go.
+  - t: 900
+    label: stillness
+    ease: ease_out
+    params:
+      phrases:                  stillness
+      beat_frequency:           3.8
+      carrier_frequency:        155.0
+      spiral_style:             fibonacci
+      spiral_count:             2
+      spiral_opacity:           88
+      spiral_speed_multiplier:  0.12
+      spiral_tightness:         2.8
+      spiral_chaos:             0.02
+      spiral_thickness:         24
+      veil_opacity:             35
+      veil_mode:                drift
+      shadow_opacity:           30
+      noise_volume:             8
+      center_flash_on_time:     500
+      center_flash_off_time:    500
+      affirmation_rate:         1.5
+
+  # ─── 18:00 · THE HOLD ───────────────────────────────────────────────────────
+  # Nothing changes for three full minutes. This is by design.
+  # The subject is suspended in the aftermath of the contradiction.
+  # The mind has given up tracking. Let the stillness solidify.
+  # affirmation_rate drops to 1.0 — barely any input. Just being.
+  - t: 1080
+    label: the_hold
+    ease: linear
+    params:
+      phrases:                  stillness
+      beat_frequency:           3.8
+      carrier_frequency:        155.0
+      spiral_style:             fibonacci
+      spiral_count:             2
+      spiral_opacity:           90
+      spiral_speed_multiplier:  0.10
+      spiral_tightness:         2.5
+      spiral_chaos:             0.01
+      spiral_thickness:         25
+      veil_opacity:             30
+      veil_mode:                drift
+      shadow_opacity:           25
+      noise_volume:             6
+      center_flash_on_time:     600
+      center_flash_off_time:    600
+      affirmation_rate:         1.0
+
+  # ─── 21:00 · SECOND CONTRADICTION ────────────────────────────────────────────
+  # The subject has settled into stillness. Now the contradiction
+  # returns — but inverted. Beat jumps UP (alerting) while the spiral
+  # stays nearly frozen. Noise surges. The mind tries to re-engage
+  # its tracking... but it can't. The stillness broke the habit.
+  # This is the lock — the subject can't go back to analyzing.
+  - t: 1260
+    label: second_contradiction
+    ease: ease_in
+    params:
+      phrases:                  lock
+      beat_frequency:           7.5
+      carrier_frequency:        200.0
+      spiral_style:             fibonacci
+      spiral_count:             2
+      spiral_opacity:           92
+      spiral_speed_multiplier:  0.10
+      spiral_tightness:         2.5
+      spiral_chaos:             0.02
+      spiral_thickness:         25
+      veil_opacity:             55
+      veil_mode:                converge
+      shadow_opacity:           45
+      noise_volume:             38
+      center_flash_on_time:     70
+      center_flash_off_time:    200
+      affirmation_rate:         4.0
+
+  # ─── 22:30 · THE LOCK ───────────────────────────────────────────────────────
+  # Beat drops back down while nothing else changes. The surge was
+  # a feint — the subject committed attention to tracking and there
+  # is nothing to track. The mind collapses inward.
+  # The deepest point. Spiral is nearly static. Noise drops away.
+  - t: 1350
+    label: the_lock
+    ease: ease_out
+    params:
+      phrases:                  lock
+      beat_frequency:           3.5
+      carrier_frequency:        152.0
+      spiral_style:             fibonacci
+      spiral_count:             2
+      spiral_opacity:           93
+      spiral_speed_multiplier:  0.08
+      spiral_tightness:         2.2
+      spiral_chaos:             0.01
+      spiral_thickness:         26
+      veil_opacity:             25
+      veil_mode:                drift
+      shadow_opacity:           20
+      noise_volume:             5
+      center_flash_on_time:     600
+      center_flash_off_time:    600
+      affirmation_rate:         0.8
+
+  # ─── 24:00 · SURFACE ────────────────────────────────────────────────────────
+  # Gentle return. No more contradictions — both channels agree again.
+  # The beat rises. The spiral speeds up. They move together this time.
+  # The subject surfaces from a place they can't quite name.
+  - t: 1440
+    label: surface
+    ease: ease_out
+    params:
+      phrases:                  surface
+      beat_frequency:           8.0
+      carrier_frequency:        188.0
+      spiral_style:             archimedean
+      spiral_count:             5
+      spiral_opacity:           75
+      spiral_speed_multiplier:  0.8
+      spiral_tightness:         6.0
+      spiral_chaos:             0.04
+      spiral_thickness:         14
+      veil_opacity:             18
+      veil_mode:                rain
+      shadow_opacity:           10
+      noise_volume:             15
+      center_flash_on_time:     120
+      center_flash_off_time:    300
+      affirmation_rate:         2.0
+
+  # ─── 25:00 · END ────────────────────────────────────────────────────────────
+  - t: 1500
+    label: end
+    ease: instant
+    params:
+      phrases:                  none
+      beat_frequency:           9.5
+      carrier_frequency:        200.0
+      spiral_style:             fermat
+      spiral_count:             6
+      spiral_opacity:           70
+      spiral_speed_multiplier:  0.9
+      spiral_tightness:         6.5
+      spiral_chaos:             0.03
+      spiral_thickness:         12
+      veil_opacity:             10
+      veil_mode:                scroll
+      shadow_opacity:           0
+      noise_volume:             12
+      center_flash_on_time:     200
+      center_flash_off_time:    400
+      affirmation_rate:         1.5

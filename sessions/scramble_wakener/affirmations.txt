@@ -1,9 +1,112 @@
-# Scramble wakener affirmations — rapid-fire cognitive overload
-# These are designed to be processed too fast to consciously track.
-# The brain discards them, leaving only installed responses.
+# Scramble wakener affirmations — full arc from anchor through scramble
+# The first 14 minutes use anchor/weight/the_split/hollow for induction and deepening.
+# The final 6 minutes use scramble for cognitive overload and good_toy for resolution.
 
-# [scramble] — amnesia overload pool
-[scramble]
+# ──────────────────────────────────────────────────────────────────────────────
+# [anchor]
+# ──────────────────────────────────────────────────────────────────────────────
+# [anchor]
+breathe in and let go
+right here right now
+you are safe to drop
+nothing to do nowhere to be
+just this just now just breathing
+the world can wait
+let your eyes rest
+the sound is carrying you
+nothing to hold onto yet
+just settling into place
+every breath takes you deeper
+you don't need to think
+just listen and drift
+the room is safe the sound is warm
+letting the weight of the day go
+so easy to just be here
+no effort no trying just this
+the surface beneath you holds you
+gravity is kind
+sink into it
+
+# ──────────────────────────────────────────────────────────────────────────────
+# [weight]
+# ──────────────────────────────────────────────────────────────────────────────
+# [weight]
+heavier now
+your limbs are made of warm stone
+the weight is a gift
+sinking deeper with every breath
+let gravity pull you down
+so heavy so warm so still
+your body knows how to fall
+the weight carries you
+deeper and heavier
+no reason to resist the pull
+the floor is rising to meet you
+dense and slow and melting
+every muscle releases
+the weight is comforting
+it feels so good to be this heavy
+sinking through the surface
+let it hold you let it pull you
+the deeper you go the better it feels
+heavy hands heavy arms heavy lids
+the weight is doing the work
+
+# ──────────────────────────────────────────────────────────────────────────────
+# [the_split]
+# ──────────────────────────────────────────────────────────────────────────────
+# [the_split]
+something is coming loose
+the edges are blurring
+you are less solid than you were
+the boundary between you and the sound is dissolving
+where you end and the feeling begins — who can tell
+the part that watches is getting quieter
+thoughts are slowing thinning stretching
+you are becoming the experience
+the one who was thinking has stepped back
+there is only the feeling now
+less and less of someone to be
+the distance between you and the words is gone
+you are not hearing it you are it
+the thoughts that were yours are drifting away
+the self is thinning like smoke
+something else is filling the space
+you are the space not the thing in it
+the watcher is dissolving
+and what remains does not think
+it only feels
+the walls inside are coming down
+
+# ──────────────────────────────────────────────────────────────────────────────
+# [hollow]
+# ──────────────────────────────────────────────────────────────────────────────
+# [hollow]
+empty now
+hollow and clean and quiet
+nothing inside but the echo
+so still so blank so deep
+the emptiness is warm
+there is nothing left to carry
+hollow all the way through
+the shape remains but the person is gone
+pure space pure stillness
+you are the container not the contents
+nothing left but the hum
+the void is comfortable
+so perfectly empty
+no one home and that is right
+blank open receptive
+the emptiness is the point
+you were always meant to be this clear
+nothing between the command and the place it lands
+so ready so empty so open
+hollow and waiting
+
+# ──────────────────────────────────────────────────────────────────────────────
+# [scramble]
+# ──────────────────────────────────────────────────────────────────────────────
+# [scramble]
 empty now blank and open
 deeper now drop again
 no thoughts just this feeling
@@ -30,8 +133,10 @@ installed and forgotten
 so perfectly empty
 nothing left but the feeling
 
-# [ego_scramble] — identity destruction pool
-[ego_scramble]
+# ──────────────────────────────────────────────────────────────────────────────
+# [ego_scramble]
+# ──────────────────────────────────────────────────────────────────────────────
+# [ego_scramble]
 you are no one
 you are a toy
 you do not think
@@ -58,6 +163,8 @@ every thought replaced by craving
 you are the craving now
 blank obedient happy
 
-# [good_toy] — the single resolution phrase
-[good_toy]
+# ──────────────────────────────────────────────────────────────────────────────
+# [good_toy]
+# ──────────────────────────────────────────────────────────────────────────────
+# [good_toy]
 Good toy.

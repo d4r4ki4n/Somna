@@ -87,6 +87,7 @@ void main() {
 }
 """
 
+
 def _build_genus_flicker_pattern(refresh_hz: int, target_hz: float = 40.0) -> list[int]:
     """
     Pre-compute a per-frame dark/light pattern that averages *target_hz* Hz
@@ -100,13 +101,14 @@ def _build_genus_flicker_pattern(refresh_hz: int, target_hz: float = 40.0) -> li
     40 Hz cycles).  For 144 Hz this gives L=18 (exactly 5 cycles of 40 Hz).
     """
     if refresh_hz < 80:
-        return []   # visual flicker not supported; audio-only
+        return []  # visual flicker not supported; audio-only
 
     from math import gcd
+
     # LCM gives the exact period that contains a whole number of both frames
     # and 40 Hz cycles.  To keep it short, use refresh_hz / gcd(refresh_hz, round(target_hz)).
     g = gcd(refresh_hz, round(int(target_hz)))
-    period_frames = refresh_hz // g   # e.g. gcd(144,40)=8 → 144/8=18 frames = 5 cycles
+    period_frames = refresh_hz // g  # e.g. gcd(144,40)=8 → 144/8=18 frames = 5 cycles
 
     # Sample a 40 Hz square wave (50% duty cycle) at each frame's midpoint.
     # phase = (frame_index / refresh_hz) * target_hz mod 1.0
@@ -120,7 +122,7 @@ def _build_genus_flicker_pattern(refresh_hz: int, target_hz: float = 40.0) -> li
 
 # Windowed size used when not fullscreen (good for testing alongside control panel)
 WINDOWED_W = 1280
-WINDOWED_H =  720
+WINDOWED_H = 720
 
 
 class VisualDisplay:
@@ -128,37 +130,35 @@ class VisualDisplay:
         # Pin to primary monitor (0,0) before pygame creates any window.
         # Without this the window follows the cursor onto whichever monitor the
         # control panel subprocess was launched from.
-        os.environ['SDL_VIDEO_WINDOW_POS'] = '0,0'
-        # Audio is owned by the control panel process (always running).
-        # Tell SDL to use a null audio driver in this process so we never
-        # touch the real audio device and never conflict with the panel.
-        os.environ.setdefault('SDL_AUDIODRIVER', 'dummy')
-        pygame.init()
+        os.environ["SDL_VIDEO_WINDOW_POS"] = "0,0"
+        os.environ["SDL_AUDIODRIVER"] = "dummy"
+        pygame.display.init()
+        pygame.font.init()
         self.config_mgr = ConfigManager()
-        self.fullscreen  = True
-        self.clock       = pygame.time.Clock()
-        self.running     = True
+        self.fullscreen = True
+        self.clock = pygame.time.Clock()
+        self.running = True
 
         # VR state — initialised after the GL context exists
-        self._vr_mgr     = None
-        self._vr_fbo     = None
+        self._vr_mgr = None
+        self._vr_fbo = None
         self._vr_fbo_tex = None
 
         # Trail FBO state — initialised in _init_trail_fbos() via _make_textures()
-        self._trail_spiral_fbo  = None
-        self._trail_spiral_tex  = None
-        self._trail_hist_fbos   = [None, None]
-        self._trail_hist_texs   = [None, None]
-        self._trail_index       = 0
+        self._trail_spiral_fbo = None
+        self._trail_spiral_tex = None
+        self._trail_hist_fbos = [None, None]
+        self._trail_hist_texs = [None, None]
+        self._trail_index = 0
 
         # Bible Ch.3 §3.7 — post-processing FBOs and shader state
-        self._pp_blur_tex   = None
-        self._pp_blur_fbo   = None
-        self._pp_bloom_tex  = None
-        self._pp_bloom_fbo  = None
-        self._pp_out_tex    = None
-        self._pp_out_fbo    = None
-        self._pp_iaf_phase  = 0.0
+        self._pp_blur_tex = None
+        self._pp_blur_fbo = None
+        self._pp_bloom_tex = None
+        self._pp_bloom_fbo = None
+        self._pp_out_tex = None
+        self._pp_out_fbo = None
+        self._pp_iaf_phase = 0.0
         self._pp_error_logged = False
 
         # TMR phrase tracking — write current_phrase to live_control.json on change
@@ -167,29 +167,30 @@ class VisualDisplay:
 
         # GENUS 40 Hz flicker state (genus_protocol.md §5.2)
         self._genus_flicker_prog = None
-        self._genus_flicker_vao  = None
-        self._genus_frame_idx    = 0
-        self._genus_pattern: list[int] = []   # pre-computed per-frame dark/light pattern
-        self._genus_refresh_rate: int  = 60
+        self._genus_flicker_vao = None
+        self._genus_frame_idx = 0
+        self._genus_pattern: list[int] = []  # pre-computed per-frame dark/light pattern
+        self._genus_refresh_rate: int = 60
 
         self._open_window()
 
         # Attempt VR overlay init if requested via CLI flag or live config
-        vr_requested = (
-            "--vr" in sys.argv
-            or bool(self.config_mgr.config.get("vr_mode", False))
+        vr_requested = "--vr" in sys.argv or bool(
+            self.config_mgr.config.get("vr_mode", False)
         )
         if vr_requested:
             try:
                 from vr.vr_overlay import VROverlayManager
+
                 self._vr_mgr = VROverlayManager(self.W, self.H)
                 self._init_vr_fbo()
             except Exception as exc:
                 import traceback
+
                 print(f"[VR] Overlay init failed — continuing without VR: {exc}")
                 traceback.print_exc()
 
-        self._win_flag_tick  = 0      # throttle overlay-flag updates to every 30 frames
+        self._win_flag_tick = 0  # throttle overlay-flag updates to every 30 frames
         # Apply window flags immediately so opacity/AoT take effect before
         # the first 30-frame throttle period expires.
         self._apply_window_flags(self.config_mgr.config)
@@ -197,20 +198,20 @@ class VisualDisplay:
     # ── Windows overlay helpers ───────────────────────────────────────────────
 
     # Win32 constants
-    _GWL_EXSTYLE        = -20
-    _WS_EX_LAYERED      = 0x00080000
-    _WS_EX_TRANSPARENT  = 0x00000020
-    _WS_EX_NOACTIVATE   = 0x08000000  # prevents window from stealing focus
-    _SWP_NOMOVE         = 0x0002
-    _SWP_NOSIZE         = 0x0001
-    _SWP_NOACTIVATE     = 0x0010
-    _LWA_ALPHA          = 0x02
+    _GWL_EXSTYLE = -20
+    _WS_EX_LAYERED = 0x00080000
+    _WS_EX_TRANSPARENT = 0x00000020
+    _WS_EX_NOACTIVATE = 0x08000000  # prevents window from stealing focus
+    _SWP_NOMOVE = 0x0002
+    _SWP_NOSIZE = 0x0001
+    _SWP_NOACTIVATE = 0x0010
+    _LWA_ALPHA = 0x02
 
     class _MARGINS(ctypes.Structure):
         _fields_ = [
-            ("cxLeftWidth",    ctypes.c_int),
-            ("cxRightWidth",   ctypes.c_int),
-            ("cyTopHeight",    ctypes.c_int),
+            ("cxLeftWidth", ctypes.c_int),
+            ("cxRightWidth", ctypes.c_int),
+            ("cyTopHeight", ctypes.c_int),
             ("cyBottomHeight", ctypes.c_int),
         ]
 
@@ -240,12 +241,14 @@ class VisualDisplay:
         if not hwnd:
             return
 
-        topmost      = bool(cfg.get("window_always_on_top", False))
+        topmost = bool(cfg.get("window_always_on_top", False))
         clickthrough = bool(cfg.get("window_click_through", False))
-        opacity_pct  = int(cfg.get("window_opacity", 100))
-        _bg_mode     = cfg.get("bg_mode", "")
+        opacity_pct = int(cfg.get("window_opacity", 100))
+        _bg_mode = cfg.get("bg_mode", "")
         # "ganzfeld" is an opaque solid-field mode — never transparent.
-        bg_none      = _bg_mode == "none" or (_bg_mode != "ganzfeld" and not self.bg.has_images)
+        bg_none = _bg_mode == "none" or (
+            _bg_mode != "ganzfeld" and not self.bg.has_images
+        )
         # overlay_mode drives WS_EX_LAYERED / DWM glass.  bg_none (no images)
         # no longer implies transparency on its own — only explicit user intent
         # (click-through on, or opacity < 100) enables the glass pipeline.
@@ -261,20 +264,31 @@ class VisualDisplay:
             # Explicit argument types so ctypes handles pointer-sized values
             # correctly on both 32-bit and 64-bit Windows.
             user32.SetWindowPos.argtypes = [
-                ctypes.c_void_p, ctypes.c_void_p,
-                ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
+                ctypes.c_int,
                 ctypes.c_uint,
             ]
-            user32.GetWindowLongW.restype  = ctypes.c_long
-            user32.SetWindowLongW.argtypes = [ctypes.c_void_p, ctypes.c_int,
-                                              ctypes.c_long]
+            user32.GetWindowLongW.restype = ctypes.c_long
+            user32.SetWindowLongW.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.c_long,
+            ]
 
             # ── Always on top ──────────────────────────────────────────────
             # HWND_TOPMOST = -1, HWND_NOTOPMOST = -2  (cast to void* below)
             insert_after = ctypes.c_void_p(-1 if topmost else -2)
             user32.SetWindowPos(
-                hwnd, insert_after,
-                0, 0, 0, 0,
+                hwnd,
+                insert_after,
+                0,
+                0,
+                0,
+                0,
                 self._SWP_NOMOVE | self._SWP_NOSIZE | self._SWP_NOACTIVATE,
             )
 
@@ -291,9 +305,11 @@ class VisualDisplay:
                 else:
                     ex_style &= ~self._WS_EX_TRANSPARENT
             else:
-                ex_style &= ~(self._WS_EX_LAYERED |
-                              self._WS_EX_TRANSPARENT |
-                              self._WS_EX_NOACTIVATE)
+                ex_style &= ~(
+                    self._WS_EX_LAYERED
+                    | self._WS_EX_TRANSPARENT
+                    | self._WS_EX_NOACTIVATE
+                )
 
             user32.SetWindowLongW(hwnd, self._GWL_EXSTYLE, ex_style)
 
@@ -301,8 +317,12 @@ class VisualDisplay:
                 # Force-defocus so DWM compositing applies immediately
                 # instead of waiting for user to click elsewhere.
                 user32.SetWindowPos(
-                    hwnd, ctypes.c_void_p(-1 if topmost else -2),
-                    0, 0, 0, 0,
+                    hwnd,
+                    ctypes.c_void_p(-1 if topmost else -2),
+                    0,
+                    0,
+                    0,
+                    0,
                     self._SWP_NOMOVE | self._SWP_NOSIZE | self._SWP_NOACTIVATE,
                 )
 
@@ -316,20 +336,22 @@ class VisualDisplay:
                 try:
                     m = self._MARGINS(-1, -1, -1, -1)
                     ctypes.windll.dwmapi.DwmExtendFrameIntoClientArea(
-                        hwnd, ctypes.byref(m))
+                        hwnd, ctypes.byref(m)
+                    )
                 except Exception as _de:
                     print(f"[Overlay] DWM glass error: {_de}")
-                alpha = (max(26, min(255, int(opacity_pct * 255 / 100)))
-                         if opacity_pct < 100 else 255)
+                alpha = (
+                    max(26, min(255, int(opacity_pct * 255 / 100)))
+                    if opacity_pct < 100
+                    else 255
+                )
                 user32.SetLayeredWindowAttributes(hwnd, 0, alpha, self._LWA_ALPHA)
             elif overlay_mode and opacity_pct < 100:
                 alpha = max(26, min(255, int(opacity_pct * 255 / 100)))
-                user32.SetLayeredWindowAttributes(hwnd, 0, alpha,
-                                                  self._LWA_ALPHA)
+                user32.SetLayeredWindowAttributes(hwnd, 0, alpha, self._LWA_ALPHA)
             elif overlay_mode:
                 # Click-through only — full opacity, just needs LAYERED flag
-                user32.SetLayeredWindowAttributes(hwnd, 0, 255,
-                                                  self._LWA_ALPHA)
+                user32.SetLayeredWindowAttributes(hwnd, 0, 255, self._LWA_ALPHA)
 
         except Exception as e:
             print(f"[Overlay] Window flag error: {e}")
@@ -345,17 +367,17 @@ class VisualDisplay:
         if self.fullscreen:
             # Use the primary monitor's resolution. get_desktop_sizes()[0] is
             # the primary display; fall back to display.Info() on older pygame.
-            os.environ['SDL_VIDEO_WINDOW_POS'] = '0,0'
+            os.environ["SDL_VIDEO_WINDOW_POS"] = "0,0"
             try:
                 self.W, self.H = pygame.display.get_desktop_sizes()[0]
             except (AttributeError, IndexError):
                 info = pygame.display.Info()
                 self.W, self.H = info.current_w, info.current_h
-            flags  = pygame.NOFRAME | pygame.OPENGL | pygame.DOUBLEBUF
+            flags = pygame.NOFRAME | pygame.OPENGL | pygame.DOUBLEBUF
         else:
             self.W = WINDOWED_W
             self.H = WINDOWED_H
-            flags  = pygame.RESIZABLE | pygame.OPENGL | pygame.DOUBLEBUF
+            flags = pygame.RESIZABLE | pygame.OPENGL | pygame.DOUBLEBUF
 
         # Ensure the GL framebuffer has an alpha channel so DWM glass can
         # use per-pixel alpha for bg_none transparency.
@@ -374,7 +396,9 @@ class VisualDisplay:
             if sys.platform == "win32":
                 _VREFRESH = 116
                 dc = ctypes.windll.user32.GetDC(0)
-                self._genus_refresh_rate = int(ctypes.windll.gdi32.GetDeviceCaps(dc, _VREFRESH)) or 60
+                self._genus_refresh_rate = (
+                    int(ctypes.windll.gdi32.GetDeviceCaps(dc, _VREFRESH)) or 60
+                )
                 ctypes.windll.user32.ReleaseDC(0, dc)
             else:
                 info = pygame.display.Info()
@@ -384,10 +408,12 @@ class VisualDisplay:
         if self._genus_refresh_rate < 80:
             patch_live({"genus_visual_display_capable": False})
         else:
-            patch_live({
-                "genus_visual_display_capable": True,
-                "genus_display_refresh_hz":     self._genus_refresh_rate,
-            })
+            patch_live(
+                {
+                    "genus_visual_display_capable": True,
+                    "genus_display_refresh_hz": self._genus_refresh_rate,
+                }
+            )
         self._genus_pattern = _build_genus_flicker_pattern(self._genus_refresh_rate)
         self._genus_frame_idx = 0
 
@@ -401,16 +427,14 @@ class VisualDisplay:
         self.ctx.enable(moderngl.BLEND)
         self.ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
 
-        verts = np.array([-1,-1, 1,-1, -1,1, 1,1], dtype="f4")
-        vbo   = self.ctx.buffer(verts)
+        verts = np.array([-1, -1, 1, -1, -1, 1, 1, 1], dtype="f4")
+        vbo = self.ctx.buffer(verts)
 
         self.blit_prog = self.ctx.program(
             vertex_shader=_BLIT_VERT,
             fragment_shader=_BLIT_FRAG,
         )
-        self.blit_vao = self.ctx.vertex_array(
-            self.blit_prog, [(vbo, "2f", "in_vert")]
-        )
+        self.blit_vao = self.ctx.vertex_array(self.blit_prog, [(vbo, "2f", "in_vert")])
 
         self.trail_prog = self.ctx.program(
             vertex_shader=_BLIT_VERT,
@@ -435,17 +459,19 @@ class VisualDisplay:
             try:
                 src = (_shaders / name).read_text(encoding="utf-8")
                 prog = self.ctx.program(vertex_shader=_BLIT_VERT, fragment_shader=src)
-                vao  = self.ctx.vertex_array(prog, [(vbo, "2f", "in_vert")])
+                vao = self.ctx.vertex_array(prog, [(vbo, "2f", "in_vert")])
                 return prog, vao
             except Exception as _e:
                 print(f"[Display] PP shader {name} load failed: {_e}")
                 return None, None
 
-        self._pp_blur_prog,      self._pp_blur_vao      = _load_pp("pp_blur.glsl")
-        self._pp_ca_prog,        self._pp_ca_vao        = _load_pp("pp_ca.glsl")
-        self._pp_bloom_t_prog,   self._pp_bloom_t_vao   = _load_pp("pp_bloom_threshold.glsl")
+        self._pp_blur_prog, self._pp_blur_vao = _load_pp("pp_blur.glsl")
+        self._pp_ca_prog, self._pp_ca_vao = _load_pp("pp_ca.glsl")
+        self._pp_bloom_t_prog, self._pp_bloom_t_vao = _load_pp(
+            "pp_bloom_threshold.glsl"
+        )
         self._pp_composite_prog, self._pp_composite_vao = _load_pp("pp_composite.glsl")
-        self._pp_iaf_phase: float = 0.0   # accumulated IAF phase for luminance mod
+        self._pp_iaf_phase: float = 0.0  # accumulated IAF phase for luminance mod
 
         # GENUS 40 Hz flicker overlay (genus_protocol.md §5.2)
         try:
@@ -459,24 +485,24 @@ class VisualDisplay:
         except Exception as _ge:
             print(f"[GENUS] Flicker shader init failed: {_ge}")
             self._genus_flicker_prog = None
-            self._genus_flicker_vao  = None
+            self._genus_flicker_vao = None
 
     def _init_layers(self):
         cfg = self.config_mgr.config
-        self.bg           = BackgroundLayer(cfg)
-        self.veil         = VeilLayer(cfg)
-        self.spirals      = SpiralsLayer(cfg, self.ctx)   # needs fresh ctx
+        self.bg = BackgroundLayer(cfg)
+        self.veil = VeilLayer(cfg)
+        self.spirals = SpiralsLayer(cfg, self.ctx)  # needs fresh ctx
         # TTS and binaural audio are owned by the control panel process.
         # CenterTextLayer syncs phrase display via tts_playing in live_control.json.
-        self.center       = CenterTextLayer(cfg, tts_engine=None)
-        self.shadows      = ShadowsLayer(cfg)
+        self.center = CenterTextLayer(cfg, tts_engine=None)
+        self.shadows = ShadowsLayer(cfg)
         self.agent_prompt = AgentPromptLayer()
 
     def _make_textures(self):
-        self.bg_surf      = pygame.Surface((self.W, self.H))
+        self.bg_surf = pygame.Surface((self.W, self.H))
         self.overlay_surf = pygame.Surface((self.W, self.H), pygame.SRCALPHA)
 
-        self.bg_tex      = self.ctx.texture((self.W, self.H), 3)
+        self.bg_tex = self.ctx.texture((self.W, self.H), 3)
         self.overlay_tex = self.ctx.texture((self.W, self.H), 4)
         for t in (self.bg_tex, self.overlay_tex):
             t.filter = (moderngl.LINEAR, moderngl.LINEAR)
@@ -490,10 +516,13 @@ class VisualDisplay:
 
     def _init_trail_fbos(self):
         """Create (or recreate) the ping-pong trail FBO set at current resolution."""
+
         def _release(obj):
             if obj is not None:
-                try: obj.release()
-                except Exception: pass
+                try:
+                    obj.release()
+                except Exception:
+                    pass
 
         _release(self._trail_spiral_fbo)
         _release(self._trail_spiral_tex)
@@ -502,9 +531,9 @@ class VisualDisplay:
             _release(self._trail_hist_texs[i])
 
         size = (self.W, self.H)
-        self._trail_spiral_tex  = self.ctx.texture(size, 4)
+        self._trail_spiral_tex = self.ctx.texture(size, 4)
         self._trail_spiral_tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
-        self._trail_spiral_fbo  = self.ctx.framebuffer(
+        self._trail_spiral_fbo = self.ctx.framebuffer(
             color_attachments=[self._trail_spiral_tex]
         )
         for i in range(2):
@@ -519,17 +548,26 @@ class VisualDisplay:
 
     def _init_pp_fbos(self):
         """Create (or recreate) post-processing FBOs at current resolution."""
+
         def _release(obj):
             if obj is not None:
-                try: obj.release()
-                except Exception: pass
+                try:
+                    obj.release()
+                except Exception:
+                    pass
 
         size = (self.W, self.H)
         # pp_blur_tex / fbo — for blur pass output
         # pp_bloom_tex / fbo — for bloom bright-extract + blur
         # pp_out_tex / fbo — for CA + composite output before final blit
-        for attr in ("_pp_blur_tex", "_pp_bloom_tex", "_pp_out_tex",
-                     "_pp_blur_fbo", "_pp_bloom_fbo", "_pp_out_fbo"):
+        for attr in (
+            "_pp_blur_tex",
+            "_pp_bloom_tex",
+            "_pp_out_tex",
+            "_pp_blur_fbo",
+            "_pp_bloom_fbo",
+            "_pp_out_fbo",
+        ):
             _release(getattr(self, attr, None))
 
         def _make_fbo(size):
@@ -538,20 +576,18 @@ class VisualDisplay:
             fbo = self.ctx.framebuffer(color_attachments=[tex])
             return tex, fbo
 
-        self._pp_blur_tex,   self._pp_blur_fbo  = _make_fbo(size)
-        self._pp_bloom_tex,  self._pp_bloom_fbo = _make_fbo(size)
-        self._pp_out_tex,    self._pp_out_fbo   = _make_fbo(size)
+        self._pp_blur_tex, self._pp_blur_fbo = _make_fbo(size)
+        self._pp_bloom_tex, self._pp_bloom_fbo = _make_fbo(size)
+        self._pp_out_tex, self._pp_out_fbo = _make_fbo(size)
 
     def _init_vr_fbo(self):
         """Create (or recreate) the off-screen FBO used to feed the VR overlay."""
         if self._vr_fbo is not None:
             self._vr_fbo_tex.release()
             self._vr_fbo.release()
-        self._vr_fbo_tex        = self.ctx.texture((self.W, self.H), 4)
+        self._vr_fbo_tex = self.ctx.texture((self.W, self.H), 4)
         self._vr_fbo_tex.filter = (moderngl.LINEAR, moderngl.LINEAR)
-        self._vr_fbo            = self.ctx.framebuffer(
-            color_attachments=[self._vr_fbo_tex]
-        )
+        self._vr_fbo = self.ctx.framebuffer(color_attachments=[self._vr_fbo_tex])
         if self._vr_mgr:
             self._vr_mgr.update_size(self.W, self.H)
 
@@ -566,23 +602,29 @@ class VisualDisplay:
         pp_* parameter is non-zero and all shader programs loaded successfully.
         """
         if self._pp_ca_prog is None or self._pp_composite_prog is None:
-            return   # shaders didn't compile
+            return  # shaders didn't compile
 
-        ca_strength     = float(cfg.get("pp_ca_strength",        0.0) or 0.0)
-        bloom_intensity = float(cfg.get("pp_bloom_intensity",     0.0) or 0.0)
-        bloom_threshold = float(cfg.get("pp_bloom_threshold",    0.75) or 0.75)
-        vignette_sigma  = float(cfg.get("pp_vignette_sigma",      0.5) or 0.5)
-        vignette_int    = float(cfg.get("pp_vignette_intensity",  0.0) or 0.0)
-        iaf_amp         = float(cfg.get("pp_iaf_mod_amplitude",   0.0) or 0.0)
+        ca_strength = float(cfg.get("pp_ca_strength", 0.0) or 0.0)
+        bloom_intensity = float(cfg.get("pp_bloom_intensity", 0.0) or 0.0)
+        bloom_threshold = float(cfg.get("pp_bloom_threshold", 0.75) or 0.75)
+        vignette_sigma = float(cfg.get("pp_vignette_sigma", 0.5) or 0.5)
+        vignette_int = float(cfg.get("pp_vignette_intensity", 0.0) or 0.0)
+        iaf_amp = float(cfg.get("pp_iaf_mod_amplitude", 0.0) or 0.0)
 
         # Check if any PP effect is active
-        if (ca_strength < 1e-4 and bloom_intensity < 1e-4
-                and vignette_int < 1e-4 and iaf_amp < 1e-4):
+        if (
+            ca_strength < 1e-4
+            and bloom_intensity < 1e-4
+            and vignette_int < 1e-4
+            and iaf_amp < 1e-4
+        ):
             return
 
         # Advance IAF luminance phase
         iaf_hz = float(cfg.get("eeg_iaf_hz") or 10.0)
-        self._pp_iaf_phase = (self._pp_iaf_phase + 2.0 * 3.14159 * iaf_hz * dt) % (2.0 * 3.14159)
+        self._pp_iaf_phase = (self._pp_iaf_phase + 2.0 * 3.14159 * iaf_hz * dt) % (
+            2.0 * 3.14159
+        )
         patch_live({"pp_iaf_mod_phase": round(self._pp_iaf_phase, 4)})
 
         target = self._vr_fbo if self._vr_fbo is not None else self.ctx.screen
@@ -596,9 +638,9 @@ class VisualDisplay:
                 self._pp_blur_fbo.use()
                 self.ctx.clear(0.0, 0.0, 0.0, 1.0)
                 self._pp_out_tex.use(0)
-                self._pp_ca_prog["u_texture"].value  = 0
+                self._pp_ca_prog["u_texture"].value = 0
                 self._pp_ca_prog["u_ca_strength"].value = ca_strength
-                self._pp_ca_prog["u_resolution"].value  = (float(self.W), float(self.H))
+                self._pp_ca_prog["u_resolution"].value = (float(self.W), float(self.H))
                 self._pp_ca_vao.render(moderngl.TRIANGLE_STRIP)
                 # Swap: use blur output as scene for next pass
                 self.ctx.copy_framebuffer(self._pp_out_fbo, self._pp_blur_fbo)
@@ -608,7 +650,7 @@ class VisualDisplay:
                 self._pp_bloom_fbo.use()
                 self.ctx.clear(0.0, 0.0, 0.0, 1.0)
                 self._pp_out_tex.use(0)
-                self._pp_bloom_t_prog["u_texture"].value        = 0
+                self._pp_bloom_t_prog["u_texture"].value = 0
                 self._pp_bloom_t_prog["u_bloom_threshold"].value = bloom_threshold
                 self._pp_bloom_t_vao.render(moderngl.TRIANGLE_STRIP)
 
@@ -618,11 +660,15 @@ class VisualDisplay:
                     self._pp_blur_fbo.use()
                     self.ctx.clear(0.0, 0.0, 0.0, 1.0)
                     self._pp_bloom_tex.use(0)
-                    self._pp_blur_prog["u_texture"].value     = 0
-                    self._pp_blur_prog["u_direction"].value   = (1.0 / self.W, 0.0)
+                    self._pp_blur_prog["u_texture"].value = 0
+                    self._pp_blur_prog["u_direction"].value = (1.0 / self.W, 0.0)
                     self._pp_blur_prog["u_blur_radius"].value = float(
-                        cfg.get("pp_blur_radius", 2.0) or 2.0)
-                    self._pp_blur_prog["u_texel_size"].value  = (1.0 / self.W, 1.0 / self.H)
+                        cfg.get("pp_blur_radius", 2.0) or 2.0
+                    )
+                    self._pp_blur_prog["u_texel_size"].value = (
+                        1.0 / self.W,
+                        1.0 / self.H,
+                    )
                     self._pp_blur_vao.render(moderngl.TRIANGLE_STRIP)
                     # Copy blurred bloom back
                     self.ctx.copy_framebuffer(self._pp_bloom_fbo, self._pp_blur_fbo)
@@ -631,13 +677,13 @@ class VisualDisplay:
             target.use()
             self._pp_out_tex.use(0)
             self._pp_bloom_tex.use(1)
-            self._pp_composite_prog["u_scene"].value              = 0
-            self._pp_composite_prog["u_bloom"].value              = 1
-            self._pp_composite_prog["u_bloom_intensity"].value    = bloom_intensity
-            self._pp_composite_prog["u_vignette_sigma"].value     = vignette_sigma
+            self._pp_composite_prog["u_scene"].value = 0
+            self._pp_composite_prog["u_bloom"].value = 1
+            self._pp_composite_prog["u_bloom_intensity"].value = bloom_intensity
+            self._pp_composite_prog["u_vignette_sigma"].value = vignette_sigma
             self._pp_composite_prog["u_vignette_intensity"].value = vignette_int
-            self._pp_composite_prog["u_iaf_mod_amplitude"].value  = iaf_amp
-            self._pp_composite_prog["u_iaf_mod_phase"].value      = self._pp_iaf_phase
+            self._pp_composite_prog["u_iaf_mod_amplitude"].value = iaf_amp
+            self._pp_composite_prog["u_iaf_mod_phase"].value = self._pp_iaf_phase
             self._pp_composite_vao.render(moderngl.TRIANGLE_STRIP)
 
         except Exception as _pe:
@@ -693,17 +739,17 @@ class VisualDisplay:
         if self._genus_flicker_prog is None or not self._genus_pattern:
             return
 
-        pattern   = self._genus_pattern
+        pattern = self._genus_pattern
         dark_flag = pattern[self._genus_frame_idx % len(pattern)]
         self._genus_frame_idx = (self._genus_frame_idx + 1) % len(pattern)
 
         if dark_flag == 0:
-            return   # light frame — no draw call needed
+            return  # light frame — no draw call needed
 
         # Dark frame: draw full-screen black quad blended over everything
         depth = float(cfg.get("genus_modulation_depth", 1.0) or 1.0)
         self._genus_flicker_prog["u_darkness"].value = 1.0
-        self._genus_flicker_prog["u_depth"].value    = depth
+        self._genus_flicker_prog["u_depth"].value = depth
         self._genus_flicker_vao.render(moderngl.TRIANGLE_STRIP)
 
     # ── Main loop ─────────────────────────────────────────────────────────────
@@ -713,7 +759,7 @@ class VisualDisplay:
         last_time = pygame.time.get_ticks()
 
         while self.running:
-            dt        = (pygame.time.get_ticks() - last_time) / 1000.0
+            dt = (pygame.time.get_ticks() - last_time) / 1000.0
             last_time = pygame.time.get_ticks()
 
             for event in pygame.event.get():
@@ -725,8 +771,8 @@ class VisualDisplay:
                     elif event.key == pygame.K_F11:
                         self.toggle_fullscreen()
 
-            cfg  = self.config_mgr.update()
-            cfg  = _eeg_visual_apply(cfg)
+            cfg = self.config_mgr.update()
+            cfg = _eeg_visual_apply(cfg)
             beat = cfg.get("beat_frequency", 10.0)
 
             # Apply overlay flags every 30 frames (only when values change)
@@ -749,16 +795,18 @@ class VisualDisplay:
             # bg_none: skip background layer entirely (transparent).
             # "ganzfeld" is always opaque regardless of whether images exist.
             _bg_mode = cfg.get("bg_mode", "")
-            bg_none  = _bg_mode == "none" or (_bg_mode != "ganzfeld" and not self.bg.has_images)
+            bg_none = _bg_mode == "none" or (
+                _bg_mode != "ganzfeld" and not self.bg.has_images
+            )
 
             # Transparent clear only when the user has actually opted into
             # transparency (click-through on, or opacity < 100).  A session
             # that simply has no images should still render opaque at full
             # opacity — otherwise the spiral/veil always show the desktop
             # through them regardless of the opacity slider.
-            clickthrough  = bool(cfg.get("window_click_through", False))
-            opacity_pct   = int(cfg.get("window_opacity", 100))
-            wants_glass   = bg_none and (clickthrough or opacity_pct < 100)
+            clickthrough = bool(cfg.get("window_click_through", False))
+            opacity_pct = int(cfg.get("window_opacity", 100))
+            wants_glass = bg_none and (clickthrough or opacity_pct < 100)
 
             if wants_glass:
                 self.ctx.clear(0.0, 0.0, 0.0, 0.0)
@@ -814,7 +862,9 @@ class VisualDisplay:
                     pass
                 self._spiral_error_count = getattr(self, "_spiral_error_count", 0) + 1
                 if self._spiral_error_count <= 3:
-                    print(f"[Display] Spiral render error (#{self._spiral_error_count}): {_se}")
+                    print(
+                        f"[Display] Spiral render error (#{self._spiral_error_count}): {_se}"
+                    )
 
             # Layers 3-5 — veil + shadows + center text composited on one surface
             self.overlay_surf.fill((0, 0, 0, 0))
@@ -844,12 +894,16 @@ class VisualDisplay:
             self.agent_prompt.draw(self.overlay_surf)
 
             # Layer 3-6 overlay blit — with optional SR noise on text alpha
-            self.overlay_tex.write(pygame.image.tobytes(self.overlay_surf, "RGBA", False))
+            self.overlay_tex.write(
+                pygame.image.tobytes(self.overlay_surf, "RGBA", False)
+            )
             self.overlay_tex.use(0)
             sr_level = float(cfg.get("sr_noise_level", 0.0))
             self.overlay_sr_prog["tex"].value = 0
             self.overlay_sr_prog["u_sr_noise_level"].value = sr_level
-            self.overlay_sr_prog["u_time"].value = float(pygame.time.get_ticks()) / 1000.0
+            self.overlay_sr_prog["u_time"].value = (
+                float(pygame.time.get_ticks()) / 1000.0
+            )
             self.overlay_sr_vao.render(moderngl.TRIANGLE_STRIP)
 
             # ── Bible Ch.3 §3.7 — Post-processing passes (CA, bloom, vignette, IAF) ──
@@ -873,6 +927,7 @@ class VisualDisplay:
             if self._vr_mgr is not None:
                 try:
                     from vr.vr_overlay import VR_TARGET_FPS
+
                     self.clock.tick(VR_TARGET_FPS)
                 except ImportError:
                     self.clock.tick(90)

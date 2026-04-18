@@ -216,7 +216,7 @@ vec4 style_tunnel(vec2 p) {
     float halo = smoothstep(0.54 * u_thickness, 0.0, abs(pattern - 0.5)) * 0.4;
     float g    = (core + halo * (1.0 - core)) * breath();
     vec3  col  = arm_color(depth * 0.1 + u_time * 0.05, g * (0.7 + 0.3 * rings));
-    return vec4(col, g * u_opacity * smoothstep(1.8, 0.2, r));
+    return vec4(col, g * u_opacity * smoothstep(2.3, 0.2, r));
 }
 
 // ── Style 1 — GALAXY ARMS ────────────────────────────────────────────────────
@@ -248,7 +248,7 @@ vec4 style_galaxy(vec2 p) {
                          (arm + haze) * breath());
     col += vec3(0.9, 0.95, 1.0) * core_glow * u_base_color;
     float alpha = min(1.0, arm + haze + core_glow * 0.5) * u_opacity
-                * smoothstep(1.6, 0.1, r);
+                * smoothstep(2.1, 0.1, r);
     // Text overlay
     if (u_show_text == 1 && arm > 0.2) {
         vec4 txt = sample_text(arm_u, arm_dist / max(width, 0.001));
@@ -270,7 +270,7 @@ vec4 style_archimedean(vec2 p) {
     float angle = atan(p.y, p.x);
     float pulse = 0.75 + 0.25 * sin(r * 3.0 - u_time * 1.5);
     vec3  col   = arm_color(r * 0.3 + u_time * 0.07, arm * pulse * breath());
-    float fade  = smoothstep(1.5, 0.05, r) * smoothstep(0.0, 0.06, r);
+    float fade  = smoothstep(2.0, 0.05, r) * smoothstep(0.0, 0.06, r);
     // Text overlay on arms
     if (u_show_text == 1 && arm > 0.15) {
         vec4 txt = sample_text(arm_u, arm_dist / max(width, 0.001));
@@ -294,7 +294,7 @@ vec4 style_kaleidoscope(vec2 p) {
     float g = (smoothstep(0.0, 0.4, pattern)
              + smoothstep(0.5, 0.9, pattern) * 0.5) * breath();
     vec3 col = arm_color(r * 0.25 - u_time * 0.06 + folded, g);
-    return vec4(col, g * u_opacity * smoothstep(1.5, 0.1, r));
+    return vec4(col, g * u_opacity * smoothstep(2.0, 0.1, r));
 }
 
 // ── Style 4 — INTERFERENCE ────────────────────────────────────────────────────
@@ -336,7 +336,7 @@ vec4 style_electric(vec2 p) {
     vec3 col = mix(u_base_color, vec3(0.8, 0.9, 1.0), arm)
              + vec3(0.9, 0.9, 1.0) * spark;
     col *= 1.0 + arm * 1.5 * breath();
-    return vec4(col, (arm + spark) * u_opacity * smoothstep(1.5, 0.04, r));
+    return vec4(col, (arm + spark) * u_opacity * smoothstep(2.0, 0.04, r));
 }
 
 // ── Style 6 — VORTEX ─────────────────────────────────────────────────────────
@@ -363,7 +363,7 @@ vec4 style_vortex(vec2 p) {
     // u_thickness widens the bright tendrils (higher = fatter arms)
     float edge = max(0.02, 0.38 / u_thickness);
     float g    = smoothstep(edge * 0.4, edge * 2.2, turb) * breath()
-               * smoothstep(1.75, 0.04, r);
+               * smoothstep(2.25, 0.04, r);
 
     // Singularity core
     float core = exp(-r * r * 3.8) * 1.3;
@@ -372,7 +372,7 @@ vec4 style_vortex(vec2 p) {
     vec3 col = arm_color(r * 0.2 + u_time * 0.04,
                          g * (1.1 + 0.38 * sin(u_time * 1.4 + turb * TWO_PI)));
     col += u_base_color * core * 0.9;
-    return vec4(col, (g + core * 0.45) * u_opacity * smoothstep(1.85, 0.0, r));
+    return vec4(col, (g + core * 0.45) * u_opacity * smoothstep(2.35, 0.0, r));
 }
 
 // ── Style 7 — DNA ─────────────────────────────────────────────────────────────
@@ -404,7 +404,7 @@ vec4 style_dna(vec2 p) {
         vec4  txt   = sample_text(arm_u, d_a / max(w, 0.001));
         col = mix(col, txt.rgb * 1.6, txt.a * helix_a * 0.8);
     }
-    float fade = smoothstep(1.5, 0.05, r) * smoothstep(0.0, 0.06, r);
+    float fade = smoothstep(2.0, 0.05, r) * smoothstep(0.0, 0.06, r);
     return vec4(col, (helix_a + helix_b + rung) * u_opacity * fade);
 }
 
@@ -434,14 +434,17 @@ vec4 style_fibonacci(vec2 p) {
     float arm_u    = fract(phase / TWO_PI);
 
     // Width narrows in center, blooms at outer edge like a petal
-    float width    = (0.03 + r * 0.08 * PHI) * u_thickness * breath();
+    // Floor at 0.06 prevents invisible sub-pixel arms at center
+    float width    = max(0.06, (0.03 + r * 0.08 * PHI)) * u_thickness * breath();
     float arm_core = smoothstep(width * 1.2, 0.0, arm_dist);
     float arm_glow = smoothstep(width * 3.0, 0.0, arm_dist) * 0.4;
     float arm      = arm_core + arm_glow * (1.0 - arm_core);
+    // Fade arms inside r=0.15 where packing is too dense to resolve
+    arm *= smoothstep(0.08, 0.25, r);
 
     // Secondary: radial center-glow (replaces phyllotaxis dot — angle/golden_angle
     // is not 2π-periodic so it created a hard seam at the atan branch cut).
-    float dot = exp(-r * r * 7.0) * 0.5;
+    float dot = exp(-r * r * 5.0) * 0.6;
 
     float brightness = (arm + dot) * breath();
 
@@ -464,7 +467,7 @@ vec4 style_fibonacci(vec2 p) {
         vec4 txt = sample_text(arm_u, arm_dist / max(width, 0.001));
         col = mix(col, txt.rgb * warm * 2.0, txt.a * arm * 0.75);
     }
-    float fade = smoothstep(1.6, 0.05, r) * smoothstep(0.0, 0.05, r);
+    float fade = smoothstep(2.1, 0.05, r) * smoothstep(0.0, 0.05, r);
     return vec4(col, (arm + dot * 0.5) * u_opacity * fade);
 }
 
@@ -509,7 +512,7 @@ vec4 style_rose(vec2 p) {
 
     // hue_acc is a weighted sum of all layer radii — seamless and always moving
     vec3 col = arm_color(fract(hue_acc * 0.28 + r * 0.14 - u_time * 0.05), g * breath());
-    return vec4(col, g * u_opacity * smoothstep(1.75, 0.03, r));
+    return vec4(col, g * u_opacity * smoothstep(2.25, 0.03, r));
 }
 
 // ── Style 10 — MOIRÉ ─────────────────────────────────────────────────────────
@@ -552,7 +555,7 @@ vec4 style_moire(vec2 p) {
     vec3 col_b = arm_color(r * 0.15 + u_time * 0.07, beat);
     vec3 col   = col1 + col2 * (1.0 - arm1) + col_b;
 
-    return vec4(col, g * u_opacity * smoothstep(1.70, 0.10, r));
+    return vec4(col, g * u_opacity * smoothstep(2.2, 0.1, r));
 }
 
 // ── Style 11 — SPIROGRAPH ────────────────────────────────────────────────────
@@ -591,7 +594,7 @@ vec4 style_spirograph(vec2 p) {
     g *= breath();
 
     vec3 col = arm_color(fract(r * 0.30 + u_time * 0.04), g);
-    return vec4(col, g * u_opacity * smoothstep(1.75, 0.02, r) * smoothstep(0.0, 0.04, r));
+    return vec4(col, g * u_opacity * smoothstep(2.25, 0.02, r) * smoothstep(0.0, 0.04, r));
 }
 
 // ── Style 12 — FERMAT ────────────────────────────────────────────────────────
@@ -610,20 +613,23 @@ vec4 style_fermat(vec2 p) {
     float arm_dist = min(arm_d, 1.0 - arm_d);
 
     // Width narrows outward (arms spread apart at edge, pack at center)
-    float width = clamp((0.055 / max(r, 0.08) + 0.018) * u_thickness * breath(),
-                        0.008, 0.35);
+    // Floor at 0.015 prevents vanishing arms at edge; cap stays 0.35
+    float width = clamp((0.055 / max(r, 0.12) + 0.018) * u_thickness * breath(),
+                        0.015, 0.35);
+    // Fade arms inside r=0.2 where Fermat packing is sub-pixel dense
+    float inner_mask = smoothstep(0.1, 0.3, r);
 
     float arm_core = smoothstep(width * 1.2, 0.0, arm_dist);
     float arm_glow = smoothstep(width * 3.5, 0.0, arm_dist) * 0.30;
-    float arm      = arm_core + arm_glow * (1.0 - arm_core);
+    float arm      = (arm_core + arm_glow * (1.0 - arm_core)) * inner_mask;
 
-    // Strong convergence glow at center where all arms meet
-    float core_glow = exp(-r * r * 4.5) * 1.8;
+    // Convergence glow at center — reduced intensity so it doesn't drown arms
+    float core_glow = exp(-r * r * 4.5) * 1.0;
 
     vec3 col = arm_color(fract(phase / TWO_PI) + u_time * 0.04, arm * breath());
     col += u_base_color * core_glow;
 
-    float alpha = (arm + core_glow * 0.4) * u_opacity * smoothstep(1.70, 0.02, r);
+    float alpha = (arm + core_glow * 0.4) * u_opacity * smoothstep(2.2, 0.02, r);
     return vec4(col, alpha);
 }
 
@@ -774,7 +780,7 @@ vec4 style_liminal(vec2 p) {
         col = mix(col, txt.rgb * u_base_color * 1.5, txt.a * spiral * 0.75);
     }
 
-    float fade = smoothstep(1.7, 0.05, r) * smoothstep(0.0, 0.05, r);
+    float fade = smoothstep(2.2, 0.05, r) * smoothstep(0.0, 0.05, r);
     return vec4(col, g * u_opacity * fade);
 }
 
@@ -836,7 +842,7 @@ vec4 style_resonant(vec2 p) {
     col += u_base_color * flare * 1.8;
 
     float alpha = clamp(arm + flare * 0.5, 0.0, 1.0) * u_opacity
-                * smoothstep(1.80, 0.06, r) * smoothstep(0.0, 0.06, r);
+                * smoothstep(2.3, 0.06, r) * smoothstep(0.0, 0.06, r);
 
     if (u_show_text == 1 && arm > 0.22) {
         float arm_u = fract(phase / TWO_PI);
@@ -889,7 +895,7 @@ vec4 style_nebula(vec2 p) {
     vec3  col = arm_color(hue_flow + t * 0.04, total * breath() * 1.1);
     col += u_base_color * exp(-r * r * 5.5) * 1.8;
 
-    float alpha = clamp(total, 0.0, 1.0) * u_opacity * smoothstep(1.75, 0.05, r);
+    float alpha = clamp(total, 0.0, 1.0) * u_opacity * smoothstep(2.25, 0.05, r);
 
     if (u_show_text == 1 && arm > 0.18) {
         float arm_u = fract(phase / TWO_PI);
@@ -942,7 +948,7 @@ vec4 style_bifurcate(vec2 p) {
     col += u_base_color * bifur_glow;
 
     float alpha = clamp(total + bifur_glow * 0.3, 0.0, 1.0) * u_opacity
-                * smoothstep(1.85, 0.04, r);
+                * smoothstep(2.35, 0.04, r);
 
     if (u_show_text == 1 && total > 0.22) {
         float arm_u = fract(phase / TWO_PI);

@@ -1489,7 +1489,7 @@
       "modes": [
         "TRANCE"
       ],
-      "tooltip": "Spiral arm geometry. Archimedean = evenly spaced arms. Golden = phi-ratio spacing.",
+      "tooltip": "How spiral arms space themselves. Even = uniform gaps. Golden = tighter at center, wider at edges (logarithmic growth).",
       "enum": [
         "archimedean",
         "golden"
@@ -1587,11 +1587,11 @@
       "tooltip": "Spiral color used when Color Mode is set to Solid."
     },
     {
-      "key": "spiral_complexity",
+      "key": "spiral_tightness",
       "widget": "Slider",
       "classification": "USER_CONTROL",
       "layer": "Advanced",
-      "label": "Spiral Complexity",
+      "label": "Arm Spacing",
       "section": "Spirals",
       "modes": [
         "TRANCE",
@@ -1599,10 +1599,10 @@
         "SLEEP",
         "CUE_TEST"
       ],
-      "tooltip": "Number of arms / density of spiral geometry.",
+      "tooltip": "Controls how tightly spiral arms wind. Lower = wider spacing, higher = tighter coils.",
       "range": [
-        0.0,
-        1.0
+        1.0,
+        20.0
       ]
     },
     {

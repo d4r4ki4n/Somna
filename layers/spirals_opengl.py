@@ -14,46 +14,46 @@ import math
 import pygame
 import moderngl
 import numpy as np
-from pathlib import Path
+from layers.font_manager import discover_fonts, make_font
 
 
 STYLE_MAP = {
-    "tunnel_dream":    0,
-    "galaxy":          1,
-    "archimedean":     2,
-    "kaleidoscope":    3,
-    "interference":    4,
-    "electric":        5,
-    "vortex":          6,
-    "dna":             7,
-    "fibonacci":       8,
-    "rose":            9,
-    "moire":           10,
-    "spirograph":      11,
-    "fermat":          12,
-    "superformula":    13,
-    "liminal":         14,
-    "resonant":        15,
-    "nebula":          16,
-    "bifurcate":       17,
+    "tunnel_dream": 0,
+    "galaxy": 1,
+    "archimedean": 2,
+    "kaleidoscope": 3,
+    "interference": 4,
+    "electric": 5,
+    "vortex": 6,
+    "dna": 7,
+    "fibonacci": 8,
+    "rose": 9,
+    "moire": 10,
+    "spirograph": 11,
+    "fermat": 12,
+    "superformula": 13,
+    "liminal": 14,
+    "resonant": 15,
+    "nebula": 16,
+    "bifurcate": 17,
     # legacy names
-    "zyntaks_hybrid":  2,
-    "fan_blade":       2,
-    "star_polygon":    3,
-    "fractal_arms":    5,
-    "dense_web":       4,
-    "wide_vortex":     6,
-    "interlocked":     7,
+    "zyntaks_hybrid": 2,
+    "fan_blade": 2,
+    "star_polygon": 3,
+    "fractal_arms": 5,
+    "dense_web": 4,
+    "wide_vortex": 6,
+    "interlocked": 7,
     "radiating_pulse": 0,
 }
 
 # Normalize control panel thickness range (4–40) to shader multiplier (0.3–6.0)
 _THICK_MIN, _THICK_MAX = 4, 40
-_MULT_MIN,  _MULT_MAX  = 0.3, 6.0
+_MULT_MIN, _MULT_MAX = 0.3, 6.0
 
 # Text texture dimensions
 _TEXT_W, _TEXT_H = 512, 64
-_TEXT_FONT_SIZE  = 42
+_TEXT_FONT_SIZE = 42
 
 
 class SpiralsLayer:
@@ -61,34 +61,45 @@ class SpiralsLayer:
     IAF rotation lock (Bible Ch.10 §10.2 §2.3), motion aftereffect cycle (Bible Ch.10 §10.2 §2.4)."""
 
     def __init__(self, config: dict, ctx: moderngl.Context):
-        self.config  = config
-        self.ctx     = ctx
+        self.config = config
+        self.ctx = ctx
         self.program = self._load_shader()
-        self.vao     = self._create_vao()
-        self.time    = 0.0
-        self._beat_accum   = 0.0   # accumulates beat cycles for phase
-        self._last_phrase  = None
-        self._text_tex     = self._make_blank_text_texture()
+        self.vao = self._create_vao()
+        self.time = 0.0
+        self._beat_accum = 0.0
+        self._last_phrase = None
+        self._text_tex = self._make_blank_text_texture()
+        self._spiral_font_paths = discover_fonts(config.get("session_folder"))
 
         # ── IAF rotation lock (Bible Ch.10 §10.2 §2.3) ──────────────────────────────────
-        self._iaf_rot_hz:         float = 0.0   # current effective rotation rate
-        self._iaf_rot_target_hz:  float = 0.0   # target (updated every 30 s)
-        self._iaf_rot_interp:     float = 0.0   # 0.0 → 1.0 smooth transition
-        self._iaf_last_update_t:  float = 0.0   # monotonic, seconds
+        self._iaf_rot_hz: float = 0.0  # current effective rotation rate
+        self._iaf_rot_target_hz: float = 0.0  # target (updated every 30 s)
+        self._iaf_rot_interp: float = 0.0  # 0.0 → 1.0 smooth transition
+        self._iaf_last_update_t: float = 0.0  # monotonic, seconds
 
         # ── Aftereffect cycle (Bible Ch.10 §10.2 §2.4) ──────────────────────────────────
         # Direction: +1.0 = CW, 0.0 = paused, -1.0 = CCW
-        self._ae_direction:   float = 1.0
-        self._ae_phase_t:     float = 0.0   # time spent in current phase
-        self._ae_ramp_factor: float = 1.0   # 1.0 = full speed, 0.0 = stopped
+        self._ae_direction: float = 1.0
+        self._ae_phase_t: float = 0.0  # time spent in current phase
+        self._ae_ramp_factor: float = 1.0  # 1.0 = full speed, 0.0 = stopped
 
         # ── Loom oscillator ──────────────────────────────────────────────────────────────
-        self._loom_accum: float = 0.0   # phase accumulator in cycles
+        self._loom_accum: float = 0.0  # phase accumulator in cycles
 
     def _load_shader(self):
-        shader_path = Path(__file__).parent.parent / "shaders" / "spiral.glsl"
-        with open(shader_path, "r", encoding="utf-8") as f:
-            frag_src = f.read()
+        from pathlib import Path
+
+        shader_dir = Path(__file__).parent.parent / "shaders"
+        styles_dir = shader_dir / "styles"
+        common_path = shader_dir / "common.glsl"
+        monolith_path = shader_dir / "spiral.glsl"
+
+        if common_path.exists() and styles_dir.exists():
+            frag_src = self._assemble_shader(common_path, styles_dir)
+        else:
+            with open(monolith_path, "r", encoding="utf-8") as f:
+                frag_src = f.read()
+
         return self.ctx.program(
             vertex_shader="""
                 #version 330 core
@@ -102,9 +113,71 @@ class SpiralsLayer:
             fragment_shader=frag_src,
         )
 
+    @staticmethod
+    def _assemble_shader(common_path, styles_dir):
+        with open(common_path, "r", encoding="utf-8") as f:
+            src = f.read()
+
+        style_names = [
+            "tunnel",
+            "galaxy",
+            "archimedean",
+            "kaleidoscope",
+            "interference",
+            "electric",
+            "vortex",
+            "dna",
+            "fibonacci",
+            "rose",
+            "moire",
+            "spirograph",
+            "fermat",
+            "superformula",
+            "liminal",
+            "resonant",
+            "nebula",
+            "bifurcate",
+        ]
+
+        for name in style_names:
+            style_path = styles_dir / f"style_{name}.glsl"
+            if style_path.exists():
+                with open(style_path, "r", encoding="utf-8") as f:
+                    src += "\n" + f.read()
+
+        dispatch_lines = [
+            "\n// ── Main dispatch ──────────────────────────────────────────────────────────",
+            "void main() {",
+            "    vec2 p = centred(uv);",
+            "    p *= u_loom_scale;",
+            "    vec4 result;",
+            "    if      (u_style == 0)  result = style_tunnel(p);",
+            "    else if (u_style == 1)  result = style_galaxy(p);",
+            "    else if (u_style == 2)  result = style_archimedean(p);",
+            "    else if (u_style == 3)  result = style_kaleidoscope(p);",
+            "    else if (u_style == 4)  result = style_interference(p);",
+            "    else if (u_style == 5)  result = style_electric(p);",
+            "    else if (u_style == 6)  result = style_vortex(p);",
+            "    else if (u_style == 7)  result = style_dna(p);",
+            "    else if (u_style == 8)  result = style_fibonacci(p);",
+            "    else if (u_style == 9)  result = style_rose(p);",
+            "    else if (u_style == 10) result = style_moire(p);",
+            "    else if (u_style == 11) result = style_spirograph(p);",
+            "    else if (u_style == 12) result = style_fermat(p);",
+            "    else if (u_style == 13) result = style_superformula(p);",
+            "    else if (u_style == 15) result = style_resonant(p);",
+            "    else if (u_style == 16) result = style_nebula(p);",
+            "    else if (u_style == 17) result = style_bifurcate(p);",
+            "    else                    result = style_liminal(p);",
+            "    fragColor = result;",
+            "}",
+        ]
+        src += "\n".join(dispatch_lines)
+        return src
+
     def _create_vao(self):
         vertices = np.array(
-            [-1.0, -1.0,   1.0, -1.0,   -1.0, 1.0,   1.0, 1.0],
+            [-1.0, -1.0, 1.0, -1.0, -1.0, 1.0, 1.0, 1.0],
             dtype="f4",
         )
         vbo = self.ctx.buffer(vertices)
@@ -126,10 +199,8 @@ class SpiralsLayer:
         surf = pygame.Surface((_TEXT_W, _TEXT_H), pygame.SRCALPHA)
         surf.fill((0, 0, 0, 0))
 
-        try:
-            font = pygame.font.SysFont("arialblack", _TEXT_FONT_SIZE, bold=True)
-        except Exception:
-            font = pygame.font.Font(None, _TEXT_FONT_SIZE)
+        chosen = self._spiral_font_paths[0] if self._spiral_font_paths else None
+        font = make_font(chosen, _TEXT_FONT_SIZE)
 
         # Render with explicit black background then set colorkey so the
         # background becomes transparent when blitted onto the SRCALPHA surface.
@@ -162,15 +233,15 @@ class SpiralsLayer:
 
         iaf = float(cfg.get("eeg_iaf_hz") or 0.0) or 10.0
         num_arms = max(1, min(8, int(cfg.get("spiral_count", 4))))
-        divisor  = int(cfg.get("rotation_iaf_divisor", 0))
-        mult     = float(cfg.get("rotation_iaf_multiplier", 1.0))
+        divisor = int(cfg.get("rotation_iaf_divisor", 0))
+        mult = float(cfg.get("rotation_iaf_multiplier", 1.0))
 
         self._iaf_last_update_t += dt
         if self._iaf_last_update_t >= 30.0:
             target_hz = (iaf / (divisor if divisor > 0 else num_arms)) * mult
-            self._iaf_rot_target_hz  = target_hz
-            self._iaf_last_update_t  = 0.0
-            self._iaf_rot_interp     = 0.0
+            self._iaf_rot_target_hz = target_hz
+            self._iaf_last_update_t = 0.0
+            self._iaf_rot_interp = 0.0
 
         # 2-second smooth interpolation to new target
         if self._iaf_rot_interp < 1.0:
@@ -203,8 +274,8 @@ class SpiralsLayer:
             return self._ae_direction
 
         cycle_s = float(cfg.get("aftereffect_cycle_s", 35.0))
-        pause_s = float(cfg.get("aftereffect_pause_s",  2.0))
-        ramp_s  = float(cfg.get("aftereffect_ramp_s",   1.5))
+        pause_s = float(cfg.get("aftereffect_pause_s", 2.0))
+        ramp_s = float(cfg.get("aftereffect_ramp_s", 1.5))
 
         self._ae_phase_t += dt
 
@@ -212,7 +283,7 @@ class SpiralsLayer:
             # Running phase
             if self._ae_phase_t >= cycle_s:
                 # Enter ramp-down
-                self._ae_phase_t    = 0.0
+                self._ae_phase_t = 0.0
                 self._ae_ramp_factor = 1.0  # will decline below
                 # Actually transition: ramp speed to 0 over 0.5 s
                 self._ae_ramp_factor = 0.0
@@ -221,15 +292,15 @@ class SpiralsLayer:
             # Pause phase
             if self._ae_phase_t >= pause_s:
                 # Flip direction and start ramp-up
-                self._ae_direction   = -self._ae_direction
-                self._ae_phase_t     = 0.0
-                self._ae_ramp_factor = -1.0   # ramping up
+                self._ae_direction = -self._ae_direction
+                self._ae_phase_t = 0.0
+                self._ae_ramp_factor = -1.0  # ramping up
         elif self._ae_ramp_factor < 0.0:
             # Ramp-up phase
             progress = min(1.0, self._ae_phase_t / max(ramp_s, 0.01))
             if progress >= 1.0:
                 self._ae_ramp_factor = 1.0
-                self._ae_phase_t     = 0.0
+                self._ae_phase_t = 0.0
             return self._ae_direction * progress
 
         return self._ae_direction if self._ae_ramp_factor == 1.0 else 0.0
@@ -237,7 +308,7 @@ class SpiralsLayer:
     # ── Update / Draw ─────────────────────────────────────────────────────────
 
     def update(self, dt: float, beat_freq: float, cfg: dict):
-        sync       = bool(cfg.get("spiral_sync_to_beat", True))
+        sync = bool(cfg.get("spiral_sync_to_beat", True))
         speed_mult = float(cfg.get("spiral_speed_multiplier", 1.0))
 
         # ── Phase-cascade convergence pulse (Bible Ch.4 §4.6 §9.2) ────────────────────
@@ -247,18 +318,18 @@ class SpiralsLayer:
         # the visual disruption and the subliminal text flash.
         if cfg.get("_spiral_pulse_pending") and cfg.get("spiral_phase_pulse", False):
             cfg["_spiral_pulse_pending"] = False
-            self._pulse_remaining_s = float(
-                cfg.get("spiral_pulse_duration_ms", 50)
-            ) / 1000.0
+            self._pulse_remaining_s = (
+                float(cfg.get("spiral_pulse_duration_ms", 50)) / 1000.0
+            )
 
         if getattr(self, "_pulse_remaining_s", 0.0) > 0:
-            intensity   = float(cfg.get("spiral_pulse_intensity", 1.3))
+            intensity = float(cfg.get("spiral_pulse_intensity", 1.3))
             speed_mult *= intensity
             self._pulse_remaining_s = max(0.0, self._pulse_remaining_s - dt)
 
         # ── IAF rotation lock and aftereffect direction modifiers ────────────
-        iaf_speed_mod  = self._update_iaf_rotation(dt, cfg)
-        ae_direction   = self._update_aftereffect(dt, cfg)
+        iaf_speed_mod = self._update_iaf_rotation(dt, cfg)
+        ae_direction = self._update_aftereffect(dt, cfg)
         # When IAF lock is active, replace speed_mult; otherwise keep panel value
         if cfg.get("rotation_iaf_lock", False):
             effective_speed = iaf_speed_mod
@@ -274,12 +345,14 @@ class SpiralsLayer:
             # ConfigManager delivers new values at ~100ms intervals; the snap corrects
             # any accumulated drift between the visual integrator and the audio waveform.
             audio_phase = cfg.get("beat_phase")
-            if audio_phase is not None and audio_phase != getattr(self, "_last_audio_phase", None):
+            if audio_phase is not None and audio_phase != getattr(
+                self, "_last_audio_phase", None
+            ):
                 self._last_audio_phase = audio_phase
                 self._beat_accum = float(audio_phase)
         else:
-            self.time        += dt * effective_speed
-            self._beat_accum  = (self._beat_accum + dt * 1.0) % 1.0
+            self.time += dt * effective_speed
+            self._beat_accum = (self._beat_accum + dt * 1.0) % 1.0
 
         # ── Loom phase accumulation ───────────────────────────────────────────
         if cfg.get("spiral_loom_enabled", False):
@@ -306,6 +379,7 @@ class SpiralsLayer:
                 pool_id = id(pool)
                 if pool_id != getattr(self, "_last_pool_id", None):
                     import random
+
                     phrase = random.choice(pool)
                     self._last_pool_id = pool_id
                     if phrase != self._last_phrase:
@@ -317,15 +391,17 @@ class SpiralsLayer:
 
     def draw(self, cfg: dict):
         surface = pygame.display.get_surface()
-        w, h    = surface.get_size()
+        w, h = surface.get_size()
 
         style_name = cfg.get("spiral_style", "tunnel_dream")
-        style_int  = STYLE_MAP.get(style_name, 0)
-        base       = cfg.get("spiral_base_color", [255, 20, 147])
+        style_int = STYLE_MAP.get(style_name, 0)
+        base = cfg.get("spiral_base_color", [255, 20, 147])
 
         # Normalize thickness slider value → shader multiplier
-        thick_raw  = float(cfg.get("spiral_thickness", 14))
-        thick_norm = _MULT_MIN + (thick_raw - _THICK_MIN) / (_THICK_MAX - _THICK_MIN) * (_MULT_MAX - _MULT_MIN)
+        thick_raw = float(cfg.get("spiral_thickness", 14))
+        thick_norm = _MULT_MIN + (thick_raw - _THICK_MIN) / (
+            _THICK_MAX - _THICK_MIN
+        ) * (_MULT_MAX - _MULT_MIN)
 
         # color_cycle: "solid"/"bw" → 0 (use base directly), "rainbow"/"cycle" → 1
         color_mode = cfg.get("spiral_color_mode", "rainbow")
@@ -349,7 +425,9 @@ class SpiralsLayer:
                 fractal_amp = float(explicit_amp)
             else:
                 # SR visual floor: map sr_noise_level 0→0, 1→0.4 (empirical max)
-                sr_level    = max(0.0, min(1.0, float(cfg.get("sr_noise_level", 0.0) or 0.0)))
+                sr_level = max(
+                    0.0, min(1.0, float(cfg.get("sr_noise_level", 0.0) or 0.0))
+                )
                 fractal_amp = round(sr_level * 0.4, 4)
         else:
             fractal_amp = 0.0
@@ -357,26 +435,26 @@ class SpiralsLayer:
         # Bible Ch.10 §10.2 §4.2 — compound CS hue shift
         hue_shift = float(cfg.get("spiral_hue_shift", 0.0))
 
-        self.program["u_time"].value       = self.time
-        self.program["u_tightness"].value  = float(cfg.get("spiral_tightness", 6.0))
-        self.program["u_opacity"].value    = float(cfg.get("spiral_opacity", 88)) / 100.0
-        self.program["u_count"].value      = min(8, max(1, int(cfg.get("spiral_count", 4))))
-        self.program["u_chaos"].value      = float(cfg.get("spiral_chaos", 0.12))
-        self.program["u_style"].value      = style_int
-        self.program["u_thickness"].value  = float(thick_norm)
+        self.program["u_time"].value = self.time
+        self.program["u_tightness"].value = float(cfg.get("spiral_tightness", 6.0))
+        self.program["u_opacity"].value = float(cfg.get("spiral_opacity", 88)) / 100.0
+        self.program["u_count"].value = min(8, max(1, int(cfg.get("spiral_count", 4))))
+        self.program["u_chaos"].value = float(cfg.get("spiral_chaos", 0.12))
+        self.program["u_style"].value = style_int
+        self.program["u_thickness"].value = float(thick_norm)
         self.program["u_beat_phase"].value = float(self._beat_accum)
         self.program["u_color_cycle"].value = float(color_cycle)
-        self.program["u_show_text"].value  = show_text
-        self.program["u_text_tex"].value   = 1
+        self.program["u_show_text"].value = show_text
+        self.program["u_text_tex"].value = 1
         self.program["u_resolution"].value = (float(w), float(h))
         self.program["u_base_color"].value = (
             base[0] / 255.0,
             base[1] / 255.0,
             base[2] / 255.0,
         )
-        self.program["u_golden_spiral"].value          = golden_spiral
+        self.program["u_golden_spiral"].value = golden_spiral
         self.program["u_fractal_edge_amplitude"].value = fractal_amp
-        self.program["u_hue_shift"].value              = hue_shift / 360.0
+        self.program["u_hue_shift"].value = hue_shift / 360.0
 
         # Loom: oscillate the radial scale around 1.0 using a sine wave.
         # depth=1.0 → ±25% zoom swing (0.75–1.25); depth=0.0 → no effect.

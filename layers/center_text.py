@@ -1,8 +1,8 @@
 import time
 import pygame
 import random
-from pathlib import Path
 from layers.phrase_pool import PhrasePool
+from layers.font_manager import FontManager
 from eeg.delivery_gate import DeliveryGate
 
 
@@ -22,9 +22,7 @@ class CenterTextLayer:
         self.current = self.pool.pick()
         self.timer = 0
         self.visible = True
-        self.font_pool = self._load_fonts()
-        self.current_font = None
-        self._switch_font()
+        self.font_mgr = FontManager(config)
         self._tts = tts_engine
 
         # Phase-cascade delivery gate (Bible Ch.4 §4.6). Created once; reads config live.
@@ -45,19 +43,11 @@ class CenterTextLayer:
         # Dedup timestamp: last tts_playing_ts we acted on (panel-owned TTS path)
         self._last_tts_ts: float = 0.0
 
-        # Surface cache — rebuilt only when phrase, font, or visibility changes
         self._cached_surf = None
         self._cache_key = None
 
-    def _load_fonts(self):
-        session = self.config.get("session_folder", "default")
-        font_dir = Path(__file__).parent.parent / "sessions" / session / "fonts"
-        fonts = [str(f) for f in font_dir.glob("*.ttf")] if font_dir.exists() else []
-        return fonts or [None]
-
     def _switch_font(self):
-        if self.font_pool and random.random() < 0.3:
-            self.current_font = random.choice(self.font_pool)
+        pass
 
     def _calculate_times(self, beat_freq: float):
         sync = self.config.get("center_flash_sync_to_beat", True)
@@ -241,14 +231,10 @@ class CenterTextLayer:
         color = self._color()
         screen = pygame.display.get_surface()
         max_w = int(screen.get_width() * 0.88)
-        key = (self.current, self.current_font, color, max_w)
+        key = (self.current, self.font_mgr.current_font, color, max_w)
 
         if self._cached_surf is None or self._cache_key != key:
-            font = (
-                pygame.font.Font(self.current_font, 140)
-                if self.current_font
-                else pygame.font.SysFont("arialblack", 140, bold=True)
-            )
+            font = self.font_mgr.get_font(140)
 
             lines = self._wrap(self.current.upper(), font, max_w)
 

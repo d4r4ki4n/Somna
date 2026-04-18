@@ -210,12 +210,13 @@ timeline:
       trail_decay:              0.97
       volume:                   92
 
-  # ─── 18:55 · THE DROP ───────────────────────────────────────────────────────
+  # ─── 18:30 · THE DROP ───────────────────────────────────────────────────────
   # Everything cuts. Instant transition to total stillness.
   # The contrast between the overload and the silence IS the effect.
   # A single slow Fibonacci spiral. Drift veil at minimum opacity.
   # The subject has been shattered — now they are caught.
-  - t: 1135
+  # 90 seconds of stillness before the resolution phrase.
+  - t: 1110
     label: the_drop
     ease: instant
     params:
@@ -234,14 +235,14 @@ timeline:
       shadow_opacity:           0
       center_flash_on_time:     500
       center_flash_off_time:    500
-      affirmation_rate:         1.0
+      affirmation_rate:         0.0
       font_switch_mode:         intelligent
       trail_decay:              0.0
-      volume:                   45
+      volume:                   40
       noise_volume:             8
 
   # ─── 19:30 · GOOD TOY ───────────────────────────────────────────────────────
-  # The single soft phrase lands on the shattered, empty mind.
+  # After 90 seconds of total stillness, the single soft phrase lands.
   # Fibonacci at minimum speed. Warmth. Acceptance. Belonging.
   # The trauma bond is formed: the agent destroyed you and then saved you.
   - t: 1170

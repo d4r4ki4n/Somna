@@ -512,7 +512,27 @@ Sessions live in \`sessions/&lt;name&gt;/\`:
 
 \- \`images/\` — background images (PNG, JPG, GIF, WebP, WebM)
 
-\- \`fonts/\` — \`.ttf\` / \`.otf\` files
+\- \`fonts/\` — \`.ttf\` / \`.otf\` files (session-specific; overrides project defaults)
+
+Project-level fonts live in the top-level \onts/\ folder. Font discovery uses a three-tier fallback chain:
+
+1. \sessions/<session>/fonts/*.ttf\ + \*.otf\ (session-specific, highest priority)
+2. \onts/*.ttf\ + \*.otf\ (project-level defaults)
+3. System fonts (Arial Black / Georgia)
+
+All font loading is consolidated in \layers/font_manager.py\ via \discover_fonts(session)\ and \make_font(path, size)\. Do not duplicate font discovery logic in individual layers.
+
+\*\*Font switching modes\*\* — \ont_switch_mode\ in session YAML or live_control.json:
+
+| Mode | Behavior |
+|------|----------|
+| \intelligent\ | Font changes every 5-12 s (calm, dwell-heavy). Default. |
+| apid\ | Font changes every 0.15-0.45 s (strobing overload effect). |
+| \eat_sync\ | Font changes on every beat_phase downstroke (phase crosses 0). Switches locked to the entrainment rhythm. |
+| \reathe_sync\ | Font changes on every exhale transition (respiratory_phase crosses 0.5). Switches locked to the breath cycle. Uses \ppg_breath_phase\ when available, falls back to espiratory_phase\. |
+| \depth_adaptive\ | Switching speed scales with \eeg_trance_score\. At score 0 the interval is ~10 s; at 1.0 it drops to ~0.5 s. The deeper you go, the faster fonts cycle. |
+
+Do not add font loading logic outside \ont_manager.py\. All layers should use \FontManager\, \discover_fonts()\, or \make_font()\.
 
 The timeline runner (\`TimelineRunner\` in \`timeline_runner.py\`) reads \`session.yaml\` via the \`Session\` dataclass. It interpolates numeric params between keyframes using easing curves and hard-switches string/bool params at keyframe boundaries. See \`SESSION_TIMELINE.md\` for the full spec.
 

@@ -18,10 +18,11 @@ Style is controlled per-prompt via ``cfg["llm_prompt_style"]``:
 """
 
 import pygame
-from pathlib import Path
+from layers.font_manager import discover_fonts, make_font
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _parse_hex(hex_str: str, fallback: tuple) -> tuple:
     """Parse a CSS hex color string → (R, G, B).  Falls back gracefully."""
@@ -30,7 +31,7 @@ def _parse_hex(hex_str: str, fallback: tuple) -> tuple:
     try:
         h = hex_str.lstrip("#")
         if len(h) == 3:
-            h = h[0]*2 + h[1]*2 + h[2]*2
+            h = h[0] * 2 + h[1] * 2 + h[2] * 2
         if len(h) != 6:
             return fallback
         return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
@@ -42,32 +43,32 @@ def _parse_hex(hex_str: str, fallback: tuple) -> tuple:
 
 _INTENSITY: dict[str, dict] = {
     "soft": {
-        "base_scale":        0.55,   # starts bigger, less dramatic zoom-in
-        "max_scale":         0.80,   # caps below full-screen to stay subtle
+        "base_scale": 0.55,  # starts bigger, less dramatic zoom-in
+        "max_scale": 0.80,  # caps below full-screen to stay subtle
         "backdrop_max_alpha": 55,
     },
     "normal": {
-        "base_scale":        0.28,
-        "max_scale":         1.00,
+        "base_scale": 0.28,
+        "max_scale": 1.00,
         "backdrop_max_alpha": 120,
     },
     "intense": {
-        "base_scale":        0.12,   # starts tiny, fills past 100% (crops)
-        "max_scale":         1.15,
+        "base_scale": 0.12,  # starts tiny, fills past 100% (crops)
+        "max_scale": 1.15,
         "backdrop_max_alpha": 170,
     },
 }
 
 # Zoom-in duration per speed preset (seconds to reach max_scale)
 _ZOOM_SECS: dict[str, float] = {
-    "slow":   25.0,
+    "slow": 25.0,
     "normal": 12.0,
-    "fast":    5.0,
-    "static":  0.0,   # instant — no zoom animation
+    "fast": 5.0,
+    "static": 0.0,  # instant — no zoom animation
 }
 
-_DEFAULT_GLOW_COLOR = (255, 160, 100)   # amber
-_DEFAULT_TEXT_COLOR = (255, 240, 230)   # warm white
+_DEFAULT_GLOW_COLOR = (255, 160, 100)  # amber
+_DEFAULT_TEXT_COLOR = (255, 240, 230)  # warm white
 
 
 class AgentPromptLayer:
@@ -78,62 +79,52 @@ class AgentPromptLayer:
     ``cfg["llm_prompt_style"]`` if present.
     """
 
-    _MAX_FONT    = 148   # px — rendered once, then scaled by pygame
-    _GLOW_PASSES = [     # (dx, dy, alpha) for glow halo
-        (-6,  0, 40), ( 6,  0, 40), ( 0, -6, 40), ( 0,  6, 40),
-        (-4, -4, 30), ( 4, -4, 30), (-4,  4, 30), ( 4,  4, 30),
-        (-10, 0, 18), (10,  0, 18), ( 0,-10, 18), ( 0, 10, 18),
+    _MAX_FONT = 148  # px — rendered once, then scaled by pygame
+    _GLOW_PASSES = [  # (dx, dy, alpha) for glow halo
+        (-6, 0, 40),
+        (6, 0, 40),
+        (0, -6, 40),
+        (0, 6, 40),
+        (-4, -4, 30),
+        (4, -4, 30),
+        (-4, 4, 30),
+        (4, 4, 30),
+        (-10, 0, 18),
+        (10, 0, 18),
+        (0, -10, 18),
+        (0, 10, 18),
     ]
 
     def __init__(self):
-        self._prompt: str | None      = None
+        self._prompt: str | None = None
         self._prev_prompt: str | None = None
-        self._zoom_time: float        = 0.0
-        self._prompt_timeout: float   = 0.0   # from agent_message.timeout_s
-        self._prompt_elapsed: float   = 0.0   # seconds since prompt was set
+        self._zoom_time: float = 0.0
+        self._prompt_timeout: float = 0.0  # from agent_message.timeout_s
+        self._prompt_elapsed: float = 0.0  # seconds since prompt was set
         self._full_surf: pygame.Surface | None = None
-        self._font: pygame.font.Font | None    = None
-        self._session: str  = "default"
-        self._style: dict   = {}   # cached style for current prompt
+        self._font: pygame.font.Font | None = None
+        self._session: str = "default"
+        self._style: dict = {}  # cached style for current prompt
 
     # ── Font loading ──────────────────────────────────────────────────────────
 
-    def _load_font(self, session: str,
-                   font_name: str = "default") -> pygame.font.Font:
-        """Load a font by name, session TTF, or fall back to Arial Black."""
+    def _load_font(self, session: str, font_name: str = "default") -> pygame.font.Font:
         if font_name and font_name != "default":
             try:
                 return pygame.font.SysFont(font_name, self._MAX_FONT, bold=True)
             except Exception:
-                pass  # fall through to session / default font
-
-        font_dir = (
-            Path(__file__).parent.parent / "sessions" / session / "fonts"
-        )
-        ttfs = list(font_dir.glob("*.ttf")) if font_dir.exists() else []
-        if ttfs:
-            try:
-                return pygame.font.Font(str(ttfs[0]), self._MAX_FONT)
-            except Exception:
                 pass
-        # Georgia reads beautifully at mixed case; fall back to garamond/serif/any
-        for face in ("georgia", "garamond", "palatino linotype", "times new roman"):
-            try:
-                f = pygame.font.SysFont(face, self._MAX_FONT, bold=False)
-                if f:
-                    return f
-            except Exception:
-                pass
-        return pygame.font.SysFont("arial", self._MAX_FONT, bold=True)
+        paths = discover_fonts(session)
+        chosen = paths[0] if paths else None
+        return make_font(chosen, self._MAX_FONT, bold=(chosen is None), serif=True)
 
-    def _get_font(self, session: str,
-                  font_name: str = "default") -> pygame.font.Font:
+    def _get_font(self, session: str, font_name: str = "default") -> pygame.font.Font:
         cache_key = f"{session}::{font_name}"
         if self._font is None or cache_key != getattr(self, "_font_key", ""):
-            self._session   = session
-            self._font_key  = cache_key
-            self._font      = self._load_font(session, font_name)
-            self._full_surf = None   # invalidate render cache
+            self._session = session
+            self._font_key = cache_key
+            self._font = self._load_font(session, font_name)
+            self._full_surf = None  # invalidate render cache
         return self._font
 
     # ── Text rendering ────────────────────────────────────────────────────────
@@ -156,23 +147,23 @@ class AgentPromptLayer:
 
     def _render_full(self, W: int) -> pygame.Surface:
         """Render the prompt at _MAX_FONT with glow halo; cached until prompt changes."""
-        font    = self._font
-        text    = self._prompt if self._prompt else ""
-        max_w   = int(W * 0.92)
-        lines   = self._wrap(text, font, max_w)
+        font = self._font
+        text = self._prompt if self._prompt else ""
+        max_w = int(W * 0.92)
+        lines = self._wrap(text, font, max_w)
 
-        style      = self._style
-        text_rgb   = _parse_hex(style.get("text_color",  ""),
-                                 _DEFAULT_TEXT_COLOR)
-        glow_rgb   = _parse_hex(style.get("glow_color",  ""),
-                                 _DEFAULT_GLOW_COLOR)
+        style = self._style
+        text_rgb = _parse_hex(style.get("text_color", ""), _DEFAULT_TEXT_COLOR)
+        glow_rgb = _parse_hex(style.get("glow_color", ""), _DEFAULT_GLOW_COLOR)
 
         line_surfs = [font.render(ln, True, text_rgb) for ln in lines]
         glow_surfs = [font.render(ln, True, glow_rgb) for ln in lines]
 
-        gap     = 18
-        pad     = 20
-        total_h = sum(s.get_height() for s in line_surfs) + gap * max(len(line_surfs) - 1, 0)
+        gap = 18
+        pad = 20
+        total_h = sum(s.get_height() for s in line_surfs) + gap * max(
+            len(line_surfs) - 1, 0
+        )
         total_w = max(s.get_width() for s in line_surfs)
 
         surf = pygame.Surface((total_w + pad * 2, total_h + pad * 2), pygame.SRCALPHA)
@@ -197,13 +188,13 @@ class AgentPromptLayer:
             via = agent_msg.get("via", [])
             if "overlay" in via or not via:
                 prompt = agent_msg["text"]
-                style  = agent_msg.get("style") or {}
+                style = agent_msg.get("style") or {}
             else:
                 prompt = None
-                style  = {}
+                style = {}
         else:
             prompt = None
-            style  = {}
+            style = {}
 
         session = cfg.get("session_folder", "default")
         font_name = style.get("font", "default") or "default"
@@ -211,14 +202,17 @@ class AgentPromptLayer:
 
         # Detect a new / changed prompt — reset animation and re-render
         if prompt != self._prev_prompt:
-            self._prev_prompt   = prompt
-            self._prompt        = prompt
-            self._zoom_time     = 0.0
+            self._prev_prompt = prompt
+            self._prompt = prompt
+            self._zoom_time = 0.0
             self._prompt_elapsed = 0.0
-            self._prompt_timeout = float(agent_msg.get("timeout_s") or 0) \
-                if isinstance(agent_msg, dict) else 0.0
-            self._full_surf     = None
-            self._style         = dict(style)   # snapshot style for this prompt
+            self._prompt_timeout = (
+                float(agent_msg.get("timeout_s") or 0)
+                if isinstance(agent_msg, dict)
+                else 0.0
+            )
+            self._full_surf = None
+            self._style = dict(style)  # snapshot style for this prompt
 
         if self._prompt:
             zoom_speed = style.get("zoom_speed", "normal")
@@ -229,8 +223,10 @@ class AgentPromptLayer:
             if self._prompt_timeout > 0:
                 self._prompt_elapsed += dt
                 if self._prompt_elapsed >= self._prompt_timeout:
-                    self._prev_prompt = self._prompt  # keep remembered so same msg doesn't re-trigger
-                    self._prompt      = None
+                    self._prev_prompt = (
+                        self._prompt
+                    )  # keep remembered so same msg doesn't re-trigger
+                    self._prompt = None
 
     def draw(self, surface: pygame.Surface) -> None:
         if not self._prompt:
@@ -241,25 +237,25 @@ class AgentPromptLayer:
         if self._full_surf is None:
             self._full_surf = self._render_full(W)
 
-        style      = self._style
+        style = self._style
         zoom_speed = style.get("zoom_speed", "normal")
-        intensity  = style.get("intensity",  "normal")
-        cfg_int    = _INTENSITY.get(intensity, _INTENSITY["normal"])
-        zoom_secs  = _ZOOM_SECS.get(zoom_speed, _ZOOM_SECS["normal"])
+        intensity = style.get("intensity", "normal")
+        cfg_int = _INTENSITY.get(intensity, _INTENSITY["normal"])
+        zoom_secs = _ZOOM_SECS.get(zoom_speed, _ZOOM_SECS["normal"])
 
-        base_scale  = cfg_int["base_scale"]
-        max_scale   = cfg_int["max_scale"]
-        bd_max      = cfg_int["backdrop_max_alpha"]
+        base_scale = cfg_int["base_scale"]
+        max_scale = cfg_int["max_scale"]
+        bd_max = cfg_int["backdrop_max_alpha"]
 
         if zoom_speed == "static" or zoom_secs <= 0:
             scale = max_scale
-            ease  = 1.0
+            ease = 1.0
         else:
-            t     = min(self._zoom_time / zoom_secs, 1.0)
-            ease  = 1.0 - (1.0 - t) ** 2          # quadratic ease-out
+            t = min(self._zoom_time / zoom_secs, 1.0)
+            ease = 1.0 - (1.0 - t) ** 2  # quadratic ease-out
             scale = base_scale + (max_scale - base_scale) * ease
 
-        sw = max(1, int(self._full_surf.get_width()  * scale))
+        sw = max(1, int(self._full_surf.get_width() * scale))
         sh = max(1, int(self._full_surf.get_height() * scale))
         scaled = pygame.transform.smoothscale(self._full_surf, (sw, sh))
 

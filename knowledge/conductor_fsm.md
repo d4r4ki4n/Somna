@@ -1,271 +1,371 @@
-﻿# Conductor FSM — Session Phase Specification
+# Conductor FSM — Session Phase Specification
 
-Design spec: Bible Ch.4 — Session Architecture
+**Status:** Specification (v2 — rebuilt with full subsystem integration)
 
-Last updated: 2026-04-11 | Rebuilt from Bible Ch.4 Â§Conductor with Bible citations
+**Author:** Ed / Reese
 
-## Authority Note
+**Date:** 17 April 2026
 
-This file is a compact reference for the LLM agent during active sessions. The authoritative design specification lives in the
+**Loaded by:** Active session ticks via `conductor.tick()` in `_interactive_tick`
 
-Somna Bible, Chapter 4 — Session Architecture
+**Authority:** This file is a compact reference for the LLM agent during active sessions. The authoritative design specification lives in the Somna Bible, Chapter 4 — Session Architecture. When this file and the Bible disagree, the Bible wins.
 
-. When this file and the Bible disagree, the Bible wins.
+---
 
 ## Overview
 
-The Conductor is the top-level FSM that orchestrates all Somna subsystems into a coherent session arc. It is the **single agent-side entity** that calls \_patch_live(). All subsystem trackers (SQI, ASSR, FAA, FreqLeader, SessionScorer) are read-only sensors; they write their outputs to live_control.json and the Conductor reads them there.
+The Conductor is the top-level FSM that orchestrates all Somna subsystems into a coherent session arc. It is the **single agent-side entity** that writes to `live_control.json` via the IPC StateServer.
 
-**File:** conductor.py at project root. Instantiated by SomnaAgent at fresh session start; ticked via conductor.tick() in \_interactive_tick.
+**File:** `session/conductor.py`. Instantiated by `SomnaAgent` at fresh session start; ticked via `conductor.tick()` in `_interactive_tick`.
+
+**Write API:** All Conductor writes use the module-level function:
+
+```python
+from ipc import patch_live
+patch_live({"beat_frequency": 6.0, "spiral_style": "tunnel_dream"})
+```
+
+Do NOT use `_patch_live()` (deprecated private method pattern). Do NOT write `live_control.json` directly. See Bible Ch.1 §IPC-StateServer.
+
+---
 
 ## Design Principles
 
-1.  **Single Writer Rule** — Conductor is the only agent-side entity that writes to live_control.json.  
-    Bible Ch.1 §3: One-Origin Rule
-2.  **Phase Primacy** — Every decision is made in context of the current phase. No phaseless operation.  
-    Bible Ch.4 §8
-3.  **Metric Gating Cascade** — SQI first → metric-specific confidence → phase transition. Always in that order.  
-    Bible Ch.2 §7
-4.  **Hysteresis by Design** — Transitions toward deeper states require shorter hold times. Exception: fractionation transitions are deliberately fast in both directions.  
-    Bible Ch.4 §12
-5.  **Graceful Degradation** — Timer-based fallback when EEG is unavailable. Sessions always complete.  
-    Bible Ch.4 §15
+1. **Single Writer Rule** — Conductor is the only agent-side entity that writes to `live_control.json`. All subsystem trackers (SQI, ASSR, FAA, FreqLeader, SessionScorer) are read-only sensors.
+   Bible Ch.1 §3: One-Origin Rule
+
+2. **Phase Primacy** — Every decision is made in context of the current phase. No phaseless operation.
+   Bible Ch.4 §8
+
+3. **Metric Gating Cascade** — SQI first → metric-specific confidence → phase transition. Always in that order.
+   Bible Ch.2 §7
+
+4. **Hysteresis by Design** — Transitions toward deeper states require shorter hold times. Exception: fractionation transitions are deliberately fast in both directions.
+   Bible Ch.4 §12
+
+5. **Graceful Degradation** — Timer-based fallback when EEG is unavailable. Sessions always complete.
+   Bible Ch.4 §15
+
+---
 
 ## Fourteen Phases
 
-| **Phase** | **Entry Condition** | **Target Band** | **Tick Rate** | **Frac. Eligible** |
-| --- | --- | --- | --- | --- |
-| CALIBRATION | Session start | None | 5s  | No  |
-| --- | --- | --- | --- | --- |
-| INDUCTION | SQI ≥ REDUCED ×2ch for 30s + IAF detected | Alpha (IAF) | 10s | No  |
-| --- | --- | --- | --- | --- |
-| DEEPENING | ASSR confidence ≥ REDUCED for 60s | Alpha → Theta | 10s | After 5 min |
-| --- | --- | --- | --- | --- |
-| MAINTENANCE | trance_score > 0.65 (90s) + ASSR ≥ REDUCED (60s) | Theta 4–7 Hz | 30s | Yes |
-| --- | --- | --- | --- | --- |
-| FRAC_EMERGE | Frac eligible + trance > 0.5 (60s) | Alpha (return to IAF) | 5s  | No  |
-| --- | --- | --- | --- | --- |
-| FRAC_EMERGE_HOLD | SEF95 > 15 or 45s timeout | Alpha | 5s  | No  |
-| --- | --- | --- | --- | --- |
-| FRAC_REDROP | Hold elapsed 15–45s | Theta | 10s | Yes |
-| --- | --- | --- | --- | --- |
-| GENUS_BLOCK | GENUS requested + eligibility met | Gamma 40 Hz | 10s | No  |
-| --- | --- | --- | --- | --- |
-| SLEEP_APPROACH | session_type=sleep + depth criteria | Theta → Delta | 30s | No  |
-| --- | --- | --- | --- | --- |
-| SLEEP_ONSET | sleep_onset_detected or SEF95 < 8 for 120s | Delta / silence | 60s | No  |
-| --- | --- | --- | --- | --- |
-| SLEEP_MAINTAIN | N2 or N3 for ≥ 3 consecutive epochs after SLEEP_ONSET | Delta | 60s | No  |
-| --- | --- | --- | --- | --- |
-| SLEEP_TRAINING | HTW eligible + N1 for ≥ 3 epochs during SLEEP_MAINTAIN | Theta 5.5 Hz | 30s | No  |
-| --- | --- | --- | --- | --- |
-| SLEEP_WAKE | WAKE for ≥ 30s during SLEEP_MAINTAIN | —   | 30s | No  |
-| --- | --- | --- | --- | --- |
-| SESSION_END | Timer / user stop / sleep duration met / 2 min of WAKE | Ramp to IAF | —   | No  |
-| --- | --- | --- | --- | --- |
+The Conductor has 14 phases across three domains: trance (7), sleep (5), GENUS (1), plus SESSION_END.
 
-**Note:** GENUS_BLOCK is new — see Bible Ch.4 Addendum A for full specification.
+| Phase | Entry Condition | Target Band | Tick Rate | Frac. Eligible |
+|---|---|---|---|---|
+| CALIBRATION | Session start | None | 5 s | No |
+| INDUCTION | SQI >= REDUCED x2ch for 30 s + IAF detected | Alpha (IAF) | 10 s | No |
+| DEEPENING | ASSR confidence >= REDUCED for 60 s | Alpha -> Theta | 10 s | After 5 min |
+| MAINTENANCE | trance_score > 0.65 (90 s) + ASSR >= REDUCED (60 s) | Theta 4-7 Hz | 30 s | Yes |
+| FRAC_EMERGE | Frac eligible + trance > 0.5 (60 s) | Alpha (return to IAF) | 5 s | No |
+| FRAC_EMERGE_HOLD | SEF95 > 15 or 45 s timeout | Alpha | 5 s | No |
+| FRAC_REDROP | Hold elapsed 15-45 s | Theta | 10 s | Yes |
+| GENUS_BLOCK | GENUS requested + eligibility met | Gamma 40 Hz | 10 s | No |
+| SLEEP_APPROACH | session_type=sleep + depth criteria | Theta -> Delta | 30 s | No |
+| SLEEP_ONSET | sleep_onset_detected or SEF95 < 8 for 120 s | Delta / silence | 60 s | No |
+| SLEEP_MAINTAIN | N2 or N3 for >= 3 consecutive epochs after SLEEP_ONSET | Delta | 60 s | No |
+| SLEEP_TRAINING | HTW eligible + N1 for >= 3 epochs during SLEEP_MAINTAIN | Theta 5.5 Hz | 30 s | No |
+| SLEEP_WAKE | WAKE for >= 30 s during SLEEP_MAINTAIN | -- | 30 s | No |
+| SESSION_END | Timer / user stop / sleep duration met / 2 min of WAKE | Ramp to IAF | -- | No |
+
+---
 
 ## Key Parameter Targets Per Phase
 
-### CALIBRATION Bible Ch.4 §9
+### CALIBRATION
+| Parameter | Value | Notes |
+|---|---|---|
+| beat_frequency | 0 | No entrainment during baseline |
+| spiral_chaos | 0.15 | Minimal visual complexity |
+| trail_decay | 0.0 | No FBO trail |
+| veil_mode | drift | Gentle, non-directional |
+| shadow_opacity_target | 0 | No subliminal shadows |
+| sr_noise_level | 0.0 | No stochastic resonance |
 
-beat_frequency = 0 spiral_chaos = 0.15 trail_decay = 0.0 veil_mode = "drift" shadow_opacity_target= 0 sr_noise_level = 0.0
+### INDUCTION
+| Parameter | Value | Notes |
+|---|---|---|
+| beat_frequency | IAF | Meet the user's individual alpha |
+| spiral_chaos | 0.2 | Low complexity |
+| trail_decay | 0.3 | Mild trail begins |
+| veil_mode | scroll or converge | Directional text flow |
+| shadow_opacity_target | 20 | Subliminal shadows begin |
+| freq_lead_mode | meet | Match, don't lead yet |
 
-### INDUCTION Bible Ch.4 §10
+### DEEPENING
+| Parameter | Value | Notes |
+|---|---|---|
+| spiral_style | See Palette Override below | Default: tunnel_dream or galaxy |
+| veil_mode | converge or tunnel | Immersive modes |
+| spiral_chaos | 0.25 -> 0.4 | Increasing over phase |
+| trail_decay | 0.4 -> 0.6 | Building persistence |
+| sr_noise_level | 0.0-0.15 | Gradual introduction |
+| freq_lead_mode | lead | Active frequency descent |
 
-beat_frequency = IAF spiral_chaos = 0.2 trail_decay = 0.3 veil_mode = "scroll" | "converge" shadow_opacity_target= 20 freq_lead_mode = "meet"
+**Note on `spiral_style`:** The original specification used `"liminal"` — this style name appears in the Doc 16 integration map but may have been renamed in the spiral renderer. Verify against the 14 valid styles in `spiral_layer.py`: `tunnel_dream`, `galaxy`, `archimedean`, `kaleidoscope`, `interference`, `electric`, `vortex`, `dna`, `fibonacci`, `rose`, `moire`, `spirograph`, `fermat`, `superformula`. If `liminal` is not recognized, use `tunnel_dream` (closest perceptual equivalent — immersive depth-inducing geometry).
 
-### DEEPENING Bible Ch.4 §10
+### MAINTENANCE
+| Parameter | Value | Notes |
+|---|---|---|
+| veil_mode | tunnel | Maximum immersion |
+| spiral_style | See Palette Override below | Default: tunnel_dream or galaxy |
+| trail_decay | 0.6-0.85 | High persistence |
+| sr_noise_level | 0.05-0.12 | Sustained low-level noise |
+| shadow_opacity_target | 15 | Subliminal maintained |
+| freq_lead_mode | sustain | Hold theta depth |
 
-spiral_style = "liminal" veil_mode = "converge" | "tunnel" chaos = 0.25 → 0.4 trail_decay = 0.4 → 0.6 sr_noise_level = 0.0–0.15 freq_lead_mode = "lead"
+### FRAC_EMERGE
+| Parameter | Value | Notes |
+|---|---|---|
+| spiral_chaos | 0.05 | SNAP — V1 perceptual jolt |
+| trail_decay | 0.0 | SNAP — clean break |
+| sr_noise_level | 0.0 | Withdrawn |
+| shadow_opacity_target | 25 | Increased (orienting) |
+| freq_lead_mode | meet | Return toward IAF |
 
-### MAINTENANCE Bible Ch.4 §11
+### FRAC_EMERGE_HOLD
+Hold at post-emerge values. SEF95 > 15 confirms cortical arousal, or 45 s timeout.
 
-veil_mode = "tunnel" spiral_style = "liminal" trail_decay = 0.6–0.85 sr_noise_level = 0.05–0.12 shadow_opacity_target= 15 freq_lead_mode = "sustain"
+### FRAC_REDROP
+Gradual ramp from snap values back toward pre-emerge parameters. This asymmetry (fast emerge, slow redrop) is perceptually significant — the Vogt model requires it.
 
-### FRAC_EMERGE Bible Ch.4 §12
+### GENUS_BLOCK
+| Parameter | Value | Notes |
+|---|---|---|
+| beat_frequency | 40 | Gamma isochronic |
+| beat_type | isochronic | Clicks, not binaural |
+| spiral_style | interference or kaleidoscope | High-complexity geometric |
+| spiral_chaos | 0.5-0.7 | Elevated visual complexity |
+| veil_mode | strobe | Stroboscopic flicker |
+| shadow_opacity_target | 0 | No subliminal content |
+| sr_noise_level | 0.0 | Clean signal |
+| trail_decay | 0.2-0.4 | Moderate, not immersive |
 
-spiral_chaos = 0.05 ← SNAP trail_decay = 0.0 ← SNAP sr_noise_level = 0.0 shadow_opacity_target= 25 freq_lead_mode = "meet" (toward IAF)
+**GENUS content constraint:** Cognitive engagement content ONLY. No hypnotic patterns, no deepening language, no affirmations. See Bible Ch.4 Addendum A for full GENUS specification.
 
-### FRAC_REDROP Bible Ch.4 §12
+### SLEEP_APPROACH
+| Parameter | Value | Notes |
+|---|---|---|
+| veil_mode | drift | Gentle, non-stimulating |
+| trail_decay | 0.85-0.95 | High, approaching total persistence |
+| shadow_opacity_target | 12 -> 8 | Tapering |
+| sr_noise_level | tapering to 0 | Withdrawn before sleep |
+| freq_lead_mode | step-ramp | Stepped frequency descent toward delta |
 
-Gradual ramp from snap values back toward pre-emerge params. Asymmetric: fast emergence, slow redescent.
+**freq_lead_mode = "step-ramp":** Unlike `lead` (continuous descent), step-ramp drops the target frequency in discrete steps (e.g., 6 Hz -> 4 Hz -> 2 Hz) with 3-5 minute holds at each step. This prevents overshoot — continuous ramping toward delta can push past the user's natural descent rate and cause arousal. Step-ramp lets the brain settle at each plateau before the next drop.
 
-### GENUS_BLOCK Bible Ch.4 Addendum A
+### SLEEP_ONSET
+| Parameter | Value | Notes |
+|---|---|---|
+| ALL TEXT LAYERS | OFF | No visual text |
+| tts_enabled | False | Silent |
+| freq_lead_enabled | False | No entrainment |
+| spiral_opacity | 0 | Dark |
+| veil_opacity | 0 | Dark |
 
-40 Hz isochronic clicks + stroboscopic flicker Cognitive engagement content NO hypnotic patterns See Addendum A for full spec.
+**SLEEP_ONSET is SILENT.** No audio, no text, no visuals. The user is falling asleep.
 
-### SLEEP_APPROACH Bible Ch.7 §5
+### SLEEP_MAINTAIN
+| Parameter | Value | Notes |
+|---|---|---|
+| gain_mode | sleep_maintain | Sleep-specific audio profile |
+| tts_enabled | False | No voice |
+| SWE | Active | Phase-locked pink noise bursts |
+| TMR | Active on N2/N3 | Replay encoded cues |
 
-veil_mode = "drift" trail_decay = 0.85–0.95 shadow_opacity = tapering 12 → 8 sr_noise_level = tapering to 0
+Agent writes `agent_sleep_plan` here (silent, no voice). TMR replay respects `recon_locked_phrases` — see Reconsolidation Integration below.
 
-### SLEEP_ONSET Bible Ch.7 §8
+### SLEEP_TRAINING (Hypnagogic Training Window)
+| Parameter | Value | Notes |
+|---|---|---|
+| gain_mode | sleep_training | HTW audio profile |
+| beat_frequency | 5.5 Hz binaural | Theta hold |
+| tts_volume | 6 | Whisper level |
+| tts_subliminal_vol | 14 | SSB above TTS |
+| center_flash_on_time | 4000 ms | Long exposure |
+| center_flash_off_time | 8000 ms | Long gap |
 
-ALL TEXT LAYERS OFF tts_enabled = False freq_lead_enabled = False SILENT
+Affirmations pool replaced with pre-selected training phrases. TTS pre-synthesized before window opens via `_presynth_ready` buffer. Agent LLM prompts suppressed. Max 5 minutes. Exits to SLEEP_ONSET on deepening or timeout; to SLEEP_WAKE on genuine arousal.
 
-### SLEEP_MAINTAIN Bible Ch.7 §10
+### SLEEP_WAKE
+Metrics compiled (sleep efficiency, time-in-stage, SWA ratio). Agent says "Rest well." Transitions to SESSION_END after 2 minutes of confirmed wake.
 
-gain_mode = "sleep_maintain" tts_enabled = False SWE phase-locked pink noise bursts TMR replay on N2/N3
+### SESSION_END
+Beat frequency ramps to IAF. Visual parameters fade. Session metrics finalized and written to DB.
 
-### SLEEP_TRAINING Bible Ch.7 §16
+---
 
-gain_mode = "sleep_training" beat_frequency = 5.5 Hz tts_volume = 6 center_flash_on_time = 4000 ms center_flash_off_time= 8000 ms Max 5 minutes.
+## Somatic Palette Override
 
-### SLEEP_WAKE Bible Ch.7 §18
+When a somatic palette chord is active during MAINTENANCE, the chord's parameters take precedence for:
 
-Metrics compiled. Agent says "Rest well." Transitions to SESSION_END after 2 min of confirmed wake.
+- `beat_frequency`
+- `carrier_waveform` (mapped to `beat_type`)
+- `noise_color`
+- `noise_volume`
+- `spiral_style`
+- `veil_mode`
+
+The Conductor still owns these parameters regardless of palette state:
+
+- `spiral_chaos`
+- `trail_decay`
+- `sr_noise_level`
+- `shadow_opacity_target`
+- `breath_mod`
+- `breath_rate`
+
+When no palette recommendation is available (sparse history, first session, or all candidates filtered out), the per-phase defaults listed above apply.
+
+The palette evaluation window (12-15 min) runs within MAINTENANCE. If a chord fails (see `somatic_palette.md` for failure conditions), the agent requests fractionation via `agent_conductor_hints`. After FRAC_REDROP re-enters MAINTENANCE, there is a 3-minute cooldown before the new chord's evaluation window opens. Maximum 3 chord switches per session.
+
+---
+
+## Reconsolidation Integration
+
+When a reconsolidation protocol is active during MAINTENANCE:
+
+- The recon engine's `_recon_tick()` runs alongside the Conductor's tick
+- During LOCKOUT phase, `recon_locked_phrases` prevents TMR replay of retrieve-tagged content
+- Lockout is trace-specific — all other TMR content fires normally
+- The Conductor does not need to change phase for reconsolidation — it stays in MAINTENANCE throughout
+- See `reconsolidation_protocol.md` for the full five-phase protocol
+
+---
+
+## Agent-Conductor Communication
+
+### Agent -> Conductor: `agent_conductor_hints`
+
+The agent writes hints to `live_control.json` via `patch_live()`. The Conductor reads these each tick:
+
+| Hint Key | Type | Effect |
+|---|---|---|
+| request_fractionation | bool | Conductor initiates FRAC_EMERGE if eligible |
+| suggest_emergence | bool | Conductor begins SESSION_END sequence |
+| depth_target | float | Suggested trance_score target (advisory, not binding) |
+| language_items_ready | bool | Language module has pre-synthesized items queued |
+| recon_phase | string | Current reconsolidation phase (idle/retrieve/labilize/update/lockout/complete) |
+
+### Conductor -> Agent: State Publication
+
+The Conductor publishes state to `live_control.json` every tick:
+
+| Key | Type | Content |
+|---|---|---|
+| conductor_phase | string | Current phase name (one of 14) |
+| conductor_phase_elapsed | float | Seconds in current phase |
+| conductor_frac_count | int | Fractionation cycles completed |
+| conductor_frac_eligible | bool | Whether fractionation is currently allowed |
+| conductor_depth_trend | string | rising / stable / declining / volatile |
+
+---
 
 ## Conflict Resolution (Per Phase)
 
-| **Phase** | **Conflict Scenario** | **Resolution** | **Ref** |
-| --- | --- | --- | --- |
-| INDUCTION | ASSR failing but FAA positive | ASSR is primary gate. FAA does **NOT** compensate for ASSR failure. | Bible Ch.2 §14 |
-| --- | --- | --- | --- |
-| DEEPENING | trance rising + ASSR declining | HOLD freq leading. FAA withdrawal > 60s → consider fractionation. | Bible Ch.4 §10 |
-| --- | --- | --- | --- |
-| MAINTENANCE | FAA negative > 30s | Suppress affirmations. trance_score rate < -0.1/min → consider fractionation. | Bible Ch.4 §11 |
-| --- | --- | --- | --- |
-| FRACTIONATION | FAA withdrawal spikes during FRAC_EMERGE | EXPECTED. Do **NOT** treat as negative signal. | Bible Ch.4 §12 |
-| --- | --- | --- | --- |
-| SLEEP_APPROACH | Declining ASSR | EXPECTED AND GOOD. Do **NOT** attempt to re-entrain. | Bible Ch.7 §5 |
-| --- | --- | --- | --- |
+**INDUCTION:** ASSR is primary gate (weight 1.0). FAA receptivity does NOT compensate for ASSR failure.
 
-## Fractionation Integration Bible Ch.4 §12
+**DEEPENING:** trance rising + ASSR declining -> HOLD freq leading. FAA withdrawal > 60 s -> consider fractionation as intervention.
 
-### Chaos Snap
+**MAINTENANCE:** FAA negative > 30 s -> suppress affirmations. trance_score rate < -0.1/min -> consider fractionation. Rate < -0.05/min -> nudge beat_frequency down 0.05 Hz.
 
-On FRAC_EMERGE entry, spiral_chaos snaps instantly to 0.05 and trail_decay snaps to 0.0. This is the V1 jolt — a deliberate perceptual disruption that leverages the contrast between deep-trance visual complexity and sudden simplicity.
+**FRACTIONATION:** FAA withdrawal spikes during FRAC_EMERGE are EXPECTED (orienting response to V1 jolt). Do NOT treat as negative signal.
 
-### Hold Duration
+**SLEEP_APPROACH:** Declining ASSR is EXPECTED AND GOOD. Do NOT attempt to re-entrain. The brain is supposed to desynchronize from the entrainment signal as it approaches sleep.
 
-FRAC_EMERGE_HOLD waits for either SEF95 > 15 (cortical arousal confirmed) or a 45-second timeout. The hold phase lasts 15–45 seconds before transitioning to FRAC_REDROP.
+---
 
-### Redrop Ramp
+## Fractionation Details
 
-Parameters ramp gradually from snap values back toward pre-emerge targets. The asymmetry is intentional: emergence is fast (snap), redescent is slow (ramp). This produces the deepening-on-return effect central to fractionation.
+The `chaos` snap to 0.05 and `trail_decay` snap to 0.0 on FRAC_EMERGE implements the V1 perceptual jolt. This is deterministic — not dependent on prompt engineering. The gradual ramp on FRAC_REDROP creates the perceptual asymmetry (fast emergence, slow redescent) that the Vogt model requires.
 
-### Max Fractionations
+Hold durations: first cycle = 35 s, second = 25 s, third+ = 15 s.
 
-Maximum **3 fractionation cycles per session**. After the third cycle completes, fractionation eligibility is permanently disabled for the remainder of the session. The Conductor tracks cycle count in frac_count.
+Max fractionations by session length:
+- < 25 min: 1
+- < 35 min: 2
+- < 50 min: 3
+- 50+ min: 4
 
-## DB Schema Bible Ch.4 §22
+See Bible Ch.4 Addendum A for timing constraints.
 
-### conductor_decisions Table
+---
 
-CREATE TABLE conductor_decisions ( id INTEGER PRIMARY KEY AUTOINCREMENT, session_id TEXT NOT NULL, timestamp REAL NOT NULL, phase TEXT NOT NULL, decision TEXT NOT NULL, reason TEXT, metrics_snapshot TEXT, -- JSON blob params_applied TEXT -- JSON blob );
+## Conductor-Owned Parameters
 
-### phase_summary View
+The following parameters are exclusively managed by the Conductor when active. The LLM agent's `adjustments` are filtered to exclude these:
 
-CREATE VIEW phase_summary AS SELECT session_id, phase, MIN(timestamp) AS entered_at, MAX(timestamp) AS exited_at, MAX(timestamp) - MIN(timestamp) AS duration_s, COUNT(\*) AS tick_count FROM conductor_decisions GROUP BY session_id, phase ORDER BY entered_at;
+**Conductor-owned:** `beat_frequency`, `beat_type`, `spiral_chaos`, `trail_decay`, `veil_mode`, `spiral_style`, `shadow_opacity_target`, `sr_noise_level`, `breath_mod`, `breath_rate`
+
+**Agent-retained:** `volume`, `audio_muted`, `tts_enabled`, `tts_subliminal`, `noise_volume`, speech/prompt content, `next_affirmation`
+
+**Palette interaction:** When a somatic palette chord is active, the chord sets values for the subset of conductor-owned params listed in Somatic Palette Override above. The Conductor does not fight the palette — it reads the palette's values as its own targets for those parameters.
+
+---
+
+## Freq Lead Modes
+
+| Mode | Behavior | Used In |
+|---|---|---|
+| meet | Match user's current dominant frequency | CALIBRATION (implicit), INDUCTION, FRAC_EMERGE |
+| lead | Continuously descend toward target band | DEEPENING |
+| hold | Freeze at current frequency | Emergency / metric conflict |
+| sustain | Maintain current theta depth | MAINTENANCE |
+| step-ramp | Discrete stepped descent with plateau holds | SLEEP_APPROACH |
+
+---
+
+## Timer-Based Fallback
+
+When `_timer_mode` is active (EEG disabled or sustained SQI failure), `_evaluate_transitions` uses a fixed schedule:
+
+| Elapsed | Phase Entered |
+|---|---|
+| 0 min | CALIBRATION |
+| 1 min | INDUCTION |
+| 5 min | DEEPENING |
+| 15 min | MAINTENANCE |
+
+The session hard-stop at `session_duration` still applies — MAINTENANCE holds until then. Visual parameter snaps (chaos, trail_decay) execute identically to EEG-guided mode.
+
+---
+
+## DB Schema (Snapshot)
+
+**Warning:** This schema is a snapshot for agent reference. If queries fail, check `session/session_db.py` for the current schema — it is the single source of truth.
+
+`conductor_decisions` table in `somna.db` — one row per Conductor tick. `phase_summary` view aggregates by session+phase for SessionAnalyzer queries.
 
 ### Key Queries
 
-\-- All decisions for current session SELECT \* FROM conductor_decisions WHERE session_id = :sid ORDER BY timestamp; -- Phase durations for session summary SELECT \* FROM phase_summary WHERE session_id = :sid; -- Last N decisions (debugging) SELECT \* FROM conductor_decisions ORDER BY timestamp DESC LIMIT :n;
+- **Induction learning curve:** `SELECT AVG(phase_duration) FROM phase_summary WHERE phase='INDUCTION' GROUP BY session_id`
+- **Fractionation effectiveness:** Compare avg_trance_score in MAINTENANCE before/after fractionation cycles
+- **Phase-specific problems:** Low ASSR during DEEPENING but acceptable during INDUCTION -> frequency leading issue, not initial entrainment
+- **FAA-affirmation correlation:** Cross-reference avg_faa in MAINTENANCE with affirmation counts
 
-## Timer-Based Fallback Bible Ch.4 §15
-
-When EEG is unavailable or SQI remains below threshold, the Conductor falls back to timer-driven phase transitions. Sessions always complete.
-
-| **Phase** | **Fallback Duration** | **Next Phase** |
-| --- | --- | --- |
-| CALIBRATION | 2 min | INDUCTION |
-| --- | --- | --- |
-| INDUCTION | 5 min | DEEPENING |
-| --- | --- | --- |
-| DEEPENING | 8 min | MAINTENANCE |
-| --- | --- | --- |
-| MAINTENANCE | Remaining session time | SESSION_END |
-| --- | --- | --- |
-| SLEEP_APPROACH | 10 min | SLEEP_ONSET |
-| --- | --- | --- |
-| SLEEP_ONSET | 15 min | SLEEP_MAINTAIN |
-| --- | --- | --- |
-| SLEEP_MAINTAIN | Target sleep duration | SESSION_END |
-| --- | --- | --- |
-| FRAC_EMERGE_HOLD | 45s | FRAC_REDROP |
-| --- | --- | --- |
-| GENUS_BLOCK | Per protocol duration | Previous phase |
-| --- | --- | --- |
-
-## Conductor-Owned Parameters Bible Ch.4 §14
-
-### Parameters Written by Conductor
-
-These are the **only** parameters the Conductor sets directly via \_patch_live():
-
-| **Parameter** | **Type** | **Description** |
-| --- | --- | --- |
-| beat_frequency | float | Binaural/isochronic beat target frequency (Hz) |
-| --- | --- | --- |
-| spiral_chaos | float | Visual spiral complexity (0.0–1.0) |
-| --- | --- | --- |
-| spiral_style | string | "default" \| "liminal" |
-| --- | --- | --- |
-| trail_decay | float | FBO trail persistence (0.0–1.0) |
-| --- | --- | --- |
-| veil_mode | string | "drift" \| "scroll" \| "converge" \| "tunnel" |
-| --- | --- | --- |
-| shadow_opacity_target | int | Subliminal text shadow opacity (0–100) |
-| --- | --- | --- |
-| sr_noise_level | float | Stochastic resonance noise amplitude (0.0–0.3) |
-| --- | --- | --- |
-| freq_lead_mode | string | "meet" \| "lead" \| "hold" \| "sustain" \| "step-ramp" |
-| --- | --- | --- |
-| freq_lead_enabled | bool | Master enable for frequency leading |
-| --- | --- | --- |
-| tts_enabled | bool | Master enable for TTS output |
-| --- | --- | --- |
-| tts_volume | int | TTS volume level (0–10) |
-| --- | --- | --- |
-| gain_mode | string | "normal" \| "sleep_maintain" \| "sleep_training" |
-| --- | --- | --- |
-| center_flash_on_time | int | Flash on duration (ms) — SLEEP_TRAINING only |
-| --- | --- | --- |
-| center_flash_off_time | int | Flash off duration (ms) — SLEEP_TRAINING only |
-| --- | --- | --- |
-
-### Parameters Read (Not Written) by Conductor
-
-These values are produced by subsystem trackers and consumed read-only:
-
-sqi_level ← SQI tracker assr_confidence ← ASSR tracker faa_score ← FAA tracker trance_score ← SessionScorer sef95 ← EEG pipeline iaf ← Calibration sleep_stage ← SleepStageClassifier freq_lead_actual ← FreqLeader
+---
 
 ## Integration Map
 
-| **Bible Reference** | **Subsystem** | **Integration Point** |
-| --- | --- | --- |
-| Bible Ch.4 §12 | Fractionation | FRAC_EMERGE/HOLD/REDROP phases; chaos-snap V1 jolt |
-| --- | --- | --- |
-| Bible Ch.7 §5-8 | Sleep Onset | SLEEP_APPROACH + SLEEP_ONSET phases; step-ramp schedule |
-| --- | --- | --- |
-| Bible Ch.8 §6 | Liminal Spiral | spiral_style="liminal" preferred in DEEPENING + MAINTENANCE |
-| --- | --- | --- |
-| Bible Ch.2 §9 | SEF95 / Trance Score | Primary transition metric; sleep onset gate |
-| --- | --- | --- |
-| Bible Ch.3 §14 | Stochastic Resonance | sr_noise_level per phase; withdrawn during frac + sleep |
-| --- | --- | --- |
-| Bible Ch.8 §7 | FBO Trail Decay | Snap to 0 on EMERGE, gradual ramp on REDROP |
-| --- | --- | --- |
-| Bible Ch.8 §4-5 | Subliminal Text | veil_mode "tunnel"/"converge" during deep phases |
-| --- | --- | --- |
-| Bible Ch.2 §7 | SQI | Gates entire evaluation cycle — checked FIRST every tick |
-| --- | --- | --- |
-| Bible Ch.2 §14 | ASSR | Gates freq leading; modality switch protocol |
-| --- | --- | --- |
-| Bible Ch.2 §15 | FAA | Gates affirmation delivery; withdrawal expected during FRAC_EMERGE |
-| --- | --- | --- |
-| Bible Ch.3 §8 | Adaptive Freq Leading | Conductor sets mode: meet/lead/hold/sustain/step-ramp |
-| --- | --- | --- |
-| Bible Ch.4 §18 | Session Scoring | Decision log → conductor_decisions → phase_summary view |
-| --- | --- | --- |
-| Bible Ch.7 §10-15 | Sleep Enhancement | SleepStageClassifier, SlowWaveEnhancer; SLEEP phases |
-| --- | --- | --- |
-| Bible Ch.7 §20-22 | TMR | TMREngine trance encoding + NREM replay; channel 6 |
-| --- | --- | --- |
-| Bible Ch.7 §16-17 | HTW | SLEEP_TRAINING phase; HTW eligibility gate; TTS presynth |
-| --- | --- | --- |
-| Bible Ch.4 Addendum A | GENUS | GENUS_BLOCK phase; 40 Hz gamma entrainment; frequency exclusivity |
-| --- | --- | --- |
-
-— End of conductor_fsm.md —
+| Subsystem | Integration Point |
+|---|---|
+| Fractionation (Bible Ch.4 Addendum A) | FRAC_EMERGE/HOLD/REDROP phases; chaos-snap V1 jolt |
+| Sleep Onset (Bible Ch.7) | SLEEP_APPROACH + SLEEP_ONSET phases; step-ramp schedule |
+| Spiral Renderer | spiral_style per phase; verify against 14 valid styles |
+| SEF95 / Trance Score (Bible Ch.2) | Primary transition metric; sleep onset gate |
+| Stochastic Resonance (Bible Ch.8) | sr_noise_level per phase; withdrawn during frac + sleep |
+| FBO Trail Decay (Bible Ch.8) | Snap to 0 on EMERGE, gradual ramp on REDROP |
+| Subliminal Text (Bible Ch.6) | veil_mode tunnel/converge during deep phases |
+| SQI (Bible Ch.2) | Gates entire evaluation cycle — checked FIRST every tick |
+| ASSR (Bible Ch.2) | Gates freq leading; modality switch protocol |
+| FAA (Bible Ch.2) | Gates affirmation delivery; withdrawal expected during FRAC_EMERGE |
+| Adaptive Freq Leading (Bible Ch.3) | Conductor sets mode: meet/lead/hold/sustain/step-ramp |
+| Session Scoring (Bible Ch.4) | Decision log -> conductor_decisions -> phase_summary view |
+| Sleep Enhancement (Bible Ch.7) | SleepStageClassifier, SlowWaveEnhancer; SLEEP phases |
+| TMR (Bible Ch.7) | Trance encoding + NREM replay; respects recon_locked_phrases |
+| HTW (Bible Ch.7) | SLEEP_TRAINING phase; eligibility gate; TTS presynth |
+| Somatic Palette (Bible Ch.4) | Chord override during MAINTENANCE; evaluation window timing |
+| Reconsolidation (Bible Ch.6) | recon_locked_phrases lockout during MAINTENANCE; trace-specific TMR blocking |
+| Interference Graph (Bible Ch.9) | User-composed chords feed palette candidates; spread knob offsets |
+| Language Module | language_items_ready hint; delivery during DEEPENING/MAINTENANCE |

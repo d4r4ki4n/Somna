@@ -1,22 +1,29 @@
-﻿# Calibration & First-10-Sessions Protocol
-**Author:** Research  
-**Date:** 3 April 2026  
-**Status:** Specification — Bible Ch.2 Â§Calibration
+# Calibration & First-10-Sessions Protocol
+
+**Status:** Specification (v2 — targeted fixes: Bible refs, package paths, subsystem cross-references)
+
+**Author:** Ed / Reese
+
+**Date:** 17 April 2026
+
+**Loaded by:** `conductor.py` at session startup (checks `calibration_complete`); `_load_idle_knowledge()` during first 10 sessions
+
+**Authority:** This file is the operational reference for the LLM agent. The authoritative design specification lives in the Somna Bible, Chapter 2 — Biosignal Science, §Calibration. When this file and the Bible disagree, the Bible wins.
 
 ---
 
 ## 1. The Problem: Population Defaults Are Not Your Neurophysiology
 
-Every threshold currently hardcoded across Docs 17–25 is a literature-derived population estimate, not a measurement from the actual user's brain. The following thresholds are in active use with no individual characterization:
+Every threshold currently hardcoded across the codebase is a literature-derived population estimate, not a measurement from the actual user's brain. The following thresholds are in active use with no individual characterization:
 
-| Threshold | Source | Problem |
-|-----------|--------|---------|
-| `trance_score > 0.6` (Bible Ch.2 Â§SEF95, SEF95-based) | Clinical anesthesia monitoring literature (Tobar et al. 2022) | Population estimate |
-| `ASSR confidence > 0.3` (Bible Ch.2 Â§ASSR) | Arbitrary starting point | No individual characterization |
-| `FAA > 0` for affirmation gating (Bible Ch.2 Â§FAA) | Metzen et al. 2021 (N=370) found no population-level frontal alpha asymmetry | No "normal" direction exists |
-| `IAF ≈ 10 Hz` (Bible Ch.3 Â§Frequency-Leading) | Population mean | Individual range is 8–13 Hz |
-| `SEF95 < 10 Hz = deep trance` (Bible Ch.2 Â§SEF95) | ICU sedation monitoring, not hypnotic entrainment | Wrong domain |
-| Session scoring ranges (Bible Ch.5 Â§Scoring) | Population norms | Not personal performance range |
+| Threshold | Bible Reference | Problem |
+|-----------|----------------|---------|
+| `trance_score > 0.6` (SEF95-based) | Bible Ch.2 §SEF95 | Population estimate from clinical anesthesia monitoring (Tobar et al. 2022) |
+| `ASSR confidence > 0.3` | Bible Ch.2 §ASSR | Arbitrary starting point, no individual characterization |
+| `FAA > 0` for affirmation gating | Bible Ch.2 §FAA | Metzen et al. 2021 (N=370) found no population-level frontal alpha asymmetry — no "normal" direction exists |
+| `IAF ≈ 10 Hz` | Bible Ch.3 §Frequency-Leading | Population mean; individual range is 8–13 Hz |
+| `SEF95 < 10 Hz = deep trance` | Bible Ch.2 §SEF95 | ICU sedation monitoring, not hypnotic entrainment — wrong domain |
+| Session scoring ranges | Bible Ch.5 §Scoring | Population norms, not personal performance range |
 
 Muse 2 is validated for PSD, IAF, and FAA measurement (Cannard & Wahbeh, bioRxiv) and alpha detection comparable to research-grade DSI-24 (Lee et al. 2026, Scientific Reports), but absolute values will differ from clinical EEG literature due to electrode placement, impedance characteristics, and 4-channel limitation. Ricci et al. found SEF95 bias of 0.62 Hz between clinical devices with 95% limits of agreement spanning nearly 10 Hz — Muse 2 divergence from literature values is expected and acceptable as long as personal baselines are established.
 
@@ -26,144 +33,170 @@ Reference: Nam & Choi 2020 (*NeuroRegulation*): initially setting thresholds for
 
 ---
 
-## 2. Architecture: `calibration_manager.py`
+## 2. Architecture: `session/calibration_manager.py`
 
-New module. Purpose: manage the first-10-sessions calibration protocol, persist results to `somna.db`, and expose a threshold lookup API that the conductor and session scorer query to replace population defaults with personal values.
+Module location: `session/calibration_manager.py` (within the `session` package).
+
+Purpose: manage the first-10-sessions calibration protocol, persist results to `somna.db`, and expose a threshold lookup API that the Conductor and session scorer query to replace population defaults with personal values.
 
 ### Integration Pattern
 
 ```python
-# Before:
+from session.calibration_manager import CalibrationManager
+
+cal = CalibrationManager(db_path="somna.db")
+
+# Before (hardcoded population default):
 if trance_score > 0.65:
 
-# After:
+# After (personal threshold with population fallback):
 if trance_score > cal.get_threshold("trance_moderate", 0.65):
 ```
 
 The fallback is always the current hardcoded value — zero regression risk until personal data exists.
 
+All parameter writes go through the IPC StateServer:
+
+```python
+from ipc import patch_live
+patch_live({"calibration_phase": "session_3", "calibration_status": "active"})
+```
+
+Do NOT use `_patch_live()` (deprecated). Do NOT write `live_control.json` directly.
+
 ### Integration Points
 
-**`conductor.py`:** At startup, check `calibration_manager.calibration_complete`. If not complete, call `get_session_protocol()` to determine which phases are permitted via `_can_transition_to()`. All threshold lookups use `get_threshold(metric, population_fallback)`.
+**`session/conductor.py`:** At startup, check `calibration_manager.calibration_complete`. If not complete, the Conductor uses lenient thresholds from the calibration manager. If complete, all phase transition thresholds use personal values.
 
-**`session_scorer.py`:** After calibration complete, scoring scales each metric to personal 0–1 range. `get_threshold('sef95_awake')` provides the ceiling, `get_threshold('sef95_deep')` provides the floor for depth scoring.
+**`agent/somna_agent.py`:** During idle planning for calibration sessions (1–10), the agent loads this knowledge file and plans sessions according to the progressive protocol below.
 
-**`somna_agent.py`:** Agent reads `calibration_manager.current_session_number` and `calibration_manager.get_session_protocol()`. Adjusts behavior per session phase. After each session, agent runs `post_session_queries` defined in the protocol.
-
----
-
-## 3. Database Schema
-
-### `calibration_baselines`
-One row per measurement window. Stores per-channel SQI and per-metric band powers for every baseline capture.
-
-Fields: `session_number`, `metric`, `channel`, `condition` (`eyes_closed`/`eyes_open`/`entrainment`/`trance`), `value`, `sd`, `n_samples`, `sqi_mean`, `timestamp`. UNIQUE on `(session_number, metric, channel, condition)`.
-
-### `calibration_sessions`
-One row per calibration session. Tracks phase, timing, maximum conductor phase reached, and the JSON blob of thresholds derived at session end.
-
-### `calibration_thresholds`
-One row per metric (PRIMARY KEY). Stores derived personal threshold with derivation method and confidence level (`provisional`/`moderate`/`final`).
-
-### `calibration_assr_curve`
-Append-only. Records ASSR strength at each frequency tested during entrainment sessions, building a personal frequency-response curve.
+**`session/session_db.py`:** Calibration results are stored in a `calibration_baselines` table alongside the standard session tables.
 
 ---
 
-## 4. Session Protocol — The 10 Sessions
+## 3. The 10-Session Progressive Protocol
 
-### Phase A: Hardware Verification & Resting Baselines (Sessions 1–2)
+Each session targets specific subsystems for exercising and measurement. Sessions build on each other — earlier sessions establish baselines that later sessions refine.
 
-**Session 1 — Hardware Verification & Eyes-Closed Baseline (15 min)**
+### Sessions 1–3: Baseline Establishment
 
-Protocol sequence:
-1. **SQI hardware check (60 s):** Log per-channel SQI. Target: all channels achieve FULL tier (SQI ≥ 0.7) for ≥ 30 of 60 seconds. Agent provides only fit guidance via `_say()`.
-2. **Eyes-closed baseline 1 (3 min):** Capture full PSD from 0.5 Hz upward. Compute and log: IAF (peak alpha 8–13 Hz), SEF95, band powers (delta 0.5–4, theta 4–8, alpha 8–13, beta 13–30, gamma 30–45), FAA = ln(alpha_AF8) − ln(alpha_AF7), spectral slope (1/f exponent via log-log PSD regression). Agent cue: *"Let your weight settle. Breathe normally."* No further speech during measurement.
-3. **Eyes-open baseline (3 min):** Same metrics. Agent cue: *"Open your eyes. Rest your gaze."* The magnitude of alpha suppression relative to eyes-closed is itself a useful individual marker.
-4. **Eyes-closed baseline 2 (3 min):** Repeat for within-session stability. Flag if IAF differs > 0.5 Hz between windows.
-5. **Spectral slope computation:** Linear regression of log(PSD) vs log(freq) over 2–40 Hz excluding alpha peak (8–13 Hz). The exponent (negative) is the 1/f slope — shallower (less negative) in trance states.
-6. **Log all metrics to `calibration_baselines`.**
+| Session | Focus | Subsystems Exercised | Measurements Captured |
+|---------|-------|---------------------|----------------------|
+| 1 | Eyes-closed resting baseline | EEG only (no entrainment) | Resting IAF, resting alpha power, resting theta/alpha ratio, resting SEF95, resting FAA direction |
+| 2 | Basic entrainment response | Binaural engine, spiral layer | Entrainment response latency, alpha→theta transition time, first trance_score peak |
+| 3 | Depth exploration | Conductor (CALIBRATION→INDUCTION→DEEPENING→MAINTENANCE) | Personal trance_score range (min/max), MAINTENANCE entry threshold, ASSR confidence baseline |
 
-**Session 2 — Repeat baseline for reliability (15 min):** Identical protocol. Compare IAF between Session 1 and 2. Compute alpha reactivity ratio: `eyes_closed_alpha / eyes_open_alpha`. After Session 2, derive provisional IAF, SEF95_awake, FAA_resting, and spectral_slope_awake thresholds.
+**Key constraints for sessions 1–3:**
+- Use population-default thresholds (lenient)
+- No content delivery beyond basic veil text (settling prompts only)
+- No conditioning, no reconsolidation, no training mode
+- Session duration: 20–30 minutes
+- Agent mode: interactive (frequent check-ins to establish complexity score baseline)
 
-### Phase B: Subsystem Characterization (Sessions 3–6)
+### Sessions 4–6: Subsystem Exercise
 
-**Sessions 3–4 — ASSR Frequency Sweep:** Allow through INDUCTION phase. Log ASSR strength at each frequency from IAF down to 4 Hz as conductor steps down. Build personal `calibration_assr_curve`. After Session 4, derive `assr_transition` (p25 of curve strengths) and `assr_strong` (p60).
+| Session | Focus | Subsystems Exercised | Measurements Captured |
+|---------|-------|---------------------|----------------------|
+| 4 | Content delivery | TTS engine, veil, center flash, delivery gate | Delivery gate acceptance rate, TTS clarity score, center flash detection threshold |
+| 5 | Conditioning baseline | Conditioning engine (Rescorla-Wagner), semantic selector | CS-US pairing response, initial association strength curve, conditioning paradigm response (via `content/conditioning_engine.py`) |
+| 6 | Fractionation response | Conductor fractionation phases (FRAC_EMERGE→HOLD→REDROP) | Ratchet effect magnitude (pre/post trance_score delta), optimal hold duration, theta recovery time |
 
-**Sessions 5–6 — Full Induction + Deepening:** Allow through MAINTENANCE. Affirmations enabled. No fractionation yet. After Session 6, derive `sef95_light`, `sef95_moderate`, `sef95_deep` from session_metrics percentiles. Derive trance_score thresholds proportionally from personal SEF95 range.
+**Key constraints for sessions 4–6:**
+- Begin using calibrated thresholds from sessions 1–3 where available
+- Agent mode: interactive for sessions 4–5, observe for session 6 (test autonomous Conductor behavior)
+- Session duration: 30–45 minutes
+- **No reconsolidation.** Reconsolidation requires stable, known depth thresholds to safely gate RETRIEVE. Running recon with uncalibrated thresholds risks activating traces at insufficient depth. Reconsolidation is prohibited during all 10 calibration sessions.
+- **No training mode during calibration.** Training mode's complexity score baseline should be established from sessions 1–3 interactive responses, but the operant conditioning loop should not run until thresholds are stable.
 
-### Phase C: Integration (Sessions 7–8)
+### Sessions 7–9: Refinement and Edge Cases
 
-Allow through full FRACTIONATION cycle. Adaptive frequency leading enabled. After Session 8, all thresholds should be at `moderate` confidence.
+| Session | Focus | Subsystems Exercised | Measurements Captured |
+|---------|-------|---------------------|----------------------|
+| 7 | Sleep onset (if user does sleep sessions) | Conductor sleep phases, TMR cue manager | Personal SOL, sleep onset EEG signature, alpha dropout pattern |
+| 8 | Extended session / depth ceiling | Full stack (60+ minute session) | Maximum sustainable trance_score, depth plateau characteristics, FAA stability over time |
+| 9 | Somatic palette seeding | Palette system, Interference Graph | First 2–3 chord evaluations, initial palette entries, personal chord response patterns |
 
-### Phase D: Closed-Loop (Sessions 9–10)
+**Key constraints for sessions 7–9:**
+- All thresholds should now use personal values from sessions 1–6
+- Session 9 specifically seeds the somatic palette with initial data — the palette's exploration-exploitation formula (`outcome_score + 1/(n_obs + 1)`) will be in heavy exploration mode with all chords at n_obs ≤ 2
+- Agent should log palette entries with full entry context (`entry_time_hour`, `days_since_last`, `entry_trance`, `entry_mood`, `recent_sleep`)
+- Session duration: 45–60 minutes (session 8: 60+ minutes)
 
-Full autonomous operation. All adaptive features active. Final thresholds derived at `final` confidence.
+### Session 10: Full Integration Test
 
----
+| Session | Focus | Subsystems Exercised | Measurements Captured |
+|---------|-------|---------------------|----------------------|
+| 10 | Full autonomous session | All subsystems simultaneously | End-to-end session score, all thresholds validated, calibration_complete flag |
 
-## 5. Threshold Derivation Methods
-
-| Metric | Source data | Method |
-|--------|-------------|--------|
-| `iaf` | `calibration_baselines`, `eyes_closed` | Mean across all EC windows |
-| `sef95_awake` | `calibration_baselines`, `eyes_closed` | Mean of high-SQI (≥ 0.5) windows |
-| `faa_resting` | `calibration_baselines`, `eyes_closed` | Mean |
-| `faa_approach` | `calibration_baselines` | Mean + 0.1 SD |
-| `assr_transition` | `calibration_assr_curve` | p25 of strength distribution |
-| `assr_strong` | `calibration_assr_curve` | p60 of strength distribution |
-| `sef95_light` | `session_metrics.depth_mean_sef95` | p75 |
-| `sef95_moderate` | `session_metrics.depth_mean_sef95` | Median |
-| `sef95_deep` | `session_metrics.depth_min_sef95` | p10 |
-
----
-
-## 6. Phase Unlock Schedule
-
-| Sessions | Calibration Phase | Conductor Phases Permitted |
-|----------|-------------------|---------------------------|
-| 1–2 | `baseline` | CALIBRATION only |
-| 3–4 | `subsystem` | + INDUCTION |
-| 5–6 | `subsystem` (extended) | + DEEPENING, MAINTENANCE |
-| 7–8 | `integration` | + full FRACTIONATION cycle |
-| 9–10 | `closed_loop` | All phases |
-| 11+ | `complete` | All phases (personal thresholds active) |
-
----
-
-## 7. Post-Session Analysis Protocol
-
-After each calibration session, the agent must run specific queries:
-
-**Sessions 1–2:** No `query_session_performance` — read `calibration_baselines` directly. Report: IAF, SEF95 resting, FAA resting, alpha reactivity ratio, per-channel SQI summary.
-
-**Sessions 3–4:** `query_session_performance(last_n=1, metrics=['sqi_mean', 'assr_strength'])`. Also report from `calibration_assr_curve`: ASSR at IAF, frequency descent range, strongest and weakest entrainment frequencies.
-
-**Sessions 5–6:** Add `depth_min_sef95`, `depth_mean_sef95`, `assr_mean`, `receptivity_approach_pct`. Report SEF95 range during trance, alpha-theta crossing detection, FAA distribution.
-
-**Sessions 7–10:** Full metrics + trend query over completed calibration sessions. Report adaptive leading descent range, fractionation cycle count, threshold updates applied.
+**Session 10 checklist:**
+- Conductor runs full phase progression autonomously
+- Somatic palette selects and evaluates a chord
+- Content delivery pipeline fires through delivery gate
+- At least one fractionation cycle occurs
+- Agent operates in observe mode (minimal intervention)
+- On completion: `calibration_manager.mark_complete()` sets `calibration_complete = true`
 
 ---
 
-## 8. Recalibration Triggers
+## 4. Threshold Table — Population Defaults → Personal Values
 
-- **Hardware change** (e.g. Muse 2 → Muse S): MANDATORY full recalibration from Session 1.
-- **Metric drift:** 20-session rolling mean drifts > 2 SD from calibration value for any tracked metric.
-- **Elapsed time:** 90 days since last calibration completion.
-- **Manual request:** User can force recalibration at any time.
-
-Previous calibration data is archived (not deleted) for longitudinal comparison.
-
----
-
-## 9. Open Questions
-
-- **FAA integration with conductor phase transitions:** What FAA thresholds should gate the DEEPENING vs MAINTENANCE decision? Session 6 will generate the data to answer this.
-- **Spectral slope computation:** The linear regression on log-log PSD (1/f exponent extraction) is a `numpy.polyfit` call on `log(freqs)` vs `log(psd)`, but the frequency range for the fit matters (typically 2–40 Hz, excluding the alpha peak).
-- **Fractionation timing calibration:** Session 8 will generate cycle data, but optimal emerge hold duration and redrop readiness criteria need analysis after real EEG traces are available.
+| Threshold | Population Default | Calibration Session | Personal Value Derivation |
+|-----------|-------------------|--------------------|--------------------------| 
+| IAF | 10.0 Hz | Session 1 | Measured resting alpha peak frequency |
+| Resting theta/alpha ratio | 0.5 | Session 1 | Measured resting ratio |
+| trance_moderate | 0.65 | Session 3 | 70th percentile of personal trance_score distribution |
+| trance_deep | 0.80 | Session 8 | 90th percentile of personal trance_score distribution |
+| ASSR_confidence_floor | 0.30 | Session 3 | Mean ASSR confidence during confirmed entrainment |
+| FAA_baseline_direction | 0 (neutral) | Session 1 | Mean FAA across 5-minute resting period |
+| MAINTENANCE_entry | 0.65 (90 s) | Session 3 | Personal trance_moderate threshold |
+| Fractionation hold | 30 s | Session 6 | Optimal hold from first frac response |
+| SOL_typical | 15 min | Session 7 | Measured personal SOL |
+| Delivery gate depth floor | 0.40 | Session 4 | Depth at which content delivery is first effective |
 
 ---
 
-## Key Insight
+## 5. Somatic Palette Cross-Reference
 
-Once implemented, every session from #1 onward generates data that makes every subsequent session more precisely tuned to the user's neurophysiology. Session 1 runs on population defaults. Session 11 runs on a complete personal neurophysiological profile. That's the arc.
+The calibration protocol and somatic palette system are parallel personalization systems:
+
+| System | What It Personalizes | Data Source | When It Stabilizes |
+|--------|---------------------|-------------|-------------------|
+| Calibration | EEG thresholds (IAF, trance_score ranges, ASSR floors) | Resting baselines + session metrics | After 10 sessions |
+| Somatic Palette | Audio/visual chord effectiveness per entry context | Chord evaluation during MAINTENANCE | After 15–20 sessions (continuous learning) |
+
+**Interaction:** Calibration data directly affects palette chord evaluation. The palette's failure threshold (`trance_score < 0.40 after 8 min`) should use the calibrated `trance_moderate` threshold, not the population default. After calibration completes, the palette system should query `cal.get_threshold("trance_moderate", 0.65)` for its evaluation floor.
+
+Session 9 specifically seeds the palette with initial chord data. The exploration-exploitation formula will be in heavy exploration mode during early sessions — this is expected and correct. The palette needs 3–5 observations per chord before exploitation becomes reliable.
+
+---
+
+## 6. Post-Calibration
+
+After session 10 marks `calibration_complete = true`:
+
+1. All Conductor phase transitions use personal thresholds
+2. The agent stops loading this knowledge file during idle planning
+3. Session scoring uses personal ranges instead of population norms
+4. The somatic palette begins exploitation-weighted chord selection
+5. Reconsolidation protocols become available (depth thresholds are now trusted)
+6. Training mode becomes available (complexity score baseline established)
+
+**Recalibration triggers:**
+- User reports significant life change (new medication, sleep schedule shift, major stress)
+- 3+ consecutive sessions with anomalous trance_score distribution (>2σ from personal baseline)
+- Hardware change (new Muse headset, different electrode positioning)
+
+On recalibration: run sessions 1 and 3 only (baseline + depth exploration). Full 10-session protocol is not needed — the subsystem exercise sessions (4–9) only need to run once.
+
+---
+
+## 7. Research Citations
+
+| Source | Contribution |
+|--------|-------------|
+| Nam & Choi 2020 | Lenient initial thresholds → progressive tightening (NeuroRegulation) |
+| Cannard & Wahbeh (bioRxiv) | Muse 2 validated for PSD, IAF, FAA measurement |
+| Lee et al. 2026 | Muse 2 alpha detection comparable to research-grade DSI-24 (Scientific Reports) |
+| Ricci et al. | SEF95 inter-device bias of 0.62 Hz — justifies personal baseline approach |
+| Tobar et al. 2022 | trance_score population thresholds from clinical anesthesia monitoring |
+| Metzen et al. 2021 | No population-level FAA direction (N=370) — personal baseline required |

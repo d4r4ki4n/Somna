@@ -769,11 +769,11 @@ class BinauralAudioEngine:
                         self._noise_chan.set_volume(0.0)
                         self._duck_restore_ts = now_mono + effective_ms / 1000.0
                         self._last_duck_ts = now_mono
-                    self._duck_armed = False
-                    try:
-                        patch_live({"tts_duck_trigger": None})
-                    except Exception:
-                        pass
+                        self._duck_armed = False
+                        try:
+                            patch_live({"tts_duck_trigger": None})
+                        except Exception:
+                            pass
                 self._tts_was_busy = tts_busy
 
                 # Restore volumes after duck duration expires

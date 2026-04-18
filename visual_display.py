@@ -610,6 +610,8 @@ class VisualDisplay:
         vignette_sigma = float(cfg.get("pp_vignette_sigma", 0.5) or 0.5)
         vignette_int = float(cfg.get("pp_vignette_intensity", 0.0) or 0.0)
         iaf_amp = float(cfg.get("pp_iaf_mod_amplitude", 0.0) or 0.0)
+        film_grain = float(cfg.get("pp_film_grain", 0.0) or 0.0)
+        tonemap = int(cfg.get("pp_tonemap", 1))
 
         # Check if any PP effect is active
         if (
@@ -617,6 +619,8 @@ class VisualDisplay:
             and bloom_intensity < 1e-4
             and vignette_int < 1e-4
             and iaf_amp < 1e-4
+            and film_grain < 1e-4
+            and tonemap == 0
         ):
             return
 
@@ -673,7 +677,7 @@ class VisualDisplay:
                     # Copy blurred bloom back
                     self.ctx.copy_framebuffer(self._pp_bloom_fbo, self._pp_blur_fbo)
 
-            # ── Step 4: Composite (bloom + vignette + IAF) → target ──────────
+            # ── Step 4: Composite (bloom + vignette + IAF + ACES + grain) → target ──
             target.use()
             self._pp_out_tex.use(0)
             self._pp_bloom_tex.use(1)
@@ -684,6 +688,19 @@ class VisualDisplay:
             self._pp_composite_prog["u_vignette_intensity"].value = vignette_int
             self._pp_composite_prog["u_iaf_mod_amplitude"].value = iaf_amp
             self._pp_composite_prog["u_iaf_mod_phase"].value = self._pp_iaf_phase
+            # Phase 2 — ACES tonemapping + film grain
+            if "u_tonemap" in self._pp_composite_prog:
+                self._pp_composite_prog["u_tonemap"].value = int(
+                    cfg.get("pp_tonemap", 1)
+                )
+            if "u_film_grain" in self._pp_composite_prog:
+                self._pp_composite_prog["u_film_grain"].value = float(
+                    cfg.get("pp_film_grain", 0.0) or 0.0
+                )
+            if "u_time" in self._pp_composite_prog:
+                self._pp_composite_prog["u_time"].value = (
+                    float(pygame.time.get_ticks()) / 1000.0
+                )
             self._pp_composite_vao.render(moderngl.TRIANGLE_STRIP)
 
         except Exception as _pe:

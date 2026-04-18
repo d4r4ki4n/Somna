@@ -181,3 +181,33 @@ vec2 curl_noise(vec2 p, float t) {
     float n4 = snoise(p + vec2(0.0, -eps) + vec2(0.0, t * 0.09));
     return vec2(n3 - n4, n2 - n1) / (2.0 * eps) * (0.08 + u_chaos * 0.22);
 }
+
+// ── Oklab perceptual color space (Ottosson 2020) ────────────────────────────
+
+vec3 rgbToOklab(vec3 c) {
+    float l = 0.4122214708 * c.r + 0.5363325363 * c.g + 0.0514459929 * c.b;
+    float m = 0.2119034982 * c.r + 0.6806995451 * c.g + 0.1073969566 * c.b;
+    float s = 0.0883024619 * c.r + 0.2220049168 * c.g + 0.6968735794 * c.b;
+    l = pow(l, 1.0/3.0); m = pow(m, 1.0/3.0); s = pow(s, 1.0/3.0);
+    return vec3(
+        0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+        1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+        0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s
+    );
+}
+
+vec3 oklabToRgb(vec3 lab) {
+    float l = lab.x + 0.3963377774 * lab.y + 0.2158037573 * lab.z;
+    float m = lab.x - 0.1055613458 * lab.y - 0.0638541728 * lab.z;
+    float s = lab.x - 0.0894841775 * lab.y - 1.2914855480 * lab.z;
+    l = l*l*l; m = m*m*m; s = s*s*s;
+    return vec3(
+         4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+        -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+        -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s
+    );
+}
+
+vec3 mixOklab(vec3 a, vec3 b, float t) {
+    return oklabToRgb(mix(rgbToOklab(a), rgbToOklab(b), t));
+}

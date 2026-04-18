@@ -50,9 +50,7 @@ The project is called \*\*Somna\*\*. The control panel entry point is \`main_img
 
 | \`ipc/\__init_\_.py\` | Re-exports \`patch_live\`, \`write_live\`, \`StateServer\`, \`PORT\` |
 
-| \`control_panel_imgui.py\` | Dear ImGui control panel; session management; starts \`StateServer\` in \`\__init_\_\`; all live writes via \`patch_live()\` |
-
-| \`control_panel_imgui.py\` | Dear ImGui control panel (\`ControlPanelImGui\`); reads state via \`ConfigManager.update()\` every frame; writes via \`patch_live()\`; launched via \`main_imgui.py\` |
+| \`control_panel_imgui.py\` | Dear ImGui control panel (\`ControlPanelImGui\`); session management; starts \`StateServer\` in \`__init__\`; reads state via \`ConfigManager.update()\` every frame; all live writes via \`patch_live()\`; launched via \`main_imgui.py\` |
 
 | \`main_imgui.py\` | Entry point for the ImGui panel; \`python main_imgui.py\` to launch |
 
@@ -64,25 +62,25 @@ The project is called \*\*Somna\*\*. The control panel entry point is \`main_img
 
 | \`visual_display.py\` | Render loop; reads \`live_control.json\` every frame via \`config.py\` |
 
-| \`timeline_runner.py\` | Session timeline playback; the authoritative writer of session-managed keys |
+| \`session/timeline_runner.py\` | Session timeline playback; the authoritative writer of session-managed keys |
 
 | \`somna_agent.py\` | Always-on LLM agent; active mode (interactive session ticks) + idle mode (planning, nudge, console); never overrides user-locked params |
 
 | \`content_agent.py\` | CLI content studio; interactive LLM authoring of sessions, affirmations, images |
 
-| \`audio_engine.py\` | Binaural beat generation; reads \`live_control.json\` |
+| \`engines/audio_engine.py\` | Binaural beat generation; reads \`live_control.json\` |
 
-| \`tts_engine.py\` | TTS pre-synthesis and playback; reads \`live_control.json\` |
+| \`engines/tts_engine.py\` | TTS pre-synthesis and playback; reads \`live_control.json\` |
 
 | \`config.py\` | Thin watcher: \`os.stat()\` poll at 100 ms, full JSON read only on mtime/size change |
 
 | \`llm_driver.py\` | Helper API for external agents: \`send()\`, \`read_state()\`, \`prompt_user()\` etc. |
 
-| \`conductor.py\` | Session Conductor FSM (Bible Ch.4); instantiated per session by \`somna_agent.py\`; owns structural params when active |
+| \`session/conductor.py\` | Session Conductor FSM (Bible Ch.4); instantiated per session by \`somna_agent.py\`; owns structural params when active |
 
-| \`freq_leader.py\` | Adaptive frequency leading (meet-and-lead); mirrors user's brainwave dominant frequency then leads it toward target; runs as background thread inside agent process |
+| \`engines/freq_leader.py\` | Adaptive frequency leading (meet-and-lead); mirrors user's brainwave dominant frequency then leads it toward target; runs as background thread inside agent process |
 
-| \`session_scorer.py\` | Session effectiveness scoring; triggered by \`control_panel_imgui.py\` when display stops; writes to \`somna.db\` \`session_metrics\` table |
+| \`session/session_scorer.py\` | Session effectiveness scoring; triggered by \`control_panel_imgui.py\` when display stops; writes to \`somna.db\` \`session_metrics\` table |
 
 | \`eeg/\` | EEG acquisition and signal processing package (\`from eeg.eeg_engine import EEGEngine\`) |
 
@@ -106,11 +104,11 @@ The project is called \*\*Somna\*\*. The control panel entry point is \`main_img
 
 | \`eeg/slow_wave_enhancer.py\` | Phase-locked pink noise burst scheduler; ISI enforcement; SWA tracking relative to baseline (Bible Ch.7) |
 
-| \`crossmodal_gain.py\` | \`CrossmodalGainEngine\`; five-channel gain manifold; depth_gain_scalar from spectral slope; SR inverted-U coupling; carrier-noise protection; \`SLEEP_GAIN_PROFILES\` (sleep_approach/onset/maintain/sleep_training); \`gain_mode\` dispatch; \`SRCalibrationSweep\`; \`spectral_occupancy_check\` (Bible Ch.3, Ch.7) |
+| \`engines/crossmodal_gain.py\` | \`CrossmodalGainEngine\`; five-channel gain manifold; depth_gain_scalar from spectral slope; SR inverted-U coupling; carrier-noise protection; \`SLEEP_GAIN_PROFILES\` (sleep_approach/onset/maintain/sleep_training); \`gain_mode\` dispatch; \`SRCalibrationSweep\`; \`spectral_occupancy_check\` (Bible Ch.3, Ch.7) |
 
-| \`tmr_cue_manager.py\` | \`CueManager\`; deterministic tonal cue generation from MD5 hash; \`POOL_SIGNATURES\` (six pools); \`pool_for_label()\` keyword mapper; LRU cache up to 64 entries; no audio files required (Bible Ch.7) |
+| \`session/tmr_cue_manager.py\` | \`CueManager\`; deterministic tonal cue generation from MD5 hash; \`POOL_SIGNATURES\` (six pools); \`pool_for_label()\` keyword mapper; LRU cache up to 64 entries; no audio files required (Bible Ch.7) |
 
-| `tmr_engine.py` | `TMREngine` + `ConsolidationScheduler`; trance encoding hooks; NREM replay scheduling; inverted-U priority model; hourly budget; SWE lockout coordination; EEG-loss shutdown (Bible Ch.7) |
+| `session/tmr_engine.py` | `TMREngine` + `ConsolidationScheduler`; trance encoding hooks; NREM replay scheduling; inverted-U priority model; hourly budget; SWE lockout coordination; EEG-loss shutdown (Bible Ch.7) |
 
 | `session/edison_mode.py` | `EdisonModeManager`; state-driven N1-interception protocol; 6-state machine (PREPARATION→SEED_DELIVERY→MONITORING→N1_HOLD→CAPTURE→CYCLE_COMPLETE); alpha/theta ratio fast-path; captures persisted to `edison_captures` DB table (Bible Ch.7 §29) |
 
@@ -459,7 +457,7 @@ When the user moves a slider, the touched param is added to \`timeline_locked_pa
 
 \- \`freq_lead_holds\` — int; number of hold periods completed.
 
-\*\*Conductor FSM state\*\* — written by \`Conductor.tick()\` on every tick, merged into the same \`\_patch_live()\` call as parameter updates (one file write, not two):
+\*\*Conductor FSM state\*\* — written by \`Conductor.tick()\` on every tick, merged into the same \`\patch_live()\` call as parameter updates (one file write, not two):
 
 \- \`conductor_state\` — dict; always present when a Conductor is active. Keys: \`phase\` (str), \`timer_mode\` (bool), \`iaf_hz\` (float|null), \`target_freq_hz\` (float|null), \`trance_score\` (float|null), \`assr_strength\` (float|null), \`assr_conf\` (str|null), \`sqi\` (str), \`frac_count\` (int), \`frac_max\` (int), \`ts\` (float). Read by the control panel for display and by the agent's \`\_state_summary()\` as context for the LLM. Do not write this key from agent code — it is owned exclusively by the Conductor.
 
@@ -483,7 +481,7 @@ When the user moves a slider, the touched param is added to \`timeline_locked_pa
 
 \*\*Display lifecycle\*\* — written by \`visual_display.py\`:
 
-\- \`display_active\` — bool; \`True\` when the display render loop is running, \`False\` after it exits. Written via a minimal \`\_patch_live()\` helper inside \`visual_display.py\`. Consumed by \`somna_agent.py\` to detect session start/end edges (post-session summary trigger, staleness detection) and by \`\_poll_audio()\` in \`control_panel_imgui.py\` to gate TTS affirmation playback to active sessions.
+\- \`display_active\` — bool; \`True\` when the display render loop is running, \`False\` after it exits. Written via a minimal \`\patch_live()\` helper inside \`visual_display.py\`. Consumed by \`somna_agent.py\` to detect session start/end edges (post-session summary trigger, staleness detection) and by \`\_poll_audio()\` in \`control_panel_imgui.py\` to gate TTS affirmation playback to active sessions.
 
 \- \`tts_playing\` — str or null; phrase currently being spoken by \`TTSEngine\`. Written by \`control_panel_imgui.py\` \`\_poll_audio()\` when a phrase is popped and sent to the channel. Read by \`CenterTextLayer\` in the display for phrase-sync text display (replaces the old \`poll_ready()\` call from the render loop).
 
@@ -798,9 +796,9 @@ CLI: \`python -m content_tools.image_tags tag &lt;session&gt; --batch 20 \[--har
 
 \- \`record_session_played()\` uses SQLite \`datetime('now')\` (UTC) — when computing age in Python use \`datetime.utcnow()\` not \`datetime.now()\` to avoid timezone sign errors.
 
-\*\*Session Treeview\*\* — \`\_session_tv\` (a \`ttk.Treeview\`) replaced the old \`\_library_lb\` (\`tk.Listbox\`) everywhere in \`control_panel_imgui.py\`. The Treeview \`iid\` is the raw session folder name (not the decorated display string). \`\_get_selected_session()\` returns \`\_session_tv.selection()\[0\]\` directly — do not try to parse from \`values\[0\]\`.
+**Session list** — ImGui selectable list backed by `_session_names` and `_selected_session_idx` in `control_panel_imgui.py`. The list index maps directly to `_session_names[idx]` — the raw session folder name.
 
-\*\*Mode strip\*\* — a row of quick-launch buttons above the Treeview. Defined in \`\_MODE_STRIP\` constant; each entry has \`label\`, \`session\`, and \`tooltip\` fields. \`\_launch_mode()\` loads the session and tracks \`\_dismissed_mode\` to prevent the button re-highlighting after the user deselects it.
+**Mode strip** — quick-launch preset buttons in the session sidebar. Selecting a mode loads the corresponding session immediately.
 
 \*\*Session scoring\*\* — \`session_scorer.py\` / \`SessionScorer\` is triggered by \`control_panel_imgui.py\` when it detects the display subprocess has stopped (not from the agent process — the agent is a subprocess with no EEGEngine reference). \`\_trigger_eeg_scoring()\` in \`control_panel_imgui.py\` reads FreqLeader state from \`live_control.json\` at stop time and passes it to the scorer.
 
@@ -1146,7 +1144,7 @@ Lives in \`agent/somna_agent.py\` (chord monitoring + selection + recording) and
 
 \- Do not hardcode font tuples — always use \`FONT_\*\` constants
 
-\- Do not construct \`tk.Scale\` with custom styles — always use \`self.\_slider()\`
+- Use `_row_slider()` helper for ImGui sliders — ensures consistent styling and value binding
 
 \- Do not reference \`veil_mode = "mirror"\` anywhere — it is removed
 
@@ -1282,7 +1280,7 @@ CONDUCTOR_OWNED_PARAMS = frozenset({
 
 The agent strips these keys from any LLM \`adjustments\` dict before writing. Do not add these params to \`\_ADJUSTABLE_PARAMS\` in a way that lets the LLM write them while the Conductor is active.
 
-\*\*Phases\*\* — \`ConductorPhase\` enum; core arc: \`CALIBRATION\` → \`INDUCTION\` → \`DEEPENING\` → \`MAINTENANCE\`. Fractionation sub-cycle: \`FRAC_EMERGE\` → \`FRAC_EMERGE_HOLD\` → \`FRAC_REDROP\`. Sleep path: \`SLEEP_APPROACH\` → \`SLEEP_DRIFT\` → \`SLEEP_LOCK\`. Phase transitions are written to \`live_control.json\` as \`conductor_phase\` for the UI and agent to read.
+\*\*Phases\*\* — \`ConductorPhase\` enum; core arc: \`CALIBRATION\` → \`INDUCTION\` → \`DEEPENING\` → \`MAINTENANCE\`. Fractionation sub-cycle: \`FRAC_EMERGE\` → \`FRAC_EMERGE_HOLD\` → \`FRAC_REDROP\`. Sleep path: \`SLEEP_APPROACH\` → \`SLEEP_ONSET\` → \`SLEEP_MAINTAIN\` → \`SLEEP_TRAINING\` → \`SLEEP_WAKE\`. Phase transitions are written to \`live_control.json\` as \`conductor_phase\` for the UI and agent to read.
 
 \*\*EEG integration\*\* — the Conductor reads \`eeg_\*\` keys from \`live_control.json\` on every tick. Without EEG it falls back to a timer-based schedule. Degraded mode activates when \`eeg_confidence = "none"\` for all channels.
 
@@ -1324,7 +1322,7 @@ The agent strips these keys from any LLM \`adjustments\` dict before writing. Do
 
 \*\*Beats on session stop\*\* — \`\_stop_display()\` writes \`audio_muted: True\` and calls \`\_refresh_mute_btn()\`. Stopping a session always silences the beats.
 
-\*\*"Start Beats" / "Stop Beats" button\*\* — a full-width \`tk.Button\` using \`FONT_LAUNCH\` and \`RP\["foam"\]\` background, placed below the "Start Session" button in \`\_col_right\`. It is the sole user-facing binaural on/off control, replacing the old transport-bar 🔊 icon. \`\_refresh_mute_btn()\` toggles its text and color. The underlying key is \`audio_muted\` in \`live_control.json\`.
+- **"Start Beats" / "Stop Beats" button** — an ImGui button in the transport bar. It is the sole user-facing binaural on/off control, replacing the old transport-bar 🔊 icon. `_toggle_audio()` toggles the `audio_muted` key. The underlying key is `audio_muted` in `live_control.json`.
 
 \*\*TTS is independent of \`audio_muted\`\*\* — \`TTSEngine.poll_ready()\` ignores \`audio_muted\`; it only gates on \`tts_enabled\` and \`tts_subliminal\`. Muting binaural beats never silences the agent's voice.
 
@@ -1340,11 +1338,11 @@ The agent strips these keys from any LLM \`adjustments\` dict before writing. Do
 
 Acquires EEG via BrainFlow, processes band powers, and writes results to \`live_control.json\` as read-only keys. Import as \`from eeg.eeg_engine import EEGEngine\`.
 
-\*\*Pattern:\*\* Same as \`timeline_runner.py\` — background thread started from \`control_panel_imgui.py\` via the "Connect EEG" button, writes to \`live_control.json\` via \`\_patch_live()\`.
+\*\*Pattern:\*\* Same as \`timeline_runner.py\` — background thread started from \`control_panel_imgui.py\` via the "Connect EEG" button, writes to \`live_control.json\` via \`\patch_live()\`.
 
-\*\*Secondary thread state publication\*\* — secondary threads inside \`eeg_engine.py\` (e.g., the calibration thread) must NOT call \`\_patch_live()\` directly. Instead they write into an in-memory dict (\`self.\_cal_state\`). The main EEG loop merges \`self.\_cal_state\` into every tick write via a single \`\_patch_live()\` call. This is the correct pattern for any background thread that needs to publish state — it keeps all file I/O on a single thread and prevents concurrent write collisions.
+\*\*Secondary thread state publication\*\* — secondary threads inside \`eeg_engine.py\` (e.g., the calibration thread) must NOT call \`\patch_live()\` directly. Instead they write into an in-memory dict (\`self.\_cal_state\`). The main EEG loop merges \`self.\_cal_state\` into every tick write via a single \`\patch_live()\` call. This is the correct pattern for any background thread that needs to publish state — it keeps all file I/O on a single thread and prevents concurrent write collisions.
 
-\*\*\`json.dump\` indent\*\* — all EEG engine writes to \`live_control.json\` use \`indent=2\` for consistency with the rest of the codebase. Any new \`\_patch_live()\` or direct JSON write in \`eeg_engine.py\` must use \`indent=2\`.
+\*\*\`json.dump\` indent\*\* — all EEG engine writes to \`live_control.json\` use \`indent=2\` for consistency with the rest of the codebase. Any new \`\patch_live()\` or direct JSON write in \`eeg_engine.py\` must use \`indent=2\`.
 
 \*\*SQI warmup\*\* — \`SQITracker\` has an 8-second post-connect warmup period (\`\_warmup_ticks\`). During warmup, quality is reported as \`"warming"\` instead of the normal confidence tier. The warmup counter resets on each reconnect. This prevents false "unusable" quality immediately after BLE connection before the signal settles. The composite SQI is a plain mean of all four channel SQIs — a trimmed-mean approach was tried and reverted because masking the worst channel hides real signal problems without fixing the underlying noise.
 

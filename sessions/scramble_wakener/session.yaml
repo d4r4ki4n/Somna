@@ -1,0 +1,267 @@
+name: "Amnesia Scramble Wakener · 20 min"
+description: >
+  20-minute session with the Amnesia Scramble wakener in the final 2 minutes.
+  The first 18 minutes are a standard dissociation arc that brings the subject
+  to depth. The last 120 seconds overload working memory with strobing visuals,
+  chipmunk-speed TTS, maximum spiral chaos, and rapid-fire affirmations. The
+  brain discards the scrambled input, leaving the subject awake, dazed, and
+  with no conscious recall of the commands — only the deep, installed urges.
+
+  The scramble keyframes (t: 1080 onward) can be copied into any session's
+  timeline to replace its normal wakener.
+
+duration: 1200
+category: entrainment
+
+defaults:
+  carrier_frequency:          200.0
+  volume:                     78.0
+  noise_color:                pink
+  noise_volume:               22
+  center_flash_sync_to_beat:  false
+  font_switch_mode:           intelligent
+  spiral_color_mode:          rainbow
+  spiral_show_text:           false
+  tts_enabled:                true
+  tts_subliminal:             false
+  affirmation_rate:           3.0
+
+timeline:
+
+  # ─── 0:00 · ANCHOR ──────────────────────────────────────────────────────────
+  - t: 0
+    label: anchor
+    ease: linear
+    params:
+      phrases:                  anchor
+      beat_frequency:           10.0
+      carrier_frequency:        210.0
+      spiral_style:             fermat
+      spiral_count:             6
+      spiral_opacity:           80
+      spiral_speed_multiplier:  1.2
+      spiral_tightness:         7.0
+      spiral_chaos:             0.04
+      spiral_thickness:         12
+      veil_opacity:             12
+      veil_mode:                scroll
+      shadow_opacity:           0
+      center_flash_on_time:     200
+      center_flash_off_time:    400
+
+  # ─── 1:30 · SOFTEN ──────────────────────────────────────────────────────────
+  - t: 90
+    label: soften
+    ease: ease_in_out
+    params:
+      phrases:                  weight
+      beat_frequency:           9.0
+      carrier_frequency:        200.0
+      spiral_style:             tunnel_dream
+      spiral_count:             5
+      spiral_opacity:           84
+      spiral_speed_multiplier:  1.0
+      spiral_tightness:         6.5
+      spiral_chaos:             0.06
+      spiral_thickness:         14
+      veil_opacity:             22
+      veil_mode:                rain
+      shadow_opacity:           8
+      center_flash_on_time:     120
+      center_flash_off_time:    350
+
+  # ─── 3:30 · DESCENT ─────────────────────────────────────────────────────────
+  - t: 210
+    label: descent
+    ease: ease_in_out
+    params:
+      phrases:                  weight
+      beat_frequency:           7.5
+      carrier_frequency:        190.0
+      spiral_style:             galaxy
+      spiral_count:             5
+      spiral_opacity:           87
+      spiral_speed_multiplier:  0.78
+      spiral_tightness:         5.8
+      spiral_chaos:             0.10
+      spiral_thickness:         16
+      veil_opacity:             38
+      veil_mode:                converge
+      shadow_opacity:           20
+      center_flash_on_time:     80
+      center_flash_off_time:    280
+
+  # ─── 6:00 · THE SPLIT ───────────────────────────────────────────────────────
+  - t: 360
+    label: the_split
+    ease: ease_in_out
+    params:
+      phrases:                  the_split
+      beat_frequency:           6.0
+      carrier_frequency:        178.0
+      spiral_style:             fibonacci
+      spiral_count:             4
+      spiral_opacity:           89
+      spiral_speed_multiplier:  0.60
+      spiral_tightness:         5.2
+      spiral_chaos:             0.14
+      spiral_thickness:         18
+      veil_opacity:             52
+      veil_mode:                converge
+      shadow_opacity:           32
+      center_flash_on_time:     55
+      center_flash_off_time:    220
+
+  # ─── 9:00 · HOLLOW ──────────────────────────────────────────────────────────
+  - t: 540
+    label: hollow
+    ease: ease_in_out
+    params:
+      phrases:                  hollow
+      beat_frequency:           5.0
+      carrier_frequency:        168.0
+      spiral_style:             tunnel_dream
+      spiral_count:             3
+      spiral_opacity:           93
+      spiral_speed_multiplier:  0.30
+      spiral_tightness:         4.0
+      spiral_chaos:             0.07
+      spiral_thickness:         22
+      veil_opacity:             80
+      veil_mode:                tunnel
+      shadow_opacity:           64
+      center_flash_on_time:     16
+      center_flash_off_time:    155
+
+  # ─── 14:00 · SOAK ───────────────────────────────────────────────────────────
+  - t: 840
+    label: soak
+    ease: linear
+    params:
+      phrases:                  hollow
+      beat_frequency:           4.0
+      carrier_frequency:        155.0
+      spiral_style:             fibonacci
+      spiral_count:             3
+      spiral_opacity:           94
+      spiral_speed_multiplier:  0.25
+      spiral_tightness:         3.6
+      spiral_chaos:             0.05
+      spiral_thickness:         22
+      veil_opacity:             84
+      veil_mode:                drift
+      shadow_opacity:           70
+      center_flash_on_time:     16
+      center_flash_off_time:    140
+
+  # ─── 17:00 · PRE-SCRAMBLE ───────────────────────────────────────────────────
+  # The world begins to distort. Chaos starts climbing.
+  # Beat jumps to high theta — still hypnotic but alerting.
+  # Font switching enters rapid mode.
+  - t: 1020
+    label: pre_scramble
+    ease: ease_in
+    params:
+      phrases:                  scramble
+      beat_frequency:           6.5
+      carrier_frequency:        185.0
+      spiral_style:             kaleidoscope
+      spiral_count:             6
+      spiral_opacity:           92
+      spiral_speed_multiplier:  1.4
+      spiral_tightness:         7.0
+      spiral_chaos:             0.45
+      spiral_thickness:         14
+      veil_opacity:             60
+      veil_mode:                converge
+      shadow_opacity:           50
+      center_flash_on_time:     60
+      center_flash_off_time:    120
+      affirmation_rate:         6.0
+      font_switch_mode:         rapid
+
+  # ─── 18:00 · SCRAMBLE ───────────────────────────────────────────────────────
+  # Full working memory overload. Everything maxes out simultaneously.
+  # Strobe veil at maximum intensity. Spiral chaos at peak.
+  # TTS at +30% rate — chipmunk speed — conscious parsing impossible.
+  # Affirmations fire at 12/interval — too fast to track individually.
+  # The brain cannot encode the scrambled input and discards it.
+  # Trail decay at 0.95 — afterimages pile up, nothing resolves.
+  - t: 1080
+    label: scramble
+    ease: linear
+    params:
+      phrases:                  scramble
+      beat_frequency:           8.0
+      carrier_frequency:        195.0
+      spiral_style:             interference
+      spiral_count:             8
+      spiral_opacity:           96
+      spiral_speed_multiplier:  2.0
+      spiral_tightness:         8.0
+      spiral_chaos:             1.0
+      spiral_thickness:         10
+      veil_opacity:             90
+      veil_mode:                strobe
+      shadow_opacity:           80
+      center_flash_on_time:     30
+      center_flash_off_time:    30
+      affirmation_rate:         12.0
+      font_switch_mode:         rapid
+      trail_decay:              0.95
+      volume:                   85
+
+  # ─── 19:30 · SCRAMBLE PEAK ──────────────────────────────────────────────────
+  # Even more intense. The strobe is now paired with flash text.
+  # Everything is screaming at once. Working memory is fully saturated.
+  - t: 1170
+    label: scramble_peak
+    ease: linear
+    params:
+      phrases:                  scramble
+      beat_frequency:           10.0
+      carrier_frequency:        200.0
+      spiral_style:             kaleidoscope
+      spiral_count:             10
+      spiral_opacity:           98
+      spiral_speed_multiplier:  2.5
+      spiral_tightness:         9.0
+      spiral_chaos:             1.5
+      spiral_thickness:         8
+      veil_opacity:             95
+      veil_mode:                strobe
+      shadow_opacity:           90
+      center_flash_on_time:     20
+      center_flash_off_time:    20
+      affirmation_rate:         15.0
+      font_switch_mode:         rapid
+      trail_decay:              0.97
+      volume:                   92
+
+  # ─── 20:00 · CUT ────────────────────────────────────────────────────────────
+  # Abrupt silence. Everything drops to zero. Session ends.
+  # The subject is left awake, dazed, with no recall.
+  - t: 1200
+    label: cut
+    ease: instant
+    params:
+      phrases:                  none
+      beat_frequency:           10.0
+      carrier_frequency:        200.0
+      spiral_style:             archimedean
+      spiral_count:             4
+      spiral_opacity:           40
+      spiral_speed_multiplier:  0.8
+      spiral_tightness:         6.0
+      spiral_chaos:             0.0
+      spiral_thickness:         12
+      veil_opacity:             10
+      veil_mode:                scroll
+      shadow_opacity:           0
+      center_flash_on_time:     200
+      center_flash_off_time:    400
+      affirmation_rate:         2.0
+      font_switch_mode:         intelligent
+      trail_decay:              0.0
+      volume:                   60
+      audio_muted:              true

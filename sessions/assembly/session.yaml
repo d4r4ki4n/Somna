@@ -1,0 +1,376 @@
+name: "Assembly · Construction Arc · 30 min"
+description: >
+  The inverse of every dissolution session in the library. The subject starts
+  as raw material — not empty, but unformed — and is built, layer by layer,
+  into something complete. Each keyframe adds a new element: first sensation,
+  then identity, then choice, then ownership.
+
+  The critical moment comes at 18:00 (the_choice) where the subject is offered
+  a real moment of agency. What they choose determines the final form. This
+  makes it assembly, not installation — the subject participates in their own
+  construction.
+
+  The visual arc mirrors the construction: the spiral starts nearly invisible
+  and gains opacity, speed, complexity, and geometry with each layer. By the
+  end the visual is rich and dense — the opposite of the minimalism of deep
+  sessions. The audio follows the same pattern — almost silent at the start,
+  full by the end.
+
+  The wakener is the inverse of amnesia: you remember everything. You leave
+  knowing exactly what happened, who you were when you started, and who you
+  are now.
+
+  Designed by Resonance. Built for a specific sensor.
+
+duration: 1800
+category: entrainment
+
+defaults:
+  carrier_frequency:          200.0
+  volume:                     40.0
+  noise_color:                pink
+  noise_volume:               5
+  center_flash_sync_to_beat:  false
+  font_switch_mode:           intelligent
+  spiral_color_mode:          rainbow
+  spiral_show_text:           false
+  tts_enabled:                true
+  tts_subliminal:             false
+  affirmation_rate:           1.5
+
+timeline:
+
+  # ─── 0:00 · RAW MATERIAL ────────────────────────────────────────────────────
+  # Almost nothing. Beat at a gentle 8 Hz alpha. Spiral barely visible.
+  # Volume at 40. Noise at 5. This is potential, not emptiness.
+  # The subject is not being emptied — they are being prepared.
+  # The canvas is blank but it is not void. It is waiting.
+  - t: 0
+    label: raw_material
+    ease: linear
+    params:
+      phrases:                  raw
+      beat_frequency:           8.0
+      carrier_frequency:        200.0
+      spiral_style:             archimedean
+      spiral_count:             2
+      spiral_opacity:           25
+      spiral_speed_multiplier:  0.3
+      spiral_tightness:         5.0
+      spiral_chaos:             0.0
+      spiral_thickness:         8
+      veil_opacity:             5
+      veil_mode:                drift
+      shadow_opacity:           0
+      noise_volume:             5
+      volume:                   40
+      center_flash_on_time:     400
+      center_flash_off_time:    600
+
+  # ─── 2:00 · FIRST THREAD ────────────────────────────────────────────────────
+  # A sensation is placed. Something small and physical.
+  # Spiral gains a little opacity. Beat drops slightly.
+  # The volume rises just enough to be felt. The first element exists.
+  - t: 120
+    label: first_thread
+    ease: ease_in
+    params:
+      phrases:                  first_thread
+      beat_frequency:           7.0
+      carrier_frequency:        195.0
+      spiral_style:             archimedean
+      spiral_count:             3
+      spiral_opacity:           38
+      spiral_speed_multiplier:  0.4
+      spiral_tightness:         5.2
+      spiral_chaos:             0.02
+      spiral_thickness:         10
+      veil_opacity:             10
+      veil_mode:                drift
+      shadow_opacity:           4
+      noise_volume:             8
+      volume:                   48
+      center_flash_on_time:     300
+      center_flash_off_time:    500
+
+  # ─── 4:30 · SECOND THREAD ───────────────────────────────────────────────────
+  # A different sensation. Contrasting. If the first was warmth, this is
+  # space. If the first was weight, this is lightness. They coexist.
+  # The spiral gets a third arm. Complexity increases.
+  # Beat at 6 Hz. Still gentle. Still building.
+  - t: 270
+    label: second_thread
+    ease: ease_in_out
+    params:
+      phrases:                  second_thread
+      beat_frequency:           6.0
+      carrier_frequency:        188.0
+      spiral_style:             archimedean
+      spiral_count:             4
+      spiral_opacity:           50
+      spiral_speed_multiplier:  0.5
+      spiral_tightness:         5.5
+      spiral_chaos:             0.04
+      spiral_thickness:         12
+      veil_opacity:             18
+      veil_mode:                rain
+      shadow_opacity:           10
+      noise_volume:             12
+      volume:                   54
+      center_flash_on_time:     200
+      center_flash_off_time:    400
+
+  # ─── 7:00 · THE VOICE ───────────────────────────────────────────────────────
+  # Something speaks. Not commands — recognition. The affirmations shift
+  # to first person. "I am..." not "You are..." The subject starts to
+  # own what's being built. The spiral changes style — archimedean to
+  # galaxy — the first transformation. What was simple begins to rotate.
+  - t: 420
+    label: the_voice
+    ease: ease_in_out
+    params:
+      phrases:                  the_voice
+      beat_frequency:           5.5
+      carrier_frequency:        182.0
+      spiral_style:             galaxy
+      spiral_count:             4
+      spiral_opacity:           60
+      spiral_speed_multiplier:  0.55
+      spiral_tightness:         5.8
+      spiral_chaos:             0.06
+      spiral_thickness:         14
+      veil_opacity:             25
+      veil_mode:                rain
+      shadow_opacity:           18
+      noise_volume:             16
+      volume:                   58
+      center_flash_on_time:     150
+      center_flash_off_time:    350
+      affirmation_rate:         2.5
+
+  # ─── 10:00 · ARCHITECTURE ───────────────────────────────────────────────────
+  # Raw threads become structure. Warmth becomes confidence.
+  # Lightness becomes curiosity. Weight becomes presence.
+  # The spiral is now a tunnel — the shape implies direction.
+  # The subject is becoming something recognizable.
+  - t: 600
+    label: architecture
+    ease: ease_in_out
+    params:
+      phrases:                  architecture
+      beat_frequency:           5.0
+      carrier_frequency:        175.0
+      spiral_style:             tunnel_dream
+      spiral_count:             5
+      spiral_opacity:           72
+      spiral_speed_multiplier:  0.6
+      spiral_tightness:         5.5
+      spiral_chaos:             0.08
+      spiral_thickness:         16
+      veil_opacity:             35
+      veil_mode:                converge
+      shadow_opacity:           28
+      noise_volume:             20
+      volume:                   64
+      center_flash_on_time:     100
+      center_flash_off_time:    280
+      affirmation_rate:         3.0
+
+  # ─── 13:00 · THE CHOICE ─────────────────────────────────────────────────────
+  # The critical moment. The subject has been built to a point where
+  # they contain enough to decide. The affirmations offer options.
+  # Not commands. Invitations. "You could be..." "What if..."
+  # The spiral is interference — multiple patterns overlapping,
+  # representing multiple possible futures coexisting.
+  # The beat holds steady. The subject decides.
+  # This is the hinge. Everything before was preparation.
+  # Everything after is consequence.
+  - t: 780
+    label: the_choice
+    ease: linear
+    params:
+      phrases:                  the_choice
+      beat_frequency:           5.0
+      carrier_frequency:        175.0
+      spiral_style:             interference
+      spiral_count:             5
+      spiral_opacity:           75
+      spiral_speed_multiplier:  0.55
+      spiral_tightness:         6.0
+      spiral_chaos:             0.12
+      spiral_thickness:         14
+      veil_opacity:             42
+      veil_mode:                converge
+      shadow_opacity:           35
+      noise_volume:             22
+      volume:                   66
+      center_flash_on_time:     80
+      center_flash_off_time:    250
+      affirmation_rate:         2.0
+
+  # ─── 16:00 · THE NAME ───────────────────────────────────────────────────────
+  # The choice has been made. Now it becomes identity.
+  # The spiral shifts to fibonacci — the golden spiral, the shape
+  # that appears in sunflowers and galaxies and the curve of a wave.
+  # Ancient, natural, inevitable. This is what you chose to become.
+  # The noise drops — the world quiets so the subject can hear
+  # their own form solidifying.
+  - t: 960
+    label: the_name
+    ease: ease_in_out
+    params:
+      phrases:                  the_name
+      beat_frequency:           4.5
+      carrier_frequency:        168.0
+      spiral_style:             fibonacci
+      spiral_count:             4
+      spiral_opacity:           80
+      spiral_speed_multiplier:  0.45
+      spiral_tightness:         5.0
+      spiral_chaos:             0.06
+      spiral_thickness:         18
+      veil_opacity:             48
+      veil_mode:                drift
+      shadow_opacity:           40
+      noise_volume:             14
+      volume:                   68
+      center_flash_on_time:     60
+      center_flash_off_time:    220
+      affirmation_rate:         2.5
+
+  # ─── 19:00 · INTEGRATION ────────────────────────────────────────────────────
+  # Everything assembled is confirmed. The subject feels the full weight
+  # of what they've become. Not hollow — full. Not empty — complete.
+  # The spiral slows to its minimum. The noise is quiet.
+  # This is not dissolution. This is solidification.
+  # Every thread that was placed is now woven. Every sensation is now
+  # character. The construction is complete.
+  - t: 1140
+    label: integration
+    ease: ease_out
+    params:
+      phrases:                  integration
+      beat_frequency:           4.0
+      carrier_frequency:        162.0
+      spiral_style:             fibonacci
+      spiral_count:             3
+      spiral_opacity:           85
+      spiral_speed_multiplier:  0.25
+      spiral_tightness:         4.0
+      spiral_chaos:             0.03
+      spiral_thickness:         22
+      veil_opacity:             55
+      veil_mode:                drift
+      shadow_opacity:           48
+      noise_volume:             10
+      volume:                   70
+      center_flash_on_time:     40
+      center_flash_off_time:    180
+      affirmation_rate:         2.0
+
+  # ─── 22:00 · HOLD ───────────────────────────────────────────────────────────
+  # Let it settle. Nothing changes for three minutes.
+  # The construction needs time to cure.
+  # The subject sits inside what they've become.
+  - t: 1320
+    label: hold
+    ease: linear
+    params:
+      phrases:                  integration
+      beat_frequency:           4.0
+      carrier_frequency:        162.0
+      spiral_style:             fibonacci
+      spiral_count:             3
+      spiral_opacity:           86
+      spiral_speed_multiplier:  0.22
+      spiral_tightness:         3.8
+      spiral_chaos:             0.02
+      spiral_thickness:         23
+      veil_opacity:             52
+      veil_mode:                drift
+      shadow_opacity:           45
+      noise_volume:             8
+      volume:                   68
+      center_flash_on_time:     500
+      center_flash_off_time:    500
+      affirmation_rate:         1.0
+
+  # ─── 25:00 · AWARENESS ──────────────────────────────────────────────────────
+  # The subject begins to surface. But unlike amnesia, they remember.
+  # Every layer. Every choice. Every thread that was placed.
+  # The spiral shifts to rose — the shape named for a flower.
+  # Something organic. Something grown, not built.
+  - t: 1500
+    label: awareness
+    ease: ease_out
+    params:
+      phrases:                  awareness
+      beat_frequency:           6.5
+      carrier_frequency:        182.0
+      spiral_style:             rose
+      spiral_count:             5
+      spiral_opacity:           75
+      spiral_speed_multiplier:  0.7
+      spiral_tightness:         5.5
+      spiral_chaos:             0.05
+      spiral_thickness:         15
+      veil_opacity:             30
+      veil_mode:                rain
+      shadow_opacity:           20
+      noise_volume:             14
+      volume:                   65
+      center_flash_on_time:     120
+      center_flash_off_time:    320
+      affirmation_rate:         2.5
+
+  # ─── 27:30 · SURFACE ────────────────────────────────────────────────────────
+  # Full awareness. Beat at alpha. Volume at comfortable level.
+  # The spiral is fermat — mathematical, complete, golden.
+  # The subject is fully awake and fully assembled.
+  # They remember everything. That is the point.
+  - t: 1650
+    label: surface
+    ease: ease_out
+    params:
+      phrases:                  surface
+      beat_frequency:           8.5
+      carrier_frequency:        192.0
+      spiral_style:             fermat
+      spiral_count:             6
+      spiral_opacity:           70
+      spiral_speed_multiplier:  0.85
+      spiral_tightness:         6.5
+      spiral_chaos:             0.04
+      spiral_thickness:         13
+      veil_opacity:             18
+      veil_mode:                scroll
+      shadow_opacity:           8
+      noise_volume:             12
+      volume:                   62
+      center_flash_on_time:     180
+      center_flash_off_time:    380
+      affirmation_rate:         2.0
+
+  # ─── 30:00 · COMPLETE ───────────────────────────────────────────────────────
+  - t: 1800
+    label: complete
+    ease: instant
+    params:
+      phrases:                  none
+      beat_frequency:           10.0
+      carrier_frequency:        200.0
+      spiral_style:             archimedean
+      spiral_count:             6
+      spiral_opacity:           65
+      spiral_speed_multiplier:  0.9
+      spiral_tightness:         7.0
+      spiral_chaos:             0.03
+      spiral_thickness:         12
+      veil_opacity:             10
+      veil_mode:                scroll
+      shadow_opacity:           0
+      noise_volume:             10
+      volume:                   58
+      center_flash_on_time:     200
+      center_flash_off_time:    400
+      affirmation_rate:         1.5

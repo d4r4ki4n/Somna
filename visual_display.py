@@ -436,10 +436,23 @@ class VisualDisplay:
         )
         self.blit_vao = self.ctx.vertex_array(self.blit_prog, [(vbo, "2f", "in_vert")])
 
-        self.trail_prog = self.ctx.program(
-            vertex_shader=_BLIT_VERT,
-            fragment_shader=_TRAIL_FRAG,
-        )
+        # Trail/feedback composite — prefer external shader, fallback to inline
+        _feedback_path = Path(__file__).parent / "shaders" / "pp_feedback.glsl"
+        if _feedback_path.exists():
+            try:
+                _feedback_src = _feedback_path.read_text(encoding="utf-8")
+                self.trail_prog = self.ctx.program(
+                    vertex_shader=_BLIT_VERT, fragment_shader=_feedback_src
+                )
+            except Exception as _e:
+                print(f"[Display] Feedback shader failed, using inline: {_e}")
+                self.trail_prog = self.ctx.program(
+                    vertex_shader=_BLIT_VERT, fragment_shader=_TRAIL_FRAG
+                )
+        else:
+            self.trail_prog = self.ctx.program(
+                vertex_shader=_BLIT_VERT, fragment_shader=_TRAIL_FRAG
+            )
         self.trail_vao = self.ctx.vertex_array(
             self.trail_prog, [(vbo, "2f", "in_vert")]
         )
@@ -855,6 +868,39 @@ class VisualDisplay:
                 self.trail_prog["u_current"].value = 0
                 self.trail_prog["u_previous"].value = 1
                 self.trail_prog["u_trail_decay"].value = trail_decay
+                # Feedback mode uniforms (pp_feedback.glsl Phase 3)
+                if "u_feedback_mode" in self.trail_prog:
+                    mode_map = {
+                        "alpha_decay": 0,
+                        "radial_zoom": 1,
+                        "rotational_smear": 2,
+                        "directional_blur": 3,
+                        "reaction_diffusion": 4,
+                        "kaleidoscopic_fold": 5,
+                    }
+                    mode = mode_map.get(
+                        cfg.get("spiral_feedback_mode", "alpha_decay"), 0
+                    )
+                    self.trail_prog["u_feedback_mode"].value = mode
+                    self.trail_prog["u_zoom_speed"].value = float(
+                        cfg.get("feedback_zoom_speed", 0.01)
+                    )
+                    self.trail_prog["u_rotation_speed"].value = float(
+                        cfg.get("feedback_rotation_speed", 0.02)
+                    )
+                    self.trail_prog["u_flow_speed"].value = float(
+                        cfg.get("feedback_flow_speed", 0.01)
+                    )
+                    self.trail_prog["u_fold_sectors"].value = float(
+                        cfg.get("feedback_fold_sectors", 6.0)
+                    )
+                    self.trail_prog["u_time"].value = (
+                        float(pygame.time.get_ticks()) / 1000.0
+                    )
+                    self.trail_prog["u_resolution"].value = (
+                        float(self.W),
+                        float(self.H),
+                    )
                 self.trail_vao.render(moderngl.TRIANGLE_STRIP)
 
                 # Step 3: blit accumulated trail to main framebuffer

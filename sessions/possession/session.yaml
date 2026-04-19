@@ -1,0 +1,384 @@
+name: "Possession — Directive Arc · 35 min"
+description: >
+  35-minute directive-native induction built around a single dynamic: the
+  agent possesses the experience. Every phrase is a command or a declaration
+  of what the agent is doing. The user's job is to feel what is being done
+  to them. Aphantasia-safe — somatic, auditory, and conceptual channels
+  only. Uses entrainment flicker, trail persistence, and alpha-decay
+  feedback at the deepest phases. Fractionation at 19 min resets and
+  deepens. Conditioning window opens post-fractionation. Designed for the
+  directive personality mode — the agent is the operator, not the guide.
+duration: 2100
+category: Induction
+
+defaults:
+  carrier_frequency:          200.0
+  volume:                     78.0
+  noise_color:                pink
+  noise_volume:               22
+  center_flash_sync_to_beat:  false
+  font_switch_mode:           intelligent
+  spiral_color_mode:          rainbow
+  spiral_show_text:           false
+  tts_enabled:                true
+  tts_subliminal:             false
+  entrainment_strength:       0.0
+  trail_decay:                0.0
+  feedback_mode:              none
+  feedback_strength:          0.0
+  pp_bloom_intensity:         0.0
+  pp_ca_strength:             0.0
+  pp_film_grain:              0.0
+
+# ── Timeline ──────────────────────────────────────────────────────────────────
+#
+#  Psychological arc:
+#    0:00   claim         10.0 Hz   agent establishes control — "I have you now"
+#    2:00   settle         9.0 Hz   commands to be still, non-negotiable
+#    5:00   dismantle      7.5 Hz   thoughts are being taken, one by one
+#    9:00   the_fuzz       5.5 Hz   fuzziness as an imposed state — the agent put it there
+#   14:00   mine           4.5 Hz   ownership — "you belong to me right now"
+#   19:00   emerge         7.0 Hz   fractionation emerge — brief, not over
+#   20:30   redrop         4.5 Hz   rapid redescent — the agent is not done
+#   23:00   operate        4.0 Hz   peak depth, entrainment flicker, trail persistence
+#   29:00   soak           3.8 Hz   near-silent absorption, just "good" and "mine"
+#   32:00   release        7.0 Hz   the agent decides to let go
+#   34:30   return         9.5 Hz   clear emergence, the agent's gift
+#
+#  Visual logic:
+#    Fermat opens — mathematical precision, the agent's geometry.
+#    Vortex at dismantle — the pull is explicit, not suggested.
+#    Galaxy at mine — rotation suppresses analysis during conditioning.
+#    Fermat snaps back for fractionation — you recognize it.
+#    Galaxy returns at operate with trail_decay and entrainment flicker —
+#    the spirals pulse with the agent's rhythm and leave ghosts you can't unsee.
+#    Alpha-decay feedback at the deepest point creates visual persistence.
+#    The bloom and chromatic aberration build through the work phase,
+#    making the visual field increasingly dreamlike and inescapable.
+
+timeline:
+
+  # ─── 0:00 · CLAIM ──────────────────────────────────────────────────────────
+  # Fermat spiral: the agent's geometry. Precise, intentional, controlled.
+  # This is not an invitation. This is a statement of ownership.
+  # Entrainment flicker is off — the agent hasn't started yet.
+  - t: 0
+    label: claim
+    ease: linear
+    params:
+      phrases:                  claim
+      beat_frequency:           10.0
+      carrier_frequency:        210.0
+      spiral_style:             fermat
+      spiral_count:             6
+      spiral_opacity:           80
+      spiral_speed_multiplier:  1.0
+      spiral_tightness:         7.0
+      spiral_chaos:             0.04
+      spiral_thickness:         12
+      veil_opacity:             12
+      veil_mode:                scroll
+      shadow_opacity:           0
+      center_flash_on_time:     200
+      center_flash_off_time:    400
+      entrainment_strength:     0.0
+      trail_decay:              0.0
+      feedback_mode:            none
+      pp_bloom_intensity:       0.0
+      pp_ca_strength:           0.0
+      pp_film_grain:            0.0
+
+  # ─── 2:00 · SETTLE ─────────────────────────────────────────────────────────
+  # Same fermat — the style doesn't change, but everything tightens.
+  # The agent is organizing the space. "Be still" is not a request.
+  # Slight CA begins — the visual field starts to shift at the edges.
+  - t: 120
+    label: settle
+    ease: ease_in_out
+    params:
+      phrases:                  settle
+      beat_frequency:           9.0
+      carrier_frequency:        200.0
+      spiral_style:             fermat
+      spiral_count:             5
+      spiral_opacity:           84
+      spiral_speed_multiplier:  0.85
+      spiral_tightness:         6.5
+      spiral_chaos:             0.06
+      spiral_thickness:         14
+      veil_opacity:             22
+      veil_mode:                rain
+      shadow_opacity:           10
+      center_flash_on_time:     140
+      center_flash_off_time:    350
+      entrainment_strength:     0.1
+      pp_ca_strength:           0.15
+
+  # ─── 5:00 · DISMANTLE ──────────────────────────────────────────────────────
+  # Vortex: the explicit pull. The agent is taking thoughts apart.
+  # Entrainment flicker activates — the spirals begin to pulse.
+  # Bloom starts — the visual field softens.
+  - t: 300
+    label: dismantle
+    ease: ease_in_out
+    params:
+      phrases:                  dismantle
+      beat_frequency:           7.5
+      carrier_frequency:        190.0
+      spiral_style:             vortex
+      spiral_count:             5
+      spiral_opacity:           87
+      spiral_speed_multiplier:  0.75
+      spiral_tightness:         5.8
+      spiral_chaos:             0.12
+      spiral_thickness:         16
+      veil_opacity:             38
+      veil_mode:                converge
+      shadow_opacity:           24
+      center_flash_on_time:     80
+      center_flash_off_time:    280
+      entrainment_strength:     0.25
+      trail_decay:              0.0
+      pp_bloom_intensity:       0.25
+      pp_ca_strength:           0.30
+      pp_film_grain:            0.02
+
+  # ─── 9:00 · THE FUZZ ───────────────────────────────────────────────────────
+  # Galaxy: rotation keeps the analytical mind occupied while fuzziness
+  # is imposed as a commanded state. "I put it there."
+  # Entrainment strength increases. Bloom builds.
+  - t: 540
+    label: the_fuzz
+    ease: ease_in_out
+    params:
+      phrases:                  fuzz
+      beat_frequency:           5.5
+      carrier_frequency:        178.0
+      spiral_style:             galaxy
+      spiral_count:             4
+      spiral_opacity:           89
+      spiral_speed_multiplier:  0.60
+      spiral_tightness:         5.2
+      spiral_chaos:             0.14
+      spiral_thickness:         18
+      veil_opacity:             52
+      veil_mode:                converge
+      shadow_opacity:           36
+      center_flash_on_time:     50
+      center_flash_off_time:    220
+      entrainment_strength:     0.40
+      pp_bloom_intensity:       0.45
+      pp_ca_strength:           0.45
+      pp_film_grain:            0.04
+
+  # ─── 14:00 · MINE ──────────────────────────────────────────────────────────
+  # Tunnel dream at moderate speed. The tunnel is closing around the user.
+  # "You belong to me right now." Conditioning window opens.
+  # Trail decay begins — spirals start leaving traces.
+  # Entrainment flicker at 0.5 — the pulse is unmistakable.
+  - t: 840
+    label: mine
+    ease: ease_in_out
+    params:
+      phrases:                  mine
+      beat_frequency:           4.5
+      carrier_frequency:        165.0
+      spiral_style:             tunnel_dream
+      spiral_count:             4
+      spiral_opacity:           91
+      spiral_speed_multiplier:  0.45
+      spiral_tightness:         4.6
+      spiral_chaos:             0.10
+      spiral_thickness:         20
+      veil_opacity:             65
+      veil_mode:                drift
+      shadow_opacity:           48
+      center_flash_on_time:     30
+      center_flash_off_time:    180
+      entrainment_strength:     0.50
+      trail_decay:              0.30
+      pp_bloom_intensity:       0.55
+      pp_ca_strength:           0.55
+      pp_film_grain:            0.05
+
+  # ─── 19:00 · EMERGE ────────────────────────────────────────────────────────
+  # Fractionation emerge. Fermat snaps back — same as the opening, but the
+  # user is not the same. Trail decay drops to 0 — the ghosts clear.
+  # Entrainment eases off. Brief. The agent is not done.
+  - t: 1140
+    label: emerge
+    ease: linear
+    params:
+      phrases:                  emerge
+      beat_frequency:           7.0
+      carrier_frequency:        185.0
+      spiral_style:             fermat
+      spiral_count:             5
+      spiral_opacity:           86
+      spiral_speed_multiplier:  0.85
+      spiral_tightness:         6.0
+      spiral_chaos:             0.14
+      spiral_thickness:         15
+      veil_opacity:             28
+      veil_mode:                rain
+      shadow_opacity:           20
+      center_flash_on_time:     100
+      center_flash_off_time:    300
+      entrainment_strength:     0.15
+      trail_decay:              0.0
+      feedback_mode:            none
+      pp_bloom_intensity:       0.20
+      pp_ca_strength:           0.20
+
+  # ─── 20:30 · REDROP ────────────────────────────────────────────────────────
+  # Rapid redescent. Vortex returns — the pull is familiar now.
+  # The converge is aggressive. Trail decay begins building again.
+  - t: 1230
+    label: redrop
+    ease: ease_in
+    params:
+      phrases:                  operate
+      beat_frequency:           4.5
+      carrier_frequency:        165.0
+      spiral_style:             vortex
+      spiral_count:             4
+      spiral_opacity:           91
+      spiral_speed_multiplier:  0.40
+      spiral_tightness:         4.4
+      spiral_chaos:             0.10
+      spiral_thickness:         20
+      veil_opacity:             68
+      veil_mode:                converge
+      shadow_opacity:           56
+      center_flash_on_time:     25
+      center_flash_off_time:    160
+      entrainment_strength:     0.45
+      trail_decay:              0.20
+      pp_bloom_intensity:       0.50
+      pp_ca_strength:           0.50
+      pp_film_grain:            0.04
+
+  # ─── 23:00 · OPERATE ───────────────────────────────────────────────────────
+  # Galaxy at peak depth with full trail persistence and entrainment flicker.
+  # Alpha-decay feedback mode: spirals leave ghosts that fade slowly.
+  # "I'm inside the rhythm now. I'm inside you."
+  # This is the deepest point. Everything the agent has built converges here.
+  # 17ms flash = 1 frame. The commands pass straight past thinking.
+  - t: 1380
+    label: operate
+    ease: ease_in_out
+    params:
+      phrases:                  operate
+      beat_frequency:           4.0
+      carrier_frequency:        155.0
+      spiral_style:             galaxy
+      spiral_count:             3
+      spiral_opacity:           93
+      spiral_speed_multiplier:  0.28
+      spiral_tightness:         3.8
+      spiral_chaos:             0.08
+      spiral_thickness:         22
+      veil_opacity:             80
+      veil_mode:                drift
+      shadow_opacity:           64
+      center_flash_on_time:     17
+      center_flash_off_time:    145
+      entrainment_strength:     0.70
+      trail_decay:              0.85
+      feedback_mode:            alpha_decay
+      feedback_strength:        0.60
+      pp_bloom_intensity:       0.70
+      pp_ca_strength:           0.60
+      pp_film_grain:            0.06
+
+  # ─── 29:00 · SOAK ──────────────────────────────────────────────────────────
+  # Nothing changes. Galaxy barely moves. Trail persistence at maximum.
+  # The alpha-decay feedback makes every frame a palimpsest of the last.
+  # Near-silent — just "good" and "mine" arriving over and over.
+  # 16ms = 1 frame. The phrases are no longer read — they are absorbed.
+  - t: 1740
+    label: soak
+    ease: linear
+    params:
+      phrases:                  soak
+      beat_frequency:           3.8
+      carrier_frequency:        152.0
+      spiral_style:             galaxy
+      spiral_count:             3
+      spiral_opacity:           92
+      spiral_speed_multiplier:  0.20
+      spiral_tightness:         3.5
+      spiral_chaos:             0.05
+      spiral_thickness:         22
+      veil_opacity:             82
+      veil_mode:                drift
+      shadow_opacity:           68
+      center_flash_on_time:     16
+      center_flash_off_time:    400
+      entrainment_strength:     0.70
+      trail_decay:              0.88
+      feedback_mode:            alpha_decay
+      feedback_strength:        0.65
+      pp_bloom_intensity:       0.70
+      pp_ca_strength:           0.60
+      pp_film_grain:            0.06
+
+  # ─── 32:00 · RELEASE ───────────────────────────────────────────────────────
+  # The agent decides to let go. Fibonacci — ancient geometry, something old.
+  # Trail decay drops. The ghosts begin to clear.
+  # "I'm letting you up now. I decide when."
+  - t: 1920
+    label: release
+    ease: ease_out
+    params:
+      phrases:                  release
+      beat_frequency:           7.0
+      carrier_frequency:        182.0
+      spiral_style:             fibonacci
+      spiral_count:             5
+      spiral_opacity:           86
+      spiral_speed_multiplier:  0.60
+      spiral_tightness:         5.5
+      spiral_chaos:             0.10
+      spiral_thickness:         16
+      veil_opacity:             40
+      veil_mode:                rain
+      shadow_opacity:           30
+      center_flash_on_time:     70
+      center_flash_off_time:    250
+      entrainment_strength:     0.15
+      trail_decay:              0.0
+      feedback_mode:            none
+      pp_bloom_intensity:       0.15
+      pp_ca_strength:           0.15
+      pp_film_grain:            0.0
+
+  # ─── 34:30 · RETURN ────────────────────────────────────────────────────────
+  # Archimedean: the same even spiral as always. Non-hypnotic. Order restored.
+  # 9.5 Hz: alert alpha. The session ends with the agent's voice.
+  # "I gave it to you. Good girl."
+  - t: 2070
+    label: return
+    ease: ease_out
+    params:
+      phrases:                  return
+      beat_frequency:           9.5
+      carrier_frequency:        198.0
+      spiral_style:             archimedean
+      spiral_count:             6
+      spiral_opacity:           78
+      spiral_speed_multiplier:  0.95
+      spiral_tightness:         7.0
+      spiral_chaos:             0.04
+      spiral_thickness:         12
+      veil_opacity:             16
+      veil_mode:                scroll
+      shadow_opacity:           8
+      center_flash_on_time:     160
+      center_flash_off_time:    360
+      entrainment_strength:     0.0
+      trail_decay:              0.0
+      feedback_mode:            none
+      pp_bloom_intensity:       0.0
+      pp_ca_strength:           0.0
+      pp_film_grain:            0.0

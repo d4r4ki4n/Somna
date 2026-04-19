@@ -854,7 +854,7 @@ class Conductor:
         if "trail_decay" in params:
             params["trail_decay"] = min(params["trail_decay"], 0.80)
         if "entrainment_strength" in params:
-            params["entrainment_strength"] = min(params["entrainment_strength"], 0.50)
+            params["entrainment_strength"] = min(params["entrainment_strength"], 0.10)
 
         patch_live(params)
 
@@ -2175,14 +2175,14 @@ class Conductor:
                 params["pp_film_grain"] = round(0.01 + 0.05 * ts, 4)
                 # Chromatic aberration: 0.001 at shallow → 0.004 at deep
                 params["pp_ca_strength"] = round(0.001 + 0.003 * ts, 4)
-                # Entrainment flicker: 0.0 at shallow → 0.7 at deep
-                # (not 1.0 to avoid visual discomfort)
+                # Entrainment flicker: 0.0 at shallow → 0.10 at deep
+                # Above 0.10 is perceptually too aggressive for sustained use
                 if self.phase in (Phase.MAINTENANCE, Phase.DEEPENING):
-                    params["entrainment_strength"] = round(0.7 * ts, 3)
+                    params["entrainment_strength"] = round(0.10 * ts, 3)
                 elif self.phase == Phase.FRAC_REDROP:
                     # Ramp entrainment back up during re-drop
                     progress = min(phase_dur / 120, 1.0)
-                    params["entrainment_strength"] = round(0.7 * ts * progress, 3)
+                    params["entrainment_strength"] = round(0.10 * ts * progress, 3)
 
         return params
 

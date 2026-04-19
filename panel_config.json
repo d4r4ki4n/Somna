@@ -1743,8 +1743,8 @@
       "label": "Entrainment Flicker",
       "section": "Spirals",
       "modes": ["TRANCE"],
-      "tooltip": "Visual entrainment flicker depth. 0=free-running (no flicker), 1=fully phase-locked to beat frequency.",
-      "range": [0.0, 1.0]
+      "tooltip": "Visual entrainment flicker depth. 0=free-running (no flicker), 0.10=fully phase-locked to beat frequency.",
+      "range": [0.0, 0.10]
     },
     {
       "key": "feedback_mode",

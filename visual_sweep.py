@@ -128,9 +128,9 @@ def _sweep_styles():
 
 
 def _sweep_entrainment():
-    """Entrainment strength from 0 to 1 with galaxy style."""
+    """Entrainment strength from 0 to 0.20 with galaxy style."""
     tests = []
-    for v in [0.0, 0.15, 0.30, 0.50, 0.70, 0.85, 1.0]:
+    for v in [0.0, 0.03, 0.05, 0.08, 0.10, 0.15, 0.20]:
         tests.append(
             {
                 "label": f"entrain: {v}",
@@ -149,7 +149,7 @@ def _sweep_trails():
     """Trail decay + feedback modes."""
     tests = []
     for mode in FEEDBACK_MODES:
-        for decay in [0.0, 0.60, 0.85, 0.95]:
+        for decay in [0.0, 0.30, 0.55, 0.78]:
             strength = 0.5 if mode != "none" else 0.0
             tests.append(
                 {

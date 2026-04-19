@@ -7,7 +7,11 @@ vec4 style_sacred_geometry(vec2 p) {
     // Flower of Life: hexagonal grid of circle centers
     // Each circle has radius = grid spacing, so neighbors overlap
     float scale = 1.8 + u_tightness * 0.4;
-    vec2 sp = p * scale;
+
+    // Slow rotation for hypnotic spin
+    float rot = u_time * 0.15;
+    float cr = cos(rot), sr = sin(rot);
+    vec2 sp = vec2(p.x * cr - p.y * sr, p.x * sr + p.y * cr) * scale;
 
     // Hex grid basis vectors
     const vec2 e1 = vec2(1.0, 0.0);

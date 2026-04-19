@@ -2,11 +2,11 @@
 vec4 style_recursive_fractal(vec2 p) {
     float r = length(p);
 
-    // Animate c along the Mandelbrot boundary for continuously morphing fractals
+    // Trace c near the Mandelbrot antenna — always produces dense visible fractals
     float t = u_time * 0.06 * (0.5 + u_tightness * 0.1);
     vec2 c = vec2(
-        0.7885 * cos(t),
-        0.7885 * sin(t)
+        -0.8 + 0.15 * cos(t * 1.3),
+         0.156 + 0.12 * sin(t)
     );
 
     // Chaos perturbs c for extra variation
@@ -15,8 +15,8 @@ vec4 style_recursive_fractal(vec2 p) {
         u_chaos * 0.05 * cos(u_time * 0.4)
     );
 
-    // Julia iteration
-    vec2 z = p * (1.5 + u_thickness * 0.05);
+    // Julia iteration — scale p to zoom into the fractal
+    vec2 z = p * (2.0 + u_thickness * 0.04);
     float iter = 0.0;
     const int MAX_ITER = 48;
 

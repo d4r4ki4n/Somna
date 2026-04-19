@@ -84,6 +84,6 @@ vec4 style_liminal(vec2 p) {
         col = mix(col, txt.rgb * u_base_color * 1.5, txt.a * spiral * 0.75);
     }
 
-    float fade = smoothstep(3.0, 0.3, r) * smoothstep(0.0, 0.05, r);
+    float fade = 1.0 * smoothstep(0.0, 0.05, r);
     return vec4(col, g * u_opacity * fade) * entrainmentModulation();
 }

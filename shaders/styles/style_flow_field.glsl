@@ -41,7 +41,7 @@ vec4 style_flow_field(vec2 p) {
     float phase = fract(r * 0.3 + angle / TWO_PI + u_time * 0.08);
     vec3 col = arm_color(phase, g);
     float alpha = g * u_opacity;
-    alpha *= smoothstep(3.0, 0.3, r);
+    alpha *= 1.0;
 
     return vec4(col, alpha) * entrainmentModulation();
 }

@@ -38,7 +38,7 @@ vec4 style_bifurcate(vec2 p) {
     col += u_base_color * bifur_glow;
 
     float alpha = clamp(total + bifur_glow * 0.3, 0.0, 1.0) * u_opacity
-                * smoothstep(3.0, 0.3, r);
+                * 1.0;
 
     if (u_show_text == 1 && total > 0.22) {
         float arm_u = fract(phase / TWO_PI);

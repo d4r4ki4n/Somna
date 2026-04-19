@@ -27,6 +27,6 @@ vec4 style_fermat(vec2 p) {
     vec3 col = arm_color(fract(phase / TWO_PI) + u_time * 0.04, arm * breath());
     col += u_base_color * core_glow;
 
-    float alpha = (arm + core_glow * 0.4) * u_opacity * smoothstep(3.0, 0.3, r);
+    float alpha = (arm + core_glow * 0.4) * u_opacity * 1.0;
     return vec4(col, alpha) * entrainmentModulation();
 }

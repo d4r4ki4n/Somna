@@ -36,5 +36,5 @@ vec4 style_moire(vec2 p) {
     vec3 col_b = arm_color(r * 0.15 + u_time * 0.07, beat);
     vec3 col   = col1 + col2 * (1.0 - arm1) + col_b;
 
-    return vec4(col, g * u_opacity * smoothstep(3.0, 0.3, r)) * entrainmentModulation();
+    return vec4(col, g * u_opacity * 1.0) * entrainmentModulation();
 }

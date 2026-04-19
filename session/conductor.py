@@ -849,6 +849,11 @@ class Conductor:
         params["depth_estimate"] = depth_est
         params["depth_confidence"] = depth_conf
 
+        # Hard safety clamps — these prevent additive blowout regardless of
+        # agent hints, session YAML, or dynamic ramp calculations.
+        if "trail_decay" in params:
+            params["trail_decay"] = min(params["trail_decay"], 0.80)
+
         patch_live(params)
 
         # ── Step 7.5: Crossmodal Gain Engine (Bible Ch.3 §3.8) ────────────────────────

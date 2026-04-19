@@ -281,3 +281,30 @@ Across all spiral styles, speed has consistent experiential effects:
 | 1.5–3.0 | Fast. Exciting. Potentially arousing or disorienting. | Not recommended for trance use |
 
 **Rule**: speed should descend as the session descends, and rise as the session returns. This creates a coherent multi-sensory metaphor for depth.
+
+---
+
+## Trail Persistence and Feedback
+
+Trail persistence (`trail_decay`) adds visual afterimages behind the spiral arms, creating a temporal depth cue. Higher values make previous frames linger longer, producing ghostly echoes that enhance the sense of being pulled into the pattern.
+
+### Safety Limits
+
+**`trail_decay` must not exceed 0.80** in session YAML or agent adjustments. Values above 0.80 cause additive blowout — dense spiral centers (especially galaxy, vortex, tunnel_dream) accumulate into a white blob because the additive composite keeps stacking brightness each frame. The effect compounds with `feedback_strength` and spiral density. Start conservative at 0.50–0.65 and ramp based on depth signals.
+
+**`feedback_strength`** (0.0–1.0, default 1.0) modulates the effective trail decay. The formula is `effective_decay = trail_decay * (0.3 + 0.7 * strength)`. Use it as a ceiling to prevent blowout with dense spirals — 0.5–0.7 for high-density styles, 0.8–1.0 for sparse styles.
+
+### `entrainment_strength`
+
+Controls how strongly the spiral brightness modulates with the entrainment frequency. Perceptually, this is nearly binary: 0.15 is obvious pulsing, 0.3 is already turning fully on/off, and anything above 0.5 is indistinguishable from maximum. The useful range is 0.15–0.30 for "present but not overwhelming", 0.40–0.50 for "unmistakable pulse". Values above 0.5 add no perceptible difference.
+
+### Phase Guidance
+
+| Phase | trail_decay | entrainment_strength | Rationale |
+|-------|-------------|---------------------|-----------|
+| Orient | 0.0 | 0.0–0.1 | Clean visuals, minimal persistence |
+| Descent | 0.0–0.40 | 0.10–0.25 | Subtle flicker, trails begin |
+| Work window | 0.40–0.65 | 0.20–0.40 | Trails visible, pulse established |
+| Soak / deep | 0.50–0.70 | 0.30–0.50 | Maximum safe persistence, strong pulse |
+| Fractionation drop | 0.0 | 0.0 | Hard reset — trails clear instantly |
+| Return | 0.0 | 0.0 | Clean emergence, no ghosts |

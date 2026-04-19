@@ -794,7 +794,8 @@ _ADJUSTABLE_PARAMS = {
     "spiral_style": "str tunnel_dream|galaxy|archimedean|kaleidoscope|"
     "interference|electric|vortex|dna|fibonacci|rose|"
     "moire|spirograph|fermat|superformula|liminal|"
-    "resonant|nebula|bifurcate",
+    "resonant|nebula|bifurcate|cobwebs|strange_attractor|"
+    "flow_field|sacred_geometry|recursive_fractal",
     "spiral_speed_multiplier": "float 0.1–3.0",
     "spiral_chaos": "float 0.0–0.8",
     "spiral_opacity": "int 10–100",
@@ -834,6 +835,9 @@ _ADJUSTABLE_PARAMS = {
     "tts_reverb_room_ms": "int 20–500 — reverb tail length in ms. Default 80. Longer = larger perceived space.",
     "tts_delay_ms": "int 0–300 — echo delay in ms for TTS. 0=disabled. 80–120=active range. Creates dissociative echo reinforcing commands.",
     "tts_delay_feedback": "float 0.0–0.8 — echo feedback gain. 0=single echo. 0.5=2-3 echoes. Higher = more repetition.",
+    "entrainment_strength": "float 0.0–1.0 — visual entrainment flicker depth. 0.0=free-running (no flicker), 1.0=fully phase-locked to beat frequency. Default 0.0. Start at 0.3-0.5 during INDUCTION, ramp to 0.7-0.9 once entrainment is established (ASSR rising). Do not exceed 0.8 at beat frequencies above 12 Hz (visual discomfort risk).",
+    "feedback_mode": "str none|alpha_decay|radial_zoom|rotational_smear|directional_blur|reaction_diffusion|kaleidoscopic_fold — spiral persistence/feedback mode. none=default (no trails unless trail_decay set). alpha_decay=fade with trail_decay. radial_zoom=tunnel zoom persistence. rotational_smear=angular motion trails. directional_blur=horizontal streak. reaction_diffusion=organic pattern emergence. kaleidoscopic_fold=mirrored symmetry.",
+    "feedback_strength": "float 0.0–1.0 — intensity of feedback effect. 0.5=default, 1.0=maximum. Lower for subtle persistence, higher for strong visual echo.",
 }
 
 _SYSTEM_BASE = """You are an adaptive session operator for Somna, a hypnotic entrainment \

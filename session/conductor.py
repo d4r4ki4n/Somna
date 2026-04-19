@@ -115,6 +115,10 @@ CONDUCTOR_OWNED_PARAMS = frozenset(
         "sr_noise_level",
         "breath_mod",
         "breath_rate",
+        "pp_bloom_intensity",
+        "pp_film_grain",
+        "pp_ca_strength",
+        "entrainment_strength",
     }
 )
 
@@ -2143,6 +2147,35 @@ class Conductor:
 
         hw = self._hardware_params(self.phase, phase_dur)
         params.update(hw)
+
+        # ── EEG-reactive visual mapping (Reese spec §10) ───────────────────
+        # Map trance_score to post-processing parameters so visuals breathe
+        # with brain state. Only active during waking phases; sleep phases
+        # manage their own visual parameters separately.
+        if self.phase in (
+            Phase.DEEPENING,
+            Phase.MAINTENANCE,
+            Phase.FRAC_REDROP,
+            Phase.FRAC_EMERGE_HOLD,
+            Phase.INDUCTION,
+        ):
+            ts = m.get("trance_score")
+            if ts is not None:
+                ts = max(0.0, min(1.0, float(ts)))
+                # Bloom: 0.1 at shallow → 0.8 at deep
+                params["pp_bloom_intensity"] = round(0.1 + 0.7 * ts, 3)
+                # Film grain: 0.01 at shallow → 0.06 at deep
+                params["pp_film_grain"] = round(0.01 + 0.05 * ts, 4)
+                # Chromatic aberration: 0.001 at shallow → 0.004 at deep
+                params["pp_ca_strength"] = round(0.001 + 0.003 * ts, 4)
+                # Entrainment flicker: 0.0 at shallow → 0.7 at deep
+                # (not 1.0 to avoid visual discomfort)
+                if self.phase in (Phase.MAINTENANCE, Phase.DEEPENING):
+                    params["entrainment_strength"] = round(0.7 * ts, 3)
+                elif self.phase == Phase.FRAC_REDROP:
+                    # Ramp entrainment back up during re-drop
+                    progress = min(phase_dur / 120, 1.0)
+                    params["entrainment_strength"] = round(0.7 * ts * progress, 3)
 
         return params
 

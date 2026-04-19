@@ -47,5 +47,5 @@ vec4 style_resonant(vec2 p) {
         vec4 txt = sample_text(arm_u, arm_dist / max(width, 0.001));
         col = mix(col, txt.rgb * u_base_color * 2.0, txt.a * arm);
     }
-    return vec4(col, alpha);
+    return vec4(col, alpha) * entrainmentModulation();
 }

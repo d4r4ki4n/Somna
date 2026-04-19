@@ -36,5 +36,5 @@ vec4 style_cobwebs(vec2 p) {
     alpha *= smoothstep(2.0, 0.3, r);
     alpha *= smoothstep(0.02, 0.1, r);
 
-    return vec4(col, alpha);
+    return vec4(col, alpha) * entrainmentModulation();
 }

@@ -33,5 +33,5 @@ vec4 style_galaxy(vec2 p) {
         vec4 txt = sample_text(arm_u, arm_dist / max(width, 0.001));
         col = mix(col, txt.rgb * u_base_color * 1.5, txt.a * 0.7);
     }
-    return vec4(col, alpha);
+    return vec4(col, alpha) * entrainmentModulation();
 }

@@ -17,5 +17,5 @@ vec4 style_archimedean(vec2 p) {
         vec4 txt = sample_text(arm_u, arm_dist / max(width, 0.001));
         col = mix(col, txt.rgb * 1.8, txt.a * arm * 0.85);
     }
-    return vec4(col, arm * u_opacity * fade);
+    return vec4(col, arm * u_opacity * fade) * entrainmentModulation();
 }

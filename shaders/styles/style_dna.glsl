@@ -28,5 +28,5 @@ vec4 style_dna(vec2 p) {
         col = mix(col, txt.rgb * 1.6, txt.a * helix_a * 0.8);
     }
     float fade = smoothstep(2.0, 0.05, r) * smoothstep(0.0, 0.06, r);
-    return vec4(col, (helix_a + helix_b + rung) * u_opacity * fade);
+    return vec4(col, (helix_a + helix_b + rung) * u_opacity * fade) * entrainmentModulation();
 }

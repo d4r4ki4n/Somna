@@ -21,5 +21,5 @@ vec4 style_electric(vec2 p) {
     vec3 col = mix(u_base_color, vec3(0.8, 0.9, 1.0), arm)
              + vec3(0.9, 0.9, 1.0) * spark;
     col *= 1.0 + arm * 1.5 * breath();
-    return vec4(col, (arm + spark) * u_opacity * smoothstep(2.0, 0.04, r));
+    return vec4(col, (arm + spark) * u_opacity * smoothstep(2.0, 0.04, r)) * entrainmentModulation();
 }

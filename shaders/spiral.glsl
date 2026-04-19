@@ -11,6 +11,8 @@ uniform vec2  u_resolution;
 uniform int   u_style;
 uniform float u_thickness;    // arm width multiplier (control panel 4–24 → 0.3–1.7)
 uniform float u_beat_phase;   // 0.0–1.0, position in current beat cycle (for breathing)
+uniform float u_entrainment_phase;
+uniform float u_entrainment_strength;
 uniform float u_color_cycle;  // 0 = use base_color directly, 1 = full hue cycle
 // Doc 44 additions
 uniform int   u_golden_spiral;          // 0 = archimedean, 1 = golden (logarithmic)
@@ -49,6 +51,15 @@ float breath() {
     // Smooth pulse: rises quickly, falls slowly (like a heartbeat)
     float p = u_beat_phase;
     return 0.85 + 0.15 * (sin(p * TWO_PI - PI * 0.5) * 0.5 + 0.5);
+}
+
+float sinEnvelope(float phase) {
+    return 0.5 + 0.5 * cos(phase * TWO_PI);
+}
+
+float entrainmentModulation() {
+    float envelope = sinEnvelope(u_entrainment_phase);
+    return mix(1.0, envelope, u_entrainment_strength);
 }
 
 // Color with direct base_color respect + optional hue shift
@@ -216,7 +227,7 @@ vec4 style_tunnel(vec2 p) {
     float halo = smoothstep(0.54 * u_thickness, 0.0, abs(pattern - 0.5)) * 0.4;
     float g    = (core + halo * (1.0 - core)) * breath();
     vec3  col  = arm_color(depth * 0.1 + u_time * 0.05, g * (0.7 + 0.3 * rings));
-    return vec4(col, g * u_opacity * smoothstep(2.3, 0.2, r));
+    return vec4(col, g * u_opacity * smoothstep(2.3, 0.2, r)) * entrainmentModulation();
 }
 
 // ── Style 1 — GALAXY ARMS ────────────────────────────────────────────────────
@@ -254,7 +265,7 @@ vec4 style_galaxy(vec2 p) {
         vec4 txt = sample_text(arm_u, arm_dist / max(width, 0.001));
         col = mix(col, txt.rgb * u_base_color * 1.5, txt.a * 0.7);
     }
-    return vec4(col, alpha);
+    return vec4(col, alpha) * entrainmentModulation();
 }
 
 // ── Style 2 — ARCHIMEDEAN ────────────────────────────────────────────────────
@@ -276,7 +287,7 @@ vec4 style_archimedean(vec2 p) {
         vec4 txt = sample_text(arm_u, arm_dist / max(width, 0.001));
         col = mix(col, txt.rgb * 1.8, txt.a * arm * 0.85);
     }
-    return vec4(col, arm * u_opacity * fade);
+    return vec4(col, arm * u_opacity * fade) * entrainmentModulation();
 }
 
 // ── Style 3 — KALEIDOSCOPE ────────────────────────────────────────────────────
@@ -294,7 +305,7 @@ vec4 style_kaleidoscope(vec2 p) {
     float g = (smoothstep(0.0, 0.4, pattern)
              + smoothstep(0.5, 0.9, pattern) * 0.5) * breath();
     vec3 col = arm_color(r * 0.25 - u_time * 0.06 + folded, g);
-    return vec4(col, g * u_opacity * smoothstep(2.0, 0.1, r));
+    return vec4(col, g * u_opacity * smoothstep(2.0, 0.1, r)) * entrainmentModulation();
 }
 
 // ── Style 4 — INTERFERENCE ────────────────────────────────────────────────────
@@ -310,7 +321,7 @@ vec4 style_interference(vec2 p) {
     float g = (smoothstep(-0.1, 0.6, interference)
              + smoothstep(0.7, 1.0, abs(interference)) * 0.4) * breath();
     vec3 col = arm_color(interference * 0.5 + u_time * 0.05, g);
-    return vec4(col, g * u_opacity * smoothstep(1.7, 0.2, max(r1, r2)) * 0.85);
+    return vec4(col, g * u_opacity * smoothstep(1.7, 0.2, max(r1, r2)) * 0.85) * entrainmentModulation();
 }
 
 // ── Style 5 — ELECTRIC ───────────────────────────────────────────────────────
@@ -336,7 +347,7 @@ vec4 style_electric(vec2 p) {
     vec3 col = mix(u_base_color, vec3(0.8, 0.9, 1.0), arm)
              + vec3(0.9, 0.9, 1.0) * spark;
     col *= 1.0 + arm * 1.5 * breath();
-    return vec4(col, (arm + spark) * u_opacity * smoothstep(2.0, 0.04, r));
+    return vec4(col, (arm + spark) * u_opacity * smoothstep(2.0, 0.04, r)) * entrainmentModulation();
 }
 
 // ── Style 6 — VORTEX ─────────────────────────────────────────────────────────
@@ -372,7 +383,7 @@ vec4 style_vortex(vec2 p) {
     vec3 col = arm_color(r * 0.2 + u_time * 0.04,
                          g * (1.1 + 0.38 * sin(u_time * 1.4 + turb * TWO_PI)));
     col += u_base_color * core * 0.9;
-    return vec4(col, (g + core * 0.45) * u_opacity * smoothstep(2.35, 0.0, r));
+    return vec4(col, (g + core * 0.45) * u_opacity * smoothstep(2.35, 0.0, r)) * entrainmentModulation();
 }
 
 // ── Style 7 — DNA ─────────────────────────────────────────────────────────────
@@ -405,7 +416,7 @@ vec4 style_dna(vec2 p) {
         col = mix(col, txt.rgb * 1.6, txt.a * helix_a * 0.8);
     }
     float fade = smoothstep(2.0, 0.05, r) * smoothstep(0.0, 0.06, r);
-    return vec4(col, (helix_a + helix_b + rung) * u_opacity * fade);
+    return vec4(col, (helix_a + helix_b + rung) * u_opacity * fade) * entrainmentModulation();
 }
 
 // ── Style 8 — FIBONACCI (golden ratio logarithmic spiral) ─────────────────────
@@ -468,7 +479,7 @@ vec4 style_fibonacci(vec2 p) {
         col = mix(col, txt.rgb * warm * 2.0, txt.a * arm * 0.75);
     }
     float fade = smoothstep(2.1, 0.05, r) * smoothstep(0.0, 0.05, r);
-    return vec4(col, (arm + dot * 0.5) * u_opacity * fade);
+    return vec4(col, (arm + dot * 0.5) * u_opacity * fade) * entrainmentModulation();
 }
 
 // ── Style 9 — BLOOM (Polar Rose) ─────────────────────────────────────────────
@@ -512,7 +523,7 @@ vec4 style_rose(vec2 p) {
 
     // hue_acc is a weighted sum of all layer radii — seamless and always moving
     vec3 col = arm_color(fract(hue_acc * 0.28 + r * 0.14 - u_time * 0.05), g * breath());
-    return vec4(col, g * u_opacity * smoothstep(2.25, 0.03, r));
+    return vec4(col, g * u_opacity * smoothstep(2.25, 0.03, r)) * entrainmentModulation();
 }
 
 // ── Style 10 — MOIRÉ ─────────────────────────────────────────────────────────
@@ -555,7 +566,7 @@ vec4 style_moire(vec2 p) {
     vec3 col_b = arm_color(r * 0.15 + u_time * 0.07, beat);
     vec3 col   = col1 + col2 * (1.0 - arm1) + col_b;
 
-    return vec4(col, g * u_opacity * smoothstep(2.2, 0.1, r));
+    return vec4(col, g * u_opacity * smoothstep(2.2, 0.1, r)) * entrainmentModulation();
 }
 
 // ── Style 11 — SPIROGRAPH ────────────────────────────────────────────────────
@@ -594,7 +605,7 @@ vec4 style_spirograph(vec2 p) {
     g *= breath();
 
     vec3 col = arm_color(fract(r * 0.30 + u_time * 0.04), g);
-    return vec4(col, g * u_opacity * smoothstep(2.25, 0.02, r) * smoothstep(0.0, 0.04, r));
+    return vec4(col, g * u_opacity * smoothstep(2.25, 0.02, r) * smoothstep(0.0, 0.04, r)) * entrainmentModulation();
 }
 
 // ── Style 12 — FERMAT ────────────────────────────────────────────────────────
@@ -630,7 +641,7 @@ vec4 style_fermat(vec2 p) {
     col += u_base_color * core_glow;
 
     float alpha = (arm + core_glow * 0.4) * u_opacity * smoothstep(2.2, 0.02, r);
-    return vec4(col, alpha);
+    return vec4(col, alpha) * entrainmentModulation();
 }
 
 // ── Style 13 — SUPERFORMULA ──────────────────────────────────────────────────
@@ -684,7 +695,7 @@ vec4 style_superformula(vec2 p) {
     // r_sf varies with angle (seamless) — gives each lobe a hue offset
     vec3 col = arm_color(fract(r_sf * 0.6 + r * 0.20 - u_time * 0.05), g);
     // Softer outer fade — was eating ~44% alpha at the main body radius
-    return vec4(col, g * u_opacity * smoothstep(1.90, 0.70, r));
+    return vec4(col, g * u_opacity * smoothstep(1.90, 0.70, r)) * entrainmentModulation();
 }
 
 // ── Style 14 — LIMINAL ────────────────────────────────────────────────────────
@@ -781,7 +792,7 @@ vec4 style_liminal(vec2 p) {
     }
 
     float fade = smoothstep(2.2, 0.05, r) * smoothstep(0.0, 0.05, r);
-    return vec4(col, g * u_opacity * fade);
+    return vec4(col, g * u_opacity * fade) * entrainmentModulation();
 }
 
 // ── Curl-noise helper (used by style_nebula only) ────────────────────────────
@@ -849,7 +860,7 @@ vec4 style_resonant(vec2 p) {
         vec4 txt = sample_text(arm_u, arm_dist / max(width, 0.001));
         col = mix(col, txt.rgb * u_base_color * 2.0, txt.a * arm);
     }
-    return vec4(col, alpha);
+    return vec4(col, alpha) * entrainmentModulation();
 }
 
 // ── Style 16 — CURL-FLOW NEBULA SPIRAL ───────────────────────────────────────
@@ -902,7 +913,7 @@ vec4 style_nebula(vec2 p) {
         vec4 txt = sample_text(arm_u, arm_dist / max(width, 0.001));
         col = mix(col, txt.rgb * 2.2, txt.a * arm * 0.8);
     }
-    return vec4(col, alpha);
+    return vec4(col, alpha) * entrainmentModulation();
 }
 
 // ── Style 17 — BIFURCATING GOLDEN FRACTAL SPIRAL ─────────────────────────────
@@ -955,7 +966,7 @@ vec4 style_bifurcate(vec2 p) {
         vec4 txt = sample_text(arm_u, arm_dist / max(width, 0.001));
         col = mix(col, txt.rgb * u_base_color * 2.2, txt.a * total * 0.75);
     }
-    return vec4(col, alpha);
+    return vec4(col, alpha) * entrainmentModulation();
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────

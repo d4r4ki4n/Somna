@@ -13,5 +13,5 @@ vec4 style_kaleidoscope(vec2 p) {
     float g = (smoothstep(0.0, 0.4, pattern)
              + smoothstep(0.5, 0.9, pattern) * 0.5) * breath();
     vec3 col = arm_color(r * 0.25 - u_time * 0.06 + folded, g);
-    return vec4(col, g * u_opacity * smoothstep(2.0, 0.1, r));
+    return vec4(col, g * u_opacity * smoothstep(2.0, 0.1, r)) * entrainmentModulation();
 }

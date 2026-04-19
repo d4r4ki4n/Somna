@@ -11,6 +11,8 @@ uniform vec2  u_resolution;
 uniform int   u_style;
 uniform float u_thickness;
 uniform float u_beat_phase;
+uniform float u_entrainment_phase;
+uniform float u_entrainment_strength;
 uniform float u_color_cycle;
 uniform int   u_golden_spiral;
 uniform float u_fractal_edge_amplitude;
@@ -42,6 +44,15 @@ vec2 centred(vec2 fragUV) {
 float breath() {
     float p = u_beat_phase;
     return 0.85 + 0.15 * (sin(p * TWO_PI - PI * 0.5) * 0.5 + 0.5);
+}
+
+float sinEnvelope(float phase) {
+    return 0.5 + 0.5 * cos(phase * TWO_PI);
+}
+
+float entrainmentModulation() {
+    float envelope = sinEnvelope(u_entrainment_phase);
+    return mix(1.0, envelope, u_entrainment_strength);
 }
 
 vec3 arm_color(float hue_offset, float brightness) {

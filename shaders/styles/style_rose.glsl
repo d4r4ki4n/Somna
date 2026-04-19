@@ -35,5 +35,5 @@ vec4 style_rose(vec2 p) {
 
     // hue_acc is a weighted sum of all layer radii — seamless and always moving
     vec3 col = arm_color(fract(hue_acc * 0.28 + r * 0.14 - u_time * 0.05), g * breath());
-    return vec4(col, g * u_opacity * smoothstep(2.25, 0.03, r));
+    return vec4(col, g * u_opacity * smoothstep(2.25, 0.03, r)) * entrainmentModulation();
 }

@@ -30,5 +30,5 @@ vec4 style_recursive_fractal(vec2 p) {
     float alpha = intensity * u_opacity;
     alpha *= smoothstep(2.2, 0.2, r_outer);
 
-    return vec4(col, alpha);
+    return vec4(col, alpha) * entrainmentModulation();
 }

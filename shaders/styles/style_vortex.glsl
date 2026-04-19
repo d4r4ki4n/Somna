@@ -31,5 +31,5 @@ vec4 style_vortex(vec2 p) {
     vec3 col = arm_color(r * 0.2 + u_time * 0.04,
                          g * (1.1 + 0.38 * sin(u_time * 1.4 + turb * TWO_PI)));
     col += u_base_color * core * 0.9;
-    return vec4(col, (g + core * 0.45) * u_opacity * smoothstep(2.35, 0.0, r));
+    return vec4(col, (g + core * 0.45) * u_opacity * smoothstep(2.35, 0.0, r)) * entrainmentModulation();
 }

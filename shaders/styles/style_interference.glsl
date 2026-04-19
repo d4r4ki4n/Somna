@@ -11,5 +11,5 @@ vec4 style_interference(vec2 p) {
     float g = (smoothstep(-0.1, 0.6, interference)
              + smoothstep(0.7, 1.0, abs(interference)) * 0.4) * breath();
     vec3 col = arm_color(interference * 0.5 + u_time * 0.05, g);
-    return vec4(col, g * u_opacity * smoothstep(1.7, 0.2, max(r1, r2)) * 0.85);
+    return vec4(col, g * u_opacity * smoothstep(1.7, 0.2, max(r1, r2)) * 0.85) * entrainmentModulation();
 }

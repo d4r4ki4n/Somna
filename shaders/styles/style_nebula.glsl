@@ -45,5 +45,5 @@ vec4 style_nebula(vec2 p) {
         vec4 txt = sample_text(arm_u, arm_dist / max(width, 0.001));
         col = mix(col, txt.rgb * 2.2, txt.a * arm * 0.8);
     }
-    return vec4(col, alpha);
+    return vec4(col, alpha) * entrainmentModulation();
 }

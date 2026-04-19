@@ -26,5 +26,5 @@ vec4 style_flow_field(vec2 p) {
     float alpha = intensity * u_opacity;
     alpha *= smoothstep(2.0, 0.2, r);
 
-    return vec4(col, alpha);
+    return vec4(col, alpha) * entrainmentModulation();
 }

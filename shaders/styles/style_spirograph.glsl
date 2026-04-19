@@ -31,5 +31,5 @@ vec4 style_spirograph(vec2 p) {
     g *= breath();
 
     vec3 col = arm_color(fract(r * 0.30 + u_time * 0.04), g);
-    return vec4(col, g * u_opacity * smoothstep(2.25, 0.02, r) * smoothstep(0.0, 0.04, r));
+    return vec4(col, g * u_opacity * smoothstep(2.25, 0.02, r) * smoothstep(0.0, 0.04, r)) * entrainmentModulation();
 }

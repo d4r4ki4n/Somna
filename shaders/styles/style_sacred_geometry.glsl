@@ -40,5 +40,5 @@ vec4 style_sacred_geometry(vec2 p) {
     float alpha = g * u_opacity;
     alpha *= smoothstep(2.2, 0.2, r);
 
-    return vec4(col, alpha);
+    return vec4(col, alpha) * entrainmentModulation();
 }

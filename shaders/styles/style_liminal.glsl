@@ -85,5 +85,5 @@ vec4 style_liminal(vec2 p) {
     }
 
     float fade = smoothstep(2.2, 0.05, r) * smoothstep(0.0, 0.05, r);
-    return vec4(col, g * u_opacity * fade);
+    return vec4(col, g * u_opacity * fade) * entrainmentModulation();
 }

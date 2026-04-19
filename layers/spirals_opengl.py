@@ -462,6 +462,12 @@ class SpiralsLayer:
         self.program["u_style"].value = style_int
         self.program["u_thickness"].value = float(thick_norm)
         self.program["u_beat_phase"].value = float(self._beat_accum)
+        if "u_entrainment_phase" in self.program:
+            self.program["u_entrainment_phase"].value = float(self._beat_accum)
+        if "u_entrainment_strength" in self.program:
+            self.program["u_entrainment_strength"].value = float(
+                cfg.get("entrainment_strength", 0.0) or 0.0
+            )
         self.program["u_color_cycle"].value = float(color_cycle)
         self.program["u_show_text"].value = show_text
         self.program["u_text_tex"].value = 1

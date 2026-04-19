@@ -46,5 +46,5 @@ vec4 style_superformula(vec2 p) {
     // r_sf varies with angle (seamless) — gives each lobe a hue offset
     vec3 col = arm_color(fract(r_sf * 0.6 + r * 0.20 - u_time * 0.05), g);
     // Softer outer fade — was eating ~44% alpha at the main body radius
-    return vec4(col, g * u_opacity * smoothstep(1.90, 0.70, r));
+    return vec4(col, g * u_opacity * smoothstep(1.90, 0.70, r)) * entrainmentModulation();
 }

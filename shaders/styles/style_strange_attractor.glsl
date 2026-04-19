@@ -40,5 +40,5 @@ vec4 style_strange_attractor(vec2 p) {
     float alpha = intensity * u_opacity;
     alpha *= smoothstep(2.0, 0.3, r);
 
-    return vec4(col, alpha);
+    return vec4(col, alpha) * entrainmentModulation();
 }

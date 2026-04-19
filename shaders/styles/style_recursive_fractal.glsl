@@ -2,11 +2,11 @@
 vec4 style_recursive_fractal(vec2 p) {
     float r = length(p);
 
-    // Trace c near the Mandelbrot antenna — always produces dense visible fractals
+    // Trace c along the Mandelbrot main cardioid boundary — always connected, always dense
     float t = u_time * 0.06 * (0.5 + u_tightness * 0.1);
     vec2 c = vec2(
-        -0.8 + 0.15 * cos(t * 1.3),
-         0.156 + 0.12 * sin(t)
+        cos(t) * 0.5 - cos(2.0 * t) * 0.25,
+        sin(t) * 0.5 - sin(2.0 * t) * 0.25
     );
 
     // Chaos perturbs c for extra variation
@@ -15,8 +15,13 @@ vec4 style_recursive_fractal(vec2 p) {
         u_chaos * 0.05 * cos(u_time * 0.4)
     );
 
-    // Julia iteration — scale p to zoom into the fractal
-    vec2 z = p * (2.0 + u_thickness * 0.04);
+    // Slow view rotation for the natural spinning morph
+    float rot = u_time * 0.08;
+    float cr = cos(rot), sr = sin(rot);
+    vec2 rp = vec2(p.x * cr - p.y * sr, p.x * sr + p.y * cr);
+
+    // Julia iteration — zoomed out to fill the screen
+    vec2 z = rp * (1.3 + u_thickness * 0.02);
     float iter = 0.0;
     const int MAX_ITER = 48;
 

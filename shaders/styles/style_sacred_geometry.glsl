@@ -17,9 +17,9 @@ vec4 style_sacred_geometry(vec2 p) {
     const vec2 e1 = vec2(1.0, 0.0);
     const vec2 e2 = vec2(0.5, 0.8660254);  // 60 degrees
 
-    // Check nearest few cells for circle edges
-    for (int j = -2; j <= 2; j++) {
-        for (int i = -2; i <= 2; i++) {
+    // Check nearby cells for circle edges — expanded range to fill screen
+    for (int j = -4; j <= 4; j++) {
+        for (int i = -4; i <= 4; i++) {
             vec2 center = e1 * float(i) + e2 * float(j);
             float d = length(sp - center);
 

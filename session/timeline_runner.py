@@ -176,8 +176,8 @@ class Session:
         # Parse loops
         self.loops: List[Dict] = raw.get("loops", [])
 
-        # Parse affirmation tag groups
-        self.phrase_groups: Dict[str, List[str]] = self._parse_affirmations()
+        # Parse affirmation tag groups + sequential tags
+        self.phrase_groups, self._sequential_tags = self._parse_affirmations()
 
     def _parse_keyframes(self, raw_timeline: list) -> List[Dict]:
         # Reserved keys that are NOT session parameters
@@ -199,25 +199,32 @@ class Session:
             kfs.append(kf)
         return sorted(kfs, key=lambda k: k["t"])
 
-    def _parse_affirmations(self) -> Dict[str, List]:
+    def _parse_affirmations(self) -> tuple[Dict[str, List], set]:
         """
-        Returns a dict of tag_name → [pool_items].
+        Returns (groups, sequential_tags):
+          groups         — dict of tag_name → [pool_items]
+          sequential_tags — set of tag names that use :seq mode
+
         The special key None holds untagged phrases (active when phrases=null).
         All phrases are also accessible via the None key as a full fallback.
 
         Pool items are strings or lists of strings (sequential chains):
           word | word2       → two separate str entries (random variants)
           word >> word2 >> … → one list[str] entry (sequential chain)
+
+        Tag syntax:
+          # [tag_name]       → random mode (default)
+          # [tag_name:seq]   → sequential mode — phrases play in written order
         """
         groups: Dict[str, List] = {None: []}
+        sequential_tags: set = set()
         current_tag = None
 
         path = self.affirmations_file
         if not path.exists():
-            # Fall back to root-level affirmations.txt
             path = self.path.parent.parent / "affirmations.txt"
         if not path.exists():
-            return groups
+            return groups, sequential_tags
 
         with open(path, encoding="utf-8") as f:
             for line in f:
@@ -225,7 +232,12 @@ class Session:
                 if not line:
                     continue
                 if line.startswith("# [") and line.endswith("]"):
-                    current_tag = line[3:-1].strip().lower()
+                    raw_tag = line[3:-1].strip()
+                    if raw_tag.endswith(":seq"):
+                        current_tag = raw_tag[:-4].strip().lower()
+                        sequential_tags.add(current_tag)
+                    else:
+                        current_tag = raw_tag.lower()
                     if current_tag not in groups:
                         groups[current_tag] = []
                 elif line.startswith("#"):
@@ -240,10 +252,9 @@ class Session:
                     phrases = [p.strip() for p in line.split("|") if p.strip()]
                     if current_tag is not None:
                         groups[current_tag].extend(phrases)
-                    # Always add to the None pool so phrases=null shows everything
                     groups[None].extend(phrases)
 
-        return groups
+        return groups, sequential_tags
 
     def get_phrases(self, tag: Optional[str]) -> List[str]:
         """Return phrases for the given tag, falling back to full pool."""
@@ -318,7 +329,13 @@ class TimelineRunner(threading.Thread):
         # Flush stale phrase pool so TTS doesn't play the previous session's
         # affirmations during the brief window before the first timeline tick.
         try:
-            patch_live({"affirmations_pool": None, "phrases_active": None})
+            patch_live(
+                {
+                    "affirmations_pool": None,
+                    "phrases_active": None,
+                    "affirmations_mode": "random",
+                }
+            )
         except Exception:
             pass
         print(f"[Timeline] Loaded: {self._session.name}")
@@ -1022,6 +1039,8 @@ class TimelineRunner(threading.Thread):
                 if param == "phrases":
                     patch["phrases_active"] = value
                     patch["affirmations_pool"] = self._session.get_phrases(value)
+                    seq = value in self._session._sequential_tags if value else False
+                    patch["affirmations_mode"] = "sequential" if seq else "random"
                 else:
                     patch[param] = value
 

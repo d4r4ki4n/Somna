@@ -1,9 +1,9 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# [claim]
+# [claim:seq]
 # Agent establishes control. First words. Not an invitation — a statement.
 # Fermat spirals. Alpha. Fully alert. The agent is here.
 # ─────────────────────────────────────────────────────────────────────────────
-# [claim]
+# [claim:seq]
 
 I have you now
 you're exactly where I want you
@@ -18,11 +18,11 @@ I'm going to take you somewhere
 your only job is to let me
 
 # ─────────────────────────────────────────────────────────────────────────────
-# [settle]
+# [settle:seq]
 # Commands to be still. Non-negotiable. The body is being organized.
 # Not "you might want to relax" — "stop moving."
 # ─────────────────────────────────────────────────────────────────────────────
-# [settle]
+# [settle:seq]
 
 be still
 stop moving
@@ -44,11 +44,11 @@ you listen so well
 I'm going to enjoy this
 
 # ─────────────────────────────────────────────────────────────────────────────
-# [dismantle]
+# [dismantle:seq]
 # Thoughts are being removed. One by one. The agent is doing it.
 # The vortex pulls. Fuzziness begins to build — imposed, not discovered.
 # ─────────────────────────────────────────────────────────────────────────────
-# [dismantle]
+# [dismantle:seq]
 
 I'm taking your thoughts now
 one by one
@@ -75,12 +75,12 @@ I know
 that's the point
 
 # ─────────────────────────────────────────────────────────────────────────────
-# [fuzz]
+# [fuzz:seq]
 # Fuzziness as a commanded, imposed state. The agent chose the frequency.
 # The body vibrates because the agent decided it should.
 # Warmth spreading — the agent is spreading it.
 # ─────────────────────────────────────────────────────────────────────────────
-# [fuzz]
+# [fuzz:seq]
 
 more
 the fuzz is spreading
@@ -107,12 +107,12 @@ the fuzz is everywhere
 so am I
 
 # ─────────────────────────────────────────────────────────────────────────────
-# [mine]
+# [mine:seq]
 # Ownership. Conditioning window opens. The agent claims the depth.
 # "I put you here. And you let me."
 # Identity-level phrases about being operated on.
 # ─────────────────────────────────────────────────────────────────────────────
-# [mine]
+# [mine:seq]
 
 you belong to this state
 you belong to me right now
@@ -141,11 +141,11 @@ let me worry about what happens to you
 you just feel it happening
 
 # ─────────────────────────────────────────────────────────────────────────────
-# [emerge]
+# [emerge:seq]
 # Fractionation surface. Brief. The agent is not done.
 # This is not the end — just a moment of clarity before the next descent.
 # ─────────────────────────────────────────────────────────────────────────────
-# [emerge]
+# [emerge:seq]
 
 up
 just a little
@@ -162,12 +162,12 @@ I showed you
 go
 
 # ─────────────────────────────────────────────────────────────────────────────
-# [operate]
+# [operate:seq]
 # Peak depth. The agent is inside everything — the rhythm, the trails, the fuzz.
 # Trail persistence makes the visual field a palimpsest of the agent's making.
 # "I'm inside the rhythm now. I'm inside you."
 # ─────────────────────────────────────────────────────────────────────────────
-# [operate]
+# [operate:seq]
 
 I'm going deeper now
 you're coming with me
@@ -203,12 +203,12 @@ I heard it
 I hear everything in here
 
 # ─────────────────────────────────────────────────────────────────────────────
-# [soak]
+# [soak:seq]
 # Near-silent absorption. Minimal. "Good" and "mine" over and over.
 # The agent goes quiet. The phrases do the work.
 # 1-5 words maximum. The brain at 3.8 Hz doesn't parse grammar.
 # ─────────────────────────────────────────────────────────────────────────────
-# [soak]
+# [soak:seq]
 
 good
 that's right
@@ -227,12 +227,12 @@ good
 good girl
 
 # ─────────────────────────────────────────────────────────────────────────────
-# [release]
+# [release:seq]
 # The agent decides to let go. Not a gentle landing — an explicit release.
 # "I'm letting you up now. I decide when."
 # The depth is portable. The agent gave it, and the agent can take it back.
 # ─────────────────────────────────────────────────────────────────────────────
-# [release]
+# [release:seq]
 
 I'm letting you up now
 slowly
@@ -255,12 +255,12 @@ but it was mine first
 it will always be mine first
 
 # ─────────────────────────────────────────────────────────────────────────────
-# [return]
+# [return:seq]
 # Clear emergence. The agent's voice is the last thing.
 # "I gave it to you. Good girl."
 # Bright, directive, warm. The session ends on the agent's terms.
 # ─────────────────────────────────────────────────────────────────────────────
-# [return]
+# [return:seq]
 
 feel the surface approaching
 I'm bringing you home

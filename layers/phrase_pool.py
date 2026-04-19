@@ -44,9 +44,30 @@ _PoolItem = Union[str, List[str]]
 # Built-in shadow word fallback — used when affirmations.txt has no [shadows] section
 # and the active pool has no single-word items.
 _DEFAULT_SHADOW_WORDS: List[str] = [
-    "soft", "deep", "safe", "warm", "still", "open", "calm", "rest",
-    "free", "yours", "down", "ease", "sink", "hold", "release", "drift",
-    "quiet", "heavy", "slow", "melt", "gone", "empty", "fall", "true",
+    "soft",
+    "deep",
+    "safe",
+    "warm",
+    "still",
+    "open",
+    "calm",
+    "rest",
+    "free",
+    "yours",
+    "down",
+    "ease",
+    "sink",
+    "hold",
+    "release",
+    "drift",
+    "quiet",
+    "heavy",
+    "slow",
+    "melt",
+    "gone",
+    "empty",
+    "fall",
+    "true",
 ]
 
 
@@ -82,7 +103,7 @@ def _parse_file(path: Path) -> tuple[List[_PoolItem], List[str]]:
       # [pool_id.center]   → semantic selector sub-pool (skipped here)
     """
     phrases: List[_PoolItem] = []
-    shadow_words: List[str]  = []
+    shadow_words: List[str] = []
     in_shadows = False
 
     with open(path, encoding="utf-8") as f:
@@ -98,7 +119,7 @@ def _parse_file(path: Path) -> tuple[List[_PoolItem], List[str]]:
                     if "." in tag:
                         in_shadows = False
                         continue
-                    in_shadows = (tag == "shadows")
+                    in_shadows = tag == "shadows"
                 continue
             # Skip bare [tag] section headers (legacy format)
             if line.startswith("[") and line.endswith("]"):
@@ -182,32 +203,39 @@ class PhrasePool:
     def __init__(self, config: dict):
         self._pool: List[_PoolItem] = []
         self._shadow_words: List[str] = []
-        self._pool_id: object = None   # identity sentinel for change detection
+        self._pool_id: object = None  # identity sentinel for change detection
 
         # Chain sequential revelation state
         self._active_chain: Optional[List[str]] = None
         self._active_chain_pos: int = 0
 
+        # Sequential pool mode — phrases play in written order, loop on exhaust
+        self._seq_mode: bool = False
+        self._seq_cursor: int = 0
+
         self.update(config, force=True)
 
     def _reset_state(self) -> None:
-        self._active_chain     = None
+        self._active_chain = None
         self._active_chain_pos = 0
+        self._seq_cursor = 0
 
     def update(self, config: dict, force: bool = False) -> bool:
         """
         Sync pool from config. Returns True if the pool changed.
         Call every frame (cheap — only reloads on actual change).
         """
+        self._seq_mode = config.get("affirmations_mode") == "sequential"
+
         live_pool = config.get("affirmations_pool")
 
         if live_pool is not None:
             new_id = id(live_pool)
             if force or new_id != self._pool_id:
                 if force or live_pool != self._pool:
-                    self._pool        = list(live_pool)
-                    self._shadow_words = []   # live pool has no shadow section
-                    self._pool_id     = new_id
+                    self._pool = list(live_pool)
+                    self._shadow_words = []  # live pool has no shadow section
+                    self._pool_id = new_id
                     self._reset_state()
                     return True
                 self._pool_id = new_id
@@ -219,12 +247,11 @@ class PhrasePool:
             new_id = ("file", session_name, mtime)
             if force or new_id != self._pool_id:
                 phrases, shadow_words = (
-                    _parse_file(fpath) if fpath and fpath.exists()
-                    else (["..."], [])
+                    _parse_file(fpath) if fpath and fpath.exists() else (["..."], [])
                 )
-                self._pool        = phrases or ["..."]
+                self._pool = phrases or ["..."]
                 self._shadow_words = shadow_words
-                self._pool_id     = new_id
+                self._pool_id = new_id
                 self._reset_state()
                 return True
             return False
@@ -232,27 +259,38 @@ class PhrasePool:
     def pick(self) -> str:
         """Return a phrase from the pool.
 
-        If a chain is currently active, returns the next word in sequence
-        until the chain is exhausted, then resumes random selection.
-        This ensures >> chains play as consecutive flashes, not fragmented
-        random interleavings.
+        Sequential mode (_seq_mode=True): returns phrases in written order,
+        looping when the pool is exhausted. Cursor resets when the pool changes.
+
+        Random mode (default): if a chain (>> sequence) is active, returns the
+        next word in the chain. Otherwise picks randomly.
+
+        Chain revelation still works in sequential mode — chains expand in-place
+        so each chain element gets its own cursor position.
         """
         if not self._pool:
             return "..."
 
-        # If mid-chain, advance it
         if self._active_chain is not None:
             result = self._active_chain[self._active_chain_pos]
             self._active_chain_pos += 1
             if self._active_chain_pos >= len(self._active_chain):
-                self._active_chain     = None
+                self._active_chain = None
                 self._active_chain_pos = 0
             return result
 
+        if self._seq_mode:
+            item = self._pool[self._seq_cursor % len(self._pool)]
+            self._seq_cursor += 1
+            if isinstance(item, list):
+                self._active_chain = item
+                self._active_chain_pos = 1
+                return item[0]
+            return item
+
         item = random.choice(self._pool)
         if isinstance(item, list):
-            # Start chain — return first word, set up state for subsequent picks
-            self._active_chain     = item
+            self._active_chain = item
             self._active_chain_pos = 1
             return item[0]
         return item
@@ -270,8 +308,11 @@ class PhrasePool:
             return random.choice(self._shadow_words)
 
         # Extract single-word items from the active pool
-        words = [item for item in self._pool
-                 if isinstance(item, str) and " " not in item.strip()]
+        words = [
+            item
+            for item in self._pool
+            if isinstance(item, str) and " " not in item.strip()
+        ]
         if words:
             return random.choice(words)
 

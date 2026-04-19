@@ -510,7 +510,7 @@ Sessions live in `sessions/&lt;name&gt;/`:
 
 - `session.yaml` — timeline + defaults. See `SESSION_AUTHORING.md`.
 
-- `affirmations.txt` — phrase pool with optional `# [tag]` groups. Untagged phrases are always active. Tagged groups are activated by the timeline via the `phrases` key. **Live reload:** `layers/phrase_pool.py` uses the file's `mtime` as part of the pool identity key. Edits to `affirmations.txt` take effect within the next render frame with no session restart required.
+- `affirmations.txt` — phrase pool with optional `# [tag]` groups. Untagged phrases are always active. Tagged groups are activated by the timeline via the `phrases` key. **Live reload:** `layers/phrase_pool.py` uses the file's `mtime` as part of the pool identity key. Edits to `affirmations.txt` take effect within the next render frame with no session restart required. **Sequential mode:** `# [tag:seq]` makes phrases play in written order (looping on exhaust) instead of random selection. The timeline runner writes `affirmations_mode: "sequential"` to `live_control.json` when the active tag has `:seq`. Cursor resets on tag change.
 
 - `images/` — background images (PNG, JPG, GIF, WebP, WebM)
 

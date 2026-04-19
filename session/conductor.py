@@ -849,10 +849,12 @@ class Conductor:
         params["depth_estimate"] = depth_est
         params["depth_confidence"] = depth_conf
 
-        # Hard safety clamps — these prevent additive blowout regardless of
-        # agent hints, session YAML, or dynamic ramp calculations.
+        # Hard safety clamps — these prevent visual blowout and wasted range
+        # regardless of agent hints, session YAML, or dynamic ramp calculations.
         if "trail_decay" in params:
             params["trail_decay"] = min(params["trail_decay"], 0.80)
+        if "entrainment_strength" in params:
+            params["entrainment_strength"] = min(params["entrainment_strength"], 0.50)
 
         patch_live(params)
 

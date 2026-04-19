@@ -11,7 +11,7 @@ vec4 style_archimedean(vec2 p) {
     float angle = atan(p.y, p.x);
     float pulse = 0.75 + 0.25 * sin(r * 3.0 - u_time * 1.5);
     vec3  col   = arm_color(r * 0.3 + u_time * 0.07, arm * pulse * breath());
-    float fade  = smoothstep(2.0, 0.05, r) * smoothstep(0.0, 0.06, r);
+    float fade  = smoothstep(3.0, 0.3, r) * smoothstep(0.0, 0.06, r);
     // Text overlay on arms
     if (u_show_text == 1 && arm > 0.15) {
         vec4 txt = sample_text(arm_u, arm_dist / max(width, 0.001));

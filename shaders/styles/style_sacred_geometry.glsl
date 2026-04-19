@@ -46,7 +46,7 @@ vec4 style_sacred_geometry(vec2 p) {
     // Color: radial + time-based, no angle component to avoid seam
     vec3 col = arm_color(fract(r * 0.2 - u_time * 0.04 + g * 0.3), g);
     float alpha = g * u_opacity;
-    alpha *= smoothstep(2.2, 0.1, r);
+    alpha *= smoothstep(3.0, 0.3, r);
 
     return vec4(col, alpha) * entrainmentModulation();
 }

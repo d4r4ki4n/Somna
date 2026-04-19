@@ -57,7 +57,7 @@ vec4 style_recursive_fractal(vec2 p) {
 
     vec3 col = arm_color(fract(normalized * 2.0 + u_time * 0.03), g);
     float alpha = clamp(g, 0.0, 1.5) * u_opacity;
-    alpha *= smoothstep(2.2, 0.05, r);
+    alpha *= smoothstep(3.0, 0.3, r);
 
     return vec4(col, alpha) * entrainmentModulation();
 }

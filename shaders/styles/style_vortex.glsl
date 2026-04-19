@@ -22,7 +22,7 @@ vec4 style_vortex(vec2 p) {
     // u_thickness widens the bright tendrils (higher = fatter arms)
     float edge = max(0.02, 0.38 / u_thickness);
     float g    = smoothstep(edge * 0.4, edge * 2.2, turb) * breath()
-               * smoothstep(2.25, 0.04, r);
+               * smoothstep(3.0, 0.3, r);
 
     // Singularity core
     float core = exp(-r * r * 3.8) * 1.3;
@@ -31,5 +31,5 @@ vec4 style_vortex(vec2 p) {
     vec3 col = arm_color(r * 0.2 + u_time * 0.04,
                          g * (1.1 + 0.38 * sin(u_time * 1.4 + turb * TWO_PI)));
     col += u_base_color * core * 0.9;
-    return vec4(col, (g + core * 0.45) * u_opacity * smoothstep(2.35, 0.0, r)) * entrainmentModulation();
+    return vec4(col, (g + core * 0.45) * u_opacity * smoothstep(3.0, 0.3, r)) * entrainmentModulation();
 }

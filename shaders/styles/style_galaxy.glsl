@@ -27,7 +27,7 @@ vec4 style_galaxy(vec2 p) {
                          (arm + haze) * breath());
     col += vec3(0.9, 0.95, 1.0) * core_glow * u_base_color;
     float alpha = min(1.0, arm + haze + core_glow * 0.5) * u_opacity
-                * smoothstep(2.1, 0.1, r);
+                * smoothstep(3.0, 0.3, r);
     // Text overlay
     if (u_show_text == 1 && arm > 0.2) {
         vec4 txt = sample_text(arm_u, arm_dist / max(width, 0.001));

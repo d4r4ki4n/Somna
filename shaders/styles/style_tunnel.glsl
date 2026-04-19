@@ -14,5 +14,5 @@ vec4 style_tunnel(vec2 p) {
     float halo = smoothstep(0.54 * u_thickness, 0.0, abs(pattern - 0.5)) * 0.4;
     float g    = (core + halo * (1.0 - core)) * breath();
     vec3  col  = arm_color(depth * 0.1 + u_time * 0.05, g * (0.7 + 0.3 * rings));
-    return vec4(col, g * u_opacity * smoothstep(2.3, 0.2, r)) * entrainmentModulation();
+    return vec4(col, g * u_opacity * smoothstep(3.0, 0.3, r)) * entrainmentModulation();
 }

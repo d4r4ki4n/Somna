@@ -36,7 +36,7 @@ vec4 style_cobwebs(vec2 p) {
 
     vec3 col = arm_color(angle / TWO_PI + r * 0.15 - u_time * 0.03, g);
     float alpha = g * u_opacity;
-    alpha *= smoothstep(2.2, 0.1, r);
+    alpha *= smoothstep(3.0, 0.3, r);
 
     return vec4(col, alpha) * entrainmentModulation();
 }

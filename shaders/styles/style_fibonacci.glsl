@@ -55,6 +55,6 @@ vec4 style_fibonacci(vec2 p) {
         vec4 txt = sample_text(arm_u, arm_dist / max(width, 0.001));
         col = mix(col, txt.rgb * warm * 2.0, txt.a * arm * 0.75);
     }
-    float fade = smoothstep(2.1, 0.05, r) * smoothstep(0.0, 0.05, r);
+    float fade = smoothstep(3.0, 0.3, r) * smoothstep(0.0, 0.05, r);
     return vec4(col, (arm + dot * 0.5) * u_opacity * fade) * entrainmentModulation();
 }

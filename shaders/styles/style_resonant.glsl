@@ -40,7 +40,7 @@ vec4 style_resonant(vec2 p) {
     col += u_base_color * flare * 1.8;
 
     float alpha = clamp(arm + flare * 0.5, 0.0, 1.0) * u_opacity
-                * smoothstep(2.3, 0.06, r) * smoothstep(0.0, 0.06, r);
+                * smoothstep(3.0, 0.3, r) * smoothstep(0.0, 0.06, r);
 
     if (u_show_text == 1 && arm > 0.22) {
         float arm_u = fract(phase / TWO_PI);

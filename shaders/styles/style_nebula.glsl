@@ -38,7 +38,7 @@ vec4 style_nebula(vec2 p) {
     vec3  col = arm_color(hue_flow + t * 0.04, total * breath() * 1.1);
     col += u_base_color * exp(-r * r * 5.5) * 1.8;
 
-    float alpha = clamp(total, 0.0, 1.0) * u_opacity * smoothstep(2.25, 0.05, r);
+    float alpha = clamp(total, 0.0, 1.0) * u_opacity * smoothstep(3.0, 0.3, r);
 
     if (u_show_text == 1 && arm > 0.18) {
         float arm_u = fract(phase / TWO_PI);

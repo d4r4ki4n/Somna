@@ -73,7 +73,7 @@ void main() {
 }
 """
 
-# Trail persistence composite: max(current, previous * decay)
+# Trail persistence composite: additive blend with decay
 _TRAIL_FRAG = """
 #version 330 core
 in  vec2 uv;
@@ -84,7 +84,13 @@ uniform float     u_trail_decay;
 void main() {
     vec4 curr = texture(u_current,  uv);
     vec4 prev = texture(u_previous, uv);
-    fragColor = max(curr, prev * u_trail_decay);
+    vec4 trailed = prev * u_trail_decay;
+    fragColor = vec4(
+        min(curr.r + trailed.r, 1.0),
+        min(curr.g + trailed.g, 1.0),
+        min(curr.b + trailed.b, 1.0),
+        min(curr.a + trailed.a, 1.0)
+    );
 }
 """
 
@@ -890,9 +896,7 @@ class VisualDisplay:
                         "reaction_diffusion": 4,
                         "kaleidoscopic_fold": 5,
                     }
-                    mode = mode_map.get(
-                        cfg.get("spiral_feedback_mode", "alpha_decay"), 0
-                    )
+                    mode = mode_map.get(cfg.get("feedback_mode", "alpha_decay"), 0)
                     self.trail_prog["u_feedback_mode"].value = mode
                     self.trail_prog["u_zoom_speed"].value = float(
                         cfg.get("feedback_zoom_speed", 0.01)

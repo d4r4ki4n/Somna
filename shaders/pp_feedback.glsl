@@ -112,6 +112,13 @@ void main() {
         prev = texture(u_previous, uv);
     }
 
-    // Composite: blend current frame with feedback
-    fragColor = max(curr, prev * u_trail_decay);
+    // Composite: additive blend with decay — previous frames accumulate and fade
+    vec4 trailed = prev * u_trail_decay;
+    // Additive: previous frames build up as glowing trails behind current
+    fragColor = vec4(
+        min(curr.r + trailed.r, 1.0),
+        min(curr.g + trailed.g, 1.0),
+        min(curr.b + trailed.b, 1.0),
+        min(curr.a + trailed.a, 1.0)
+    );
 }

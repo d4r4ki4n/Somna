@@ -419,7 +419,7 @@ When the user moves a slider, the touched param is added to `timeline_locked_par
 
 - `noise_volume` — float 0–100; default 30. Written by user slider; agent may also write it. Setting to 0 is the "off" state — no separate enable flag exists.
 
-- `trail_decay` — float 0.0–0.99; default 0.0. Trail persistence for spiral layer. 0=no trails; 0.85–0.98=active range. Agent modulates this as a trance depth cue (longer trails = deeper). Snap to 0 during fractionation drop.
+- `trail_decay` — float 0.0–0.99; default 0.0. Trail persistence for spiral layer. 0=no trails; 0.85–0.98=active range. Agent modulates this as a trance depth cue (longer trails = deeper). Snap to 0 during fractionation drop. **Safety cap: do not exceed 0.80 in session YAML or agent adjustments.** Values above 0.80 cause additive blowout — dense spiral centers (especially galaxy, vortex) accumulate into a white blob. The effect compounds with `feedback_strength`; when both are high, even 0.70 can blow out busy styles. Start conservative at 0.50–0.65 and let the Conductor ramp based on depth signals.
 
 - `sr_noise_level` — float 0.0–2.0; default 0.0. Stochastic resonance noise amplitude for subliminal text alpha in overlay. 0=off; active sweet spot ~0.5–1.5 (individual-specific). Start conservative at 0.3–0.5. Too high degrades detection.
 
@@ -1115,7 +1115,7 @@ The spiral renderer uses a modular shader system. The monolith `spiral.glsl` is 
 - `directional_blur` — horizontal streak persistence
 - `reaction_diffusion` — organic pattern evolution
 - `kaleidoscopic_fold` — mirrored symmetry persistence
-Live key: `feedback_mode` (str, one of the above or `none`). Live key: `feedback_strength` (float 0.0–1.0).
+Live key: `feedback_mode` (str, one of the above or `none`). Live key: `feedback_strength` (float 0.0–1.0) — modulates effective trail decay; at 1.0 the full `trail_decay` value applies, at 0.0 the effective decay is reduced to 30%. Default 1.0. Works as a user/agent ceiling to prevent blowout — set to 0.5–0.7 for high-density spirals. The shader formula is `effective_decay = trail_decay * (0.3 + 0.7 * strength)`.
 
 **Phase 4 — Five new styles** (23 total, indices 18–22):
 - `cobwebs` (18) — irregular radial threads with structural variation

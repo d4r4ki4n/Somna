@@ -37,6 +37,18 @@ void main() {
 }
 """
 
+# PP vertex shader — straight UV mapping (no Y-flip).
+# copy_framebuffer preserves GL orientation, so PP passes must not flip.
+_PP_VERT = """
+#version 330 core
+in  vec2 in_vert;
+out vec2 uv;
+void main() {
+    gl_Position = vec4(in_vert, 0.0, 1.0);
+    uv = vec2(in_vert.x * 0.5 + 0.5, in_vert.y * 0.5 + 0.5);
+}
+"""
+
 # Overlay blit with optional stochastic resonance noise on text alpha.
 # sr_noise_level = 0 → identical to plain blit_prog (no perf difference).
 _OVERLAY_SR_FRAG = """
@@ -471,7 +483,7 @@ class VisualDisplay:
         def _load_pp(name: str):
             try:
                 src = (_shaders / name).read_text(encoding="utf-8")
-                prog = self.ctx.program(vertex_shader=_BLIT_VERT, fragment_shader=src)
+                prog = self.ctx.program(vertex_shader=_PP_VERT, fragment_shader=src)
                 vao = self.ctx.vertex_array(prog, [(vbo, "2f", "in_vert")])
                 return prog, vao
             except Exception as _e:
@@ -624,7 +636,7 @@ class VisualDisplay:
         vignette_int = float(cfg.get("pp_vignette_intensity", 0.0) or 0.0)
         iaf_amp = float(cfg.get("pp_iaf_mod_amplitude", 0.0) or 0.0)
         film_grain = float(cfg.get("pp_film_grain", 0.0) or 0.0)
-        tonemap = int(cfg.get("pp_tonemap", 1))
+        tonemap = int(cfg.get("pp_tonemap", 0))
 
         # Check if any PP effect is active
         if (
@@ -704,7 +716,7 @@ class VisualDisplay:
             # Phase 2 — ACES tonemapping + film grain
             if "u_tonemap" in self._pp_composite_prog:
                 self._pp_composite_prog["u_tonemap"].value = int(
-                    cfg.get("pp_tonemap", 1)
+                    cfg.get("pp_tonemap", 0)
                 )
             if "u_film_grain" in self._pp_composite_prog:
                 self._pp_composite_prog["u_film_grain"].value = float(

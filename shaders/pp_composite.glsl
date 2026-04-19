@@ -54,5 +54,6 @@ void main() {
         combined += (grain - 0.5) * u_film_grain;
     }
 
-    frag_color = vec4(max(combined, vec3(0.0)), 1.0);
+    float scene_a = texture(u_scene, uv).a;
+    frag_color = vec4(max(combined, vec3(0.0)), scene_a);
 }

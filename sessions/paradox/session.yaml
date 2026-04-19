@@ -156,7 +156,7 @@ timeline:
       phrases:                  paradox
       beat_frequency:           8.0
       carrier_frequency:        190.0
-      spiral_style:             fibonacci
+      spiral_style:             fermat
       spiral_count:             3
       spiral_opacity:           90
       spiral_speed_multiplier:  0.3
@@ -211,7 +211,7 @@ timeline:
       phrases:                  stillness
       beat_frequency:           3.8
       carrier_frequency:        155.0
-      spiral_style:             fibonacci
+      spiral_style:             fermat
       spiral_count:             2
       spiral_opacity:           88
       spiral_speed_multiplier:  0.12
@@ -238,7 +238,7 @@ timeline:
       phrases:                  stillness
       beat_frequency:           3.8
       carrier_frequency:        155.0
-      spiral_style:             fibonacci
+      spiral_style:             fermat
       spiral_count:             2
       spiral_opacity:           90
       spiral_speed_multiplier:  0.10
@@ -266,7 +266,7 @@ timeline:
       phrases:                  lock
       beat_frequency:           7.5
       carrier_frequency:        200.0
-      spiral_style:             fibonacci
+      spiral_style:             fermat
       spiral_count:             2
       spiral_opacity:           92
       spiral_speed_multiplier:  0.10
@@ -293,7 +293,7 @@ timeline:
       phrases:                  lock
       beat_frequency:           3.5
       carrier_frequency:        152.0
-      spiral_style:             fibonacci
+      spiral_style:             fermat
       spiral_count:             2
       spiral_opacity:           93
       spiral_speed_multiplier:  0.08

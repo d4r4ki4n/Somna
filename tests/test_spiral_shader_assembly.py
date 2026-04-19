@@ -37,19 +37,15 @@ STYLE_NAMES = [
     "archimedean",
     "kaleidoscope",
     "interference",
-    "electric",
     "vortex",
     "dna",
-    "fibonacci",
     "rose",
     "moire",
     "spirograph",
     "fermat",
     "superformula",
     "liminal",
-    "resonant",
     "nebula",
-    "bifurcate",
     "cobwebs",
     "strange_attractor",
     "flow_field",
@@ -60,7 +56,30 @@ STYLE_NAMES = [
     "neuro_vortex",
 ]
 
-STYLE_IDS = list(range(26))
+STYLE_IDS = [
+    0,
+    1,
+    2,
+    3,
+    4,
+    6,
+    7,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    16,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+]
 
 TEST_W, TEST_H = 320, 240
 
@@ -148,11 +167,10 @@ class TestShaderAssembly(unittest.TestCase):
             self.assertIn(name, prog, f"Missing uniform: {name}")
 
     def test_all_styles_render(self):
-        """All 26 styles must compile and render non-black output."""
+        """All styles must compile and render non-black output."""
         assembled_src = _assemble_shader()
         prog = self.ctx.program(vertex_shader=VERT, fragment_shader=assembled_src)
-        for idx in STYLE_IDS:
-            name = STYLE_NAMES[idx]
+        for name, idx in zip(STYLE_NAMES, STYLE_IDS):
             with self.subTest(style=name, idx=idx):
                 img = self._render(prog, idx)
                 self.assertEqual(img.shape, (TEST_H, TEST_W, 4))

@@ -792,9 +792,9 @@ _ADJUSTABLE_PARAMS = {
     "veil_opacity": "float 0–100",
     "veil_mode": "str scroll|rain|drift|converge|strobe|tunnel|null",
     "spiral_style": "str tunnel_dream|galaxy|archimedean|kaleidoscope|"
-    "interference|electric|vortex|dna|fibonacci|rose|"
+    "interference|vortex|dna|rose|"
     "moire|spirograph|fermat|superformula|liminal|"
-    "resonant|nebula|bifurcate|cobwebs|strange_attractor|"
+    "nebula|cobwebs|strange_attractor|"
     "flow_field|sacred_geometry|recursive_fractal|"
     "potter_tunnel|fractal_scale|neuro_vortex",
     "spiral_speed_multiplier": "float 0.1–3.0",

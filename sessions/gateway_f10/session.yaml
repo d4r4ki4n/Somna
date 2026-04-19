@@ -165,7 +165,7 @@ timeline:
       phrases: focus10
       beat_frequency: 4.5
       carrier_frequency: 168.0
-      spiral_style: fibonacci
+      spiral_style: fermat
       spiral_count: 4
       spiral_opacity: 92
       spiral_speed_multiplier: 0.32

@@ -334,7 +334,7 @@ timeline:
       phrases:                  release
       beat_frequency:           7.0
       carrier_frequency:        182.0
-      spiral_style:             fibonacci
+      spiral_style:             fermat
       spiral_count:             5
       spiral_opacity:           86
       spiral_speed_multiplier:  0.60

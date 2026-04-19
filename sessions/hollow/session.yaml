@@ -132,7 +132,7 @@ timeline:
       phrases:                  the_split
       beat_frequency:           6.0
       carrier_frequency:        178.0
-      spiral_style:             fibonacci
+      spiral_style:             fermat
       spiral_count:             4
       spiral_opacity:           89
       spiral_speed_multiplier:  0.60
@@ -181,7 +181,7 @@ timeline:
       phrases:                  hollow
       beat_frequency:           4.5
       carrier_frequency:        162.0
-      spiral_style:             fibonacci
+      spiral_style:             fermat
       spiral_count:             3
       spiral_opacity:           93
       spiral_speed_multiplier:  0.32
@@ -205,7 +205,7 @@ timeline:
       phrases:                  hollow
       beat_frequency:           4.0
       carrier_frequency:        155.0
-      spiral_style:             fibonacci
+      spiral_style:             fermat
       spiral_count:             3
       spiral_opacity:           94
       spiral_speed_multiplier:  0.28
@@ -254,7 +254,7 @@ timeline:
       phrases:                  hollow
       beat_frequency:           4.5
       carrier_frequency:        162.0
-      spiral_style:             fibonacci
+      spiral_style:             fermat
       spiral_count:             3
       spiral_opacity:           93
       spiral_speed_multiplier:  0.35

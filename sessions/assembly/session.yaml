@@ -222,7 +222,7 @@ timeline:
       phrases:                  the_name
       beat_frequency:           4.5
       carrier_frequency:        168.0
-      spiral_style:             fibonacci
+      spiral_style:             fermat
       spiral_count:             4
       spiral_opacity:           80
       spiral_speed_multiplier:  0.45
@@ -252,7 +252,7 @@ timeline:
       phrases:                  integration
       beat_frequency:           4.0
       carrier_frequency:        162.0
-      spiral_style:             fibonacci
+      spiral_style:             fermat
       spiral_count:             3
       spiral_opacity:           85
       spiral_speed_multiplier:  0.25
@@ -279,7 +279,7 @@ timeline:
       phrases:                  integration
       beat_frequency:           4.0
       carrier_frequency:        162.0
-      spiral_style:             fibonacci
+      spiral_style:             fermat
       spiral_count:             3
       spiral_opacity:           86
       spiral_speed_multiplier:  0.22

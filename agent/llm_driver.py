@@ -39,9 +39,9 @@ PARAMS = {
     "volume": "float  0–100       — mixer volume percentage",
     # ── Spirals ───────────────────────────────────────────────────────────────
     "spiral_style": "str    one of: tunnel_dream | galaxy | archimedean | "
-    "kaleidoscope | interference | electric | vortex | dna | "
-    "fibonacci | rose | moire | spirograph | fermat | superformula | "
-    "liminal | resonant | nebula | bifurcate | cobwebs | strange_attractor | "
+    "kaleidoscope | interference | vortex | dna | "
+    "rose | moire | spirograph | fermat | superformula | "
+    "liminal | nebula | cobwebs | strange_attractor | "
     "flow_field | sacred_geometry | recursive_fractal | "
     "potter_tunnel | fractal_scale | neuro_vortex",
     "spiral_count": "int    1–8         — number of arms/petals",

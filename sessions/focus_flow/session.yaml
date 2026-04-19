@@ -22,7 +22,7 @@ timeline:
     ease: linear
     beat_frequency: 14.0
     carrier_frequency: 220.0
-    spiral_style: electric
+    spiral_style: interference
     spiral_speed_multiplier: 2.0
     spiral_tightness: 6.0
     spiral_thickness: 10

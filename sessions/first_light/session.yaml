@@ -126,7 +126,7 @@ timeline:
       phrases:                  the_change
       beat_frequency:           7.5
       carrier_frequency:        186.0
-      spiral_style:             fibonacci
+      spiral_style:             fermat
       spiral_count:             4
       spiral_opacity:           88
       spiral_speed_multiplier:  0.60
@@ -152,7 +152,7 @@ timeline:
       phrases:                  threshold
       beat_frequency:           7.0
       carrier_frequency:        179.0
-      spiral_style:             fibonacci
+      spiral_style:             fermat
       spiral_count:             4
       spiral_opacity:           90
       spiral_speed_multiplier:  0.46

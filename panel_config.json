@@ -952,18 +952,18 @@
     },
     {
       "key": "pp_ca_strength",
-      "widget": "Indicator",
+      "widget": "Slider",
       "classification": "AGENT_TUNABLE",
-      "layer": "Debug",
-      "label": "Chromatic Aberration (px)",
+      "layer": "Advanced",
+      "label": "Chromatic Aberration",
       "section": "Visual/Audio",
       "modes": [
         "TRANCE"
       ],
-      "tooltip": "Chromatic aberration offset for dreamlike visual quality.",
+      "tooltip": "Chromatic aberration offset. Conductor drives from trance_score (0.001 shallow to 0.004 deep).",
       "range": [
         0.0,
-        5.0
+        0.01
       ]
     },
     {
@@ -984,18 +984,34 @@
     },
     {
       "key": "pp_bloom_intensity",
-      "widget": "Indicator",
+      "widget": "Slider",
       "classification": "AGENT_TUNABLE",
-      "layer": "Debug",
+      "layer": "Advanced",
       "label": "Bloom Intensity",
       "section": "Visual/Audio",
       "modes": [
         "TRANCE"
       ],
-      "tooltip": "Bloom/glow post-processing intensity.",
+      "tooltip": "Bloom/glow post-processing intensity. Conductor drives from trance_score (0.1 shallow to 0.8 deep).",
       "range": [
         0.0,
         1.0
+      ]
+    },
+    {
+      "key": "pp_film_grain",
+      "widget": "Slider",
+      "classification": "AGENT_TUNABLE",
+      "layer": "Advanced",
+      "label": "Film Grain",
+      "section": "Visual/Audio",
+      "modes": [
+        "TRANCE"
+      ],
+      "tooltip": "Per-frame luminance noise. Conductor drives from trance_score (0.01 shallow to 0.06 deep).",
+      "range": [
+        0.0,
+        0.15
       ]
     },
     {
@@ -1704,6 +1720,50 @@
         "breath",
         "beat_div4"
       ]
+    },
+    {
+      "key": "trail_decay",
+      "widget": "Slider",
+      "classification": "AGENT_TUNABLE",
+      "layer": "Advanced",
+      "label": "Trail Decay",
+      "section": "Spirals",
+      "modes": ["TRANCE"],
+      "tooltip": "Trail persistence. 0=no trails, 0.85-0.98=active range. Longer trails for deeper states, 0 for fractionation drops.",
+      "range": [0.0, 0.99]
+    },
+    {
+      "key": "entrainment_strength",
+      "widget": "Slider",
+      "classification": "AGENT_TUNABLE",
+      "layer": "Advanced",
+      "label": "Entrainment Flicker",
+      "section": "Spirals",
+      "modes": ["TRANCE"],
+      "tooltip": "Visual entrainment flicker depth. 0=free-running (no flicker), 1=fully phase-locked to beat frequency. Conductor drives this from trance_score.",
+      "range": [0.0, 1.0]
+    },
+    {
+      "key": "feedback_mode",
+      "widget": "Dropdown",
+      "classification": "AGENT_TUNABLE",
+      "layer": "Advanced",
+      "label": "Feedback Mode",
+      "section": "Spirals",
+      "modes": ["TRANCE"],
+      "tooltip": "Spiral persistence/feedback mode. Adds temporal echo effects to the spiral renderer.",
+      "enum": ["none", "alpha_decay", "radial_zoom", "rotational_smear", "directional_blur", "reaction_diffusion", "kaleidoscopic_fold"]
+    },
+    {
+      "key": "feedback_strength",
+      "widget": "Slider",
+      "classification": "AGENT_TUNABLE",
+      "layer": "Advanced",
+      "label": "Feedback Strength",
+      "section": "Spirals",
+      "modes": ["TRANCE"],
+      "tooltip": "Intensity of the feedback effect. 0.5=default, 1.0=maximum visual echo.",
+      "range": [0.0, 1.0]
     },
     {
       "key": "font_switch_mode",

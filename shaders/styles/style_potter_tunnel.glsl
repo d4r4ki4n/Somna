@@ -6,7 +6,7 @@ vec4 style_potter_tunnel(vec2 p) {
     float angle = atan(p.y, p.x);
 
     // Inverse-radius depth (flythrough feel)
-    float depth = u_tightness * 0.5 / max(r, 0.01);
+    float depth = u_tightness * 0.7 / max(r, 0.01);
 
     // Spiral arms from angle
     float twist = angle * float(u_count) / 2.0;

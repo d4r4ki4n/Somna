@@ -55,8 +55,8 @@ vec4 style_liminal(vec2 p) {
     float g = spiral + lattice * (1.0 - spiral * 0.5);
     g *= breath();
 
-    // Core convergence glow
-    float core = exp(-r * r * 5.0) * 1.2;
+    // Core convergence glow — scales down with low chaos
+    float core = exp(-r * r * 5.0) * (0.3 + 0.4 * u_chaos);
     g += core * (1.0 - g * 0.5);
 
     // ── Color ─────────────────────────────────────────────────────────────

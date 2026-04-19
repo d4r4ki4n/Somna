@@ -23,11 +23,11 @@ vec4 style_spirograph(vec2 p) {
         min_dist    = min(min_dist, dk);
     }
 
-    float width = max(0.028, (0.028 + r * 0.018) * u_thickness) * breath();
+    float width = max(0.028, (0.028 + r * 0.022) * u_thickness) * breath();
     float core  = smoothstep(width * 1.3, 0.0, min_dist);
-    float halo  = smoothstep(width * 5.0, 0.0, min_dist) * 0.45;
+    float halo  = smoothstep(width * 5.0, 0.0, min_dist) * 0.50;
     float g     = core + halo * (1.0 - core);
-    g += exp(-r * r * 8.0) * 0.75;
+    g += exp(-r * r * 8.0) * 0.25;
     g *= breath();
 
     vec3 col = arm_color(fract(r * 0.30 + u_time * 0.04), g);

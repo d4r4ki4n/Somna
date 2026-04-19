@@ -31,13 +31,13 @@ vec4 style_neuro_vortex(vec2 p) {
     // Uses beat_phase for synchronization with audio
     float strobe = 0.7 + 0.3 * (sin(u_entrainment_phase * TWO_PI) * 0.5 + 0.5);
 
-    // Main pattern: cosine spiral with radial frequency interference
+    // Main pattern: cosine spiral with less radial interference
     float comp = cos(spiralTwist) * strobe
-               - sin(r * 55.0) * 0.3
+               - sin(r * 25.0) * 0.15
                + periphDesync;
 
-    // Power curve for contrast — u_thickness controls sharpness
-    float sharp = 6.0 + u_thickness * 0.5;
+    // Power curve for contrast — lower sharp = smoother, more vortex-like
+    float sharp = 3.0 + u_thickness * 0.3;
     float g = pow((comp + 1.0) / 2.0, sharp) * breath();
 
     // Fade center to avoid singularity

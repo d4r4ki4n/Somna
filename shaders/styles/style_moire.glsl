@@ -14,18 +14,18 @@ vec4 style_moire(vec2 p) {
     float ph2  = r * tight2 + angle - u_time * 0.85;
     float d2   = min(mod(ph2, ap) / ap, 1.0 - mod(ph2, ap) / ap);
 
-    float width = (0.020 + r * 0.014) * u_thickness * breath();
+    float width = (0.035 + r * 0.016) * u_thickness * breath();
 
     float c1 = smoothstep(width * 1.2, 0.0, d1);
-    float h1 = smoothstep(width * 3.5, 0.0, d1) * 0.30;
+    float h1 = smoothstep(width * 4.0, 0.0, d1) * 0.50;
     float arm1 = c1 + h1 * (1.0 - c1);
 
     float c2 = smoothstep(width * 1.2, 0.0, d2);
-    float h2 = smoothstep(width * 3.5, 0.0, d2) * 0.30;
+    float h2 = smoothstep(width * 4.0, 0.0, d2) * 0.50;
     float arm2 = c2 + h2 * (1.0 - c2);
 
     // Beat: bright flare where both cores cross
-    float beat = c1 * c2 * 2.8;
+    float beat = c1 * c2 * 3.5;
 
     float g = arm1 + arm2 * (1.0 - arm1);
     g = (g + beat * (1.0 - g)) * breath();

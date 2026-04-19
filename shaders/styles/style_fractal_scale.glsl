@@ -13,8 +13,9 @@ vec4 style_fractal_scale(vec2 p) {
     // Position in current scale band
     vec2 pos = fract(p / scale) + scale + 11.5;
 
-    // Spiral phase — angle*count is seamless (integer angular coefficient)
-    float spiral_phase = angle * float(u_count) / TWO_PI;
+    // Spiral phase — use atan with seamless integer coefficient
+    // Fix: angle*count/TWO_PI gives integer period at 2π boundary → no seam
+    float spiral_phase = angle * float(u_count) / TWO_PI + r * 0.5;
 
     // Smooth blend from fractal-scaled pattern (center) to spiral (outer)
     float blend = smoothstep(0.3, 0.7, r);
@@ -33,7 +34,10 @@ vec4 style_fractal_scale(vec2 p) {
 
     // Secondary: concentric ring modulation for depth
     float rings = 0.5 + 0.5 * sin(r * 15.0 - t * 3.0);
-    float g = pattern * mix(rings, 1.0, 0.5) * breath();
+    float g = pattern * mix(rings, 1.0, 0.4) * breath();
+
+    // Boost overall brightness — was too transparent
+    g = g * 1.6;
 
     // Fade center to avoid singularity artifacts
     float fade = smoothstep(0.0, 0.1, r);

@@ -479,6 +479,8 @@ When the user moves a slider, the touched param is added to `timeline_locked_par
 
 - `beat_phase` — float 0.0–1.0; position in the current beat cycle, updated every ~100ms. Written by `audio_engine.py`. Read by visual layers (`spirals_opengl.py`, `veil.py`) to phase-lock animation to the audio waveform. Do not write this key from agent or session code.
 
+- `entrainment_strength` — float 0.0–1.0; default 0.0. Controls how strongly the spiral brightness modulates with the entrainment phase. 0.0 = free-running (no flicker), 1.0 = fully locked to target frequency. Driven by Conductor or user via control panel; renderer reads and applies via `entrainmentModulation()` in all styles.
+
 **Display lifecycle** — written by `visual_display.py`:
 
 - `display_active` — bool; `True` when the display render loop is running, `False` after it exits. Written via a minimal `\patch_live()` helper inside `visual_display.py`. Consumed by `somna_agent.py` to detect session start/end edges (post-session summary trigger, staleness detection) and by `_poll_audio()` in `control_panel_imgui.py` to gate TTS affirmation playback to active sessions.
@@ -1122,7 +1124,15 @@ Live key: `feedback_mode` (str, one of the above or `none`). Live key: `feedback
 
 **PP pipeline vertex shader** — PP passes use `_PP_VERT` (straight UV, no Y-flip). `copy_framebuffer` preserves GL orientation, so using `_BLIT_VERT` (which flips Y) caused a double-flip. `pp_composite.glsl` also passes scene alpha through instead of forcing 1.0, preserving desktop transparency.
 
-**Regression test:** \	ests/test_spiral_shader_assembly.py\ — pixel-diff test comparing assembled vs monolith for all 23 styles. Run with \pytest tests/test_spiral_shader_assembly.py -v\.
+**Phase 5 — Entrainment phase lock** (Reese spec §9):
+- `u_entrainment_phase` (float 0.0–1.0) — normalized phase locked to target beat frequency, uploaded from `beat_phase` accumulator in `spirals_opengl.py`
+- `u_entrainment_strength` (float 0.0–1.0) — modulation depth; 0.0 = free-running (no flicker), 1.0 = fully locked. Read from `entrainment_strength` in `live_control.json`, default 0.0
+- `sinEnvelope(phase)` — returns 0.5 + 0.5 * cos(phase * 2π); 1.0 at phase boundaries, 0.0 at 0.5
+- `entrainmentModulation()` — returns `mix(1.0, sinEnvelope(u_entrainment_phase), u_entrainment_strength)`; applied to all 23 style return values
+- Separates **pattern animation** (style-specific, driven by `u_time`) from **entrainment flicker** (universal, driven by `u_entrainment_phase`)
+- Conductor/user controls via `entrainment_strength` key in `live_control.json`; renderer only exposes the uniform, does not auto-map
+
+**Regression test:** `tests/test_spiral_shader_assembly.py` — pixel-diff test comparing assembled vs monolith for all 23 styles. Run with `pytest tests/test_spiral_shader_assembly.py -v`.
 
 ---
 

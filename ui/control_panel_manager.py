@@ -1274,7 +1274,7 @@ class ControlPanelManager:
                 imgui.table_setup_column("##c", imgui.TableColumnFlags_.width_stretch)
                 imgui.table_next_row()
 
-                # Label column
+                # Label column — for sliders, make the value an editable input
                 imgui.table_set_column_index(0)
                 pos = imgui.get_cursor_screen_pos()
                 if is_locked:
@@ -1283,7 +1283,23 @@ class ControlPanelManager:
                 lbl_color = imgui.ImVec4(
                     *token_rgba("source_user_lock" if is_locked else "text_label")
                 )
-                imgui.text_colored(lbl_color, w.label)
+                if wtype == "Slider" and not read_only:
+                    rng = w.range or [0.0, 1.0]
+                    sv = float(value) if value is not None else float(rng[0])
+                    imgui.set_next_item_width(label_w - (16 if is_locked else 0))
+                    inp_changed, inp_v = imgui.input_float(
+                        f"##{key}_val",
+                        sv,
+                        0.0,
+                        0.0,
+                        "%.2f",
+                        imgui.InputTextFlags_.enter_returns_true,
+                    )
+                    if inp_changed:
+                        clamped = max(float(rng[0]), min(float(rng[1]), inp_v))
+                        self._commit(key, clamped)
+                else:
+                    imgui.text_colored(lbl_color, w.label)
 
                 # Control column
                 imgui.table_set_column_index(1)

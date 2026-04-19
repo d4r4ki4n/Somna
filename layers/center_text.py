@@ -106,6 +106,7 @@ class CenterTextLayer:
                     self._tts_lock_ms = dur_ms
                     self._cached_surf = None
                     self._switch_font()
+                    self._advance_seq_cursor()
                     return
             else:
                 # Control-panel-owned TTS: sync via tts_playing in live_control.json
@@ -119,6 +120,7 @@ class CenterTextLayer:
                     self._tts_lock_ms = dur_ms
                     self._cached_surf = None
                     self._switch_font()
+                    self._advance_seq_cursor()
                     return
 
         # ── Flash timer / phase-gated delivery ───────────────────────────────
@@ -197,6 +199,18 @@ class CenterTextLayer:
         if self.config.get("spiral_phase_pulse", False):
             self.config["_spiral_pulse_pending"] = True
         self._cached_surf = None
+
+    def _advance_seq_cursor(self):
+        """Advance the pool's sequential cursor to keep pace with TTS.
+
+        When TTS voice-lock activates, center_text displays the TTS phrase
+        but never calls pool.pick() for it — so the sequential cursor stays
+        frozen. This method silently advances the cursor by one position so
+        that any inter-TTS gap flashes the next phrase in sequence rather
+        than rewinding to the beginning.
+        """
+        if self.pool._seq_mode and self.pool._pool:
+            self.pool.pick()
 
     def _color(self):
         c = self.config.get("text_color", [255, 105, 180])

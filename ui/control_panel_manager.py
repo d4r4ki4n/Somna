@@ -1288,12 +1288,7 @@ class ControlPanelManager:
                     sv = float(value) if value is not None else float(rng[0])
                     imgui.set_next_item_width(label_w - (16 if is_locked else 0))
                     inp_changed, inp_v = imgui.input_float(
-                        f"##{key}_val",
-                        sv,
-                        0.0,
-                        0.0,
-                        "%.2f",
-                        imgui.InputTextFlags_.enter_returns_true,
+                        f"##{key}_val", sv, 0.0, 0.0, "%.2f"
                     )
                     if inp_changed:
                         clamped = max(float(rng[0]), min(float(rng[1]), inp_v))

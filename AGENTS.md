@@ -1085,7 +1085,7 @@ Graceful degradation: if either package is missing, the subprocess prints instru
 The spiral renderer uses a modular shader system. The monolith \spiral.glsl\ is still present as a fallback, but the primary path assembles the shader from:
 
 - \shaders/common.glsl\ — shared uniforms, helpers, noise functions, arm distance field, curl noise, Oklab color space
-- \shaders/styles/style_<name>.glsl\ — 18 per-style files, each implementing \ec4 style_<name>(vec2 p)\
+- \shaders/styles/style_<name>.glsl\ — 23 per-style files, each implementing \ec4 style_<name>(vec2 p)\
 - Dispatch in \spirals_opengl.py\ \_assemble_shader()\ — appends main() with if/else chain
 
 **Assembly flow:** \SpiralsLayer._load_shader()\ checks if \common.glsl\ and \styles/\ dir exist. If yes, assembles from modules. If no, falls back to monolith \spiral.glsl\.
@@ -1105,7 +1105,25 @@ The spiral renderer uses a modular shader system. The monolith \spiral.glsl\ is 
 **Oklab color space** is available in \common.glsl\ as \
 gbToOklab()\, \oklabToRgb()\, \mixOklab()\. Not yet used by any style — ready for Phase 2 color pass integration.
 
-**Regression test:** \	ests/test_spiral_shader_assembly.py\ — pixel-diff test comparing assembled vs monolith for all 18 styles. Run with \pytest tests/test_spiral_shader_assembly.py -v\.
+**Phase 3 — Feedback modes** (\pp_feedback.glsl\): six spiral persistence/feedback effects wired as an additional FBO pass in the render loop before post-processing:
+- \alpha_decay\ — fade previous frame with configurable decay
+- \radial_zoom\ — zoom from center with persistence
+- \rotational_smear\ — angular smear creating motion trails
+- \directional_blur\ — horizontal streak persistence
+- \reaction_diffusion\ — organic pattern evolution
+- \kaleidoscopic_fold\ — mirrored symmetry persistence
+Live key: \feedback_mode\ (str, one of the above or \none\). Live key: \feedback_strength\ (float 0.0–1.0).
+
+**Phase 4 — Five new styles** (23 total, indices 18–22):
+- \cobwebs\ (18) — irregular radial threads with structural variation
+- \strange_attractor\ (19) — Lorenz-like swirling particle trails
+- \flow_field\ (20) — organic curl-noise-driven streams
+- \sacred_geometry\ (21) — concentric geometric forms (Flower of Life, Metatron)
+- \recursive_fractal\ (22) — nested self-similar branching patterns
+
+**PP pipeline vertex shader** — PP passes use \_PP_VERT\ (straight UV, no Y-flip). \copy_framebuffer\ preserves GL orientation, so using \_BLIT_VERT\ (which flips Y) caused a double-flip. \pp_composite.glsl\ also passes scene alpha through instead of forcing 1.0, preserving desktop transparency.
+
+**Regression test:** \	ests/test_spiral_shader_assembly.py\ — pixel-diff test comparing assembled vs monolith for all 23 styles. Run with \pytest tests/test_spiral_shader_assembly.py -v\.
 
 ---
 

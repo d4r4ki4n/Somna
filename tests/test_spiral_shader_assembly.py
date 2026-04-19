@@ -52,9 +52,14 @@ STYLE_NAMES = [
     "resonant",
     "nebula",
     "bifurcate",
+    "cobwebs",
+    "strange_attractor",
+    "flow_field",
+    "sacred_geometry",
+    "recursive_fractal",
 ]
 
-STYLE_IDS = list(range(18))
+STYLE_IDS = list(range(23))
 
 TEST_W, TEST_H = 320, 240
 
@@ -146,12 +151,15 @@ class TestShaderAssembly(unittest.TestCase):
             self.assertIn(name, prog, f"Missing uniform: {name}")
 
     def test_all_styles_pixel_identical(self):
+        """Original 18 styles must be pixel-identical to the monolith."""
         assembled_src = _assemble_shader()
         mono_src = MONOLITH_PATH.read_text(encoding="utf-8")
         prog_a = self.ctx.program(vertex_shader=VERT, fragment_shader=assembled_src)
         prog_m = self.ctx.program(vertex_shader=VERT, fragment_shader=mono_src)
 
-        for idx, name in zip(STYLE_IDS, STYLE_NAMES):
+        original_styles = list(range(18))
+        for idx in original_styles:
+            name = STYLE_NAMES[idx]
             with self.subTest(style=name, idx=idx):
                 img_a = self._render(prog_a, idx)
                 img_m = self._render(prog_m, idx)
@@ -159,6 +167,20 @@ class TestShaderAssembly(unittest.TestCase):
                 max_diff = diff.max()
                 self.assertEqual(
                     max_diff, 0, f"Style {idx} ({name}): max pixel diff = {max_diff}"
+                )
+
+    def test_new_styles_render(self):
+        """Phase 4 styles (18-22) must compile and render without error."""
+        assembled_src = _assemble_shader()
+        prog = self.ctx.program(vertex_shader=VERT, fragment_shader=assembled_src)
+        new_style_ids = list(range(18, len(STYLE_NAMES)))
+        for idx in new_style_ids:
+            name = STYLE_NAMES[idx]
+            with self.subTest(style=name, idx=idx):
+                img = self._render(prog, idx)
+                self.assertEqual(img.shape, (TEST_H, TEST_W, 4))
+                self.assertFalse(
+                    np.all(img == 0), f"Style {idx} ({name}) rendered all-black"
                 )
 
     def test_all_style_files_exist(self):

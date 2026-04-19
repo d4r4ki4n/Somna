@@ -36,6 +36,11 @@ STYLE_MAP = {
     "resonant": 15,
     "nebula": 16,
     "bifurcate": 17,
+    "cobwebs": 18,
+    "strange_attractor": 19,
+    "flow_field": 20,
+    "sacred_geometry": 21,
+    "recursive_fractal": 22,
     # authoring guide aliases (Reese spiral_authoring_guide.md)
     "galaxy_arms": 1,
     "bloom": 9,
@@ -140,6 +145,11 @@ class SpiralsLayer:
             "resonant",
             "nebula",
             "bifurcate",
+            "cobwebs",
+            "strange_attractor",
+            "flow_field",
+            "sacred_geometry",
+            "recursive_fractal",
         ]
 
         for name in style_names:
@@ -168,10 +178,16 @@ class SpiralsLayer:
             "    else if (u_style == 11) result = style_spirograph(p);",
             "    else if (u_style == 12) result = style_fermat(p);",
             "    else if (u_style == 13) result = style_superformula(p);",
+            "    else if (u_style == 14) result = style_liminal(p);",
             "    else if (u_style == 15) result = style_resonant(p);",
             "    else if (u_style == 16) result = style_nebula(p);",
             "    else if (u_style == 17) result = style_bifurcate(p);",
-            "    else                    result = style_liminal(p);",
+            "    else if (u_style == 18) result = style_cobwebs(p);",
+            "    else if (u_style == 19) result = style_strange_attractor(p);",
+            "    else if (u_style == 20) result = style_flow_field(p);",
+            "    else if (u_style == 21) result = style_sacred_geometry(p);",
+            "    else if (u_style == 22) result = style_recursive_fractal(p);",
+            "    else                    result = style_tunnel(p);",
             "    fragColor = result;",
             "}",
         ]

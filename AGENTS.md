@@ -1080,7 +1080,36 @@ Graceful degradation: if either package is missing, the subprocess prints instru
 
 \---
 
-\## GLSL spiral seam patterns to avoid
+\## Modular shader architecture (Phase 1)
+
+The spiral renderer uses a modular shader system. The monolith \spiral.glsl\ is still present as a fallback, but the primary path assembles the shader from:
+
+- \shaders/common.glsl\ — shared uniforms, helpers, noise functions, arm distance field, curl noise, Oklab color space
+- \shaders/styles/style_<name>.glsl\ — 18 per-style files, each implementing \ec4 style_<name>(vec2 p)\
+- Dispatch in \spirals_opengl.py\ \_assemble_shader()\ — appends main() with if/else chain
+
+**Assembly flow:** \SpiralsLayer._load_shader()\ checks if \common.glsl\ and \styles/\ dir exist. If yes, assembles from modules. If no, falls back to monolith \spiral.glsl\.
+
+**Post-processing pipeline** (Bible Ch.3 §3.7):
+- \pp_ca.glsl\ — chromatic aberration (radial RGB split)
+- \pp_bloom_threshold.glsl\ — bright pixel extraction for bloom
+- \pp_blur.glsl\ — separable Gaussian blur (5-tap)
+- \pp_composite.glsl\ — bloom composite + vignette + IAF modulation + ACES tonemapping + film grain
+- All wired in \isual_display.py\ \_run_post_processing()\
+
+**New Phase 2 uniforms in pp_composite.glsl:**
+- \pp_tonemap\ (int, 0=off, 1=ACES) — ACES filmic tonemapping
+- \pp_film_grain\ (float 0.0–0.15) — per-frame luminance noise
+- \u_time\ (float) — wall clock for grain animation
+
+**Oklab color space** is available in \common.glsl\ as \
+gbToOklab()\, \oklabToRgb()\, \mixOklab()\. Not yet used by any style — ready for Phase 2 color pass integration.
+
+**Regression test:** \	ests/test_spiral_shader_assembly.py\ — pixel-diff test comparing assembled vs monolith for all 18 styles. Run with \pytest tests/test_spiral_shader_assembly.py -v\.
+
+---
+
+## GLSL spiral seam patterns to avoid
 
 \- \*\*\`atan(y, x)\` discontinuity\*\* — the function returns values in \`\[-π, +π\]\` with a jump on the negative x-axis. Never use raw \`angle\` in a phase formula without ensuring the phase jump at the seam is an exact integer multiple of the period.
 

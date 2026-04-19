@@ -2080,6 +2080,28 @@ class ControlPanelImGui:
         imgui.text_colored(muted, f"Sessions {sessions}")
         imgui.spacing()
 
+        # Personality mode toggle
+        imgui.text_colored(muted, "Agent Style")
+        imgui.same_line(spacing=8)
+        imgui.set_next_item_width(130)
+        pers_modes = ["guide", "directive"]
+        cur_pers = p.get("personality_mode", "guide")
+        cur_pers_idx = pers_modes.index(cur_pers) if cur_pers in pers_modes else 0
+        pers_changed, new_pers_idx = imgui.combo("##setpers", cur_pers_idx, pers_modes)
+        if pers_changed:
+            updated = _read()
+            if pers_modes[new_pers_idx] == "guide":
+                updated.pop("personality_mode", None)
+            else:
+                updated["personality_mode"] = pers_modes[new_pers_idx]
+            _write(updated)
+        imgui.same_line(spacing=8)
+        imgui.text_colored(
+            val if cur_pers == "directive" else muted,
+            "Commanding" if cur_pers == "directive" else "Warm & permissive",
+        )
+        imgui.spacing()
+
         modalities = list(p.get("modality_preference") or [])
         if modalities:
             imgui.text_colored(iris, "Modality preference")

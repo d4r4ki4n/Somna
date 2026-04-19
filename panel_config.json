@@ -1724,7 +1724,7 @@
     {
       "key": "trail_decay",
       "widget": "Slider",
-      "classification": "AGENT_TUNABLE",
+      "classification": "USER_CONTROL",
       "layer": "Advanced",
       "label": "Trail Decay",
       "section": "Spirals",
@@ -1735,18 +1735,18 @@
     {
       "key": "entrainment_strength",
       "widget": "Slider",
-      "classification": "AGENT_TUNABLE",
+      "classification": "USER_CONTROL",
       "layer": "Advanced",
       "label": "Entrainment Flicker",
       "section": "Spirals",
       "modes": ["TRANCE"],
-      "tooltip": "Visual entrainment flicker depth. 0=free-running (no flicker), 1=fully phase-locked to beat frequency. Conductor drives this from trance_score.",
+      "tooltip": "Visual entrainment flicker depth. 0=free-running (no flicker), 1=fully phase-locked to beat frequency.",
       "range": [0.0, 1.0]
     },
     {
       "key": "feedback_mode",
       "widget": "Dropdown",
-      "classification": "AGENT_TUNABLE",
+      "classification": "USER_CONTROL",
       "layer": "Advanced",
       "label": "Feedback Mode",
       "section": "Spirals",
@@ -1757,7 +1757,7 @@
     {
       "key": "feedback_strength",
       "widget": "Slider",
-      "classification": "AGENT_TUNABLE",
+      "classification": "USER_CONTROL",
       "layer": "Advanced",
       "label": "Feedback Strength",
       "section": "Spirals",

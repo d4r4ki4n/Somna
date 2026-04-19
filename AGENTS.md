@@ -732,6 +732,8 @@ All three agent scripts read and write this file. **Always use `update_profile()
 
 "eeg_baselines": {"eyes_open": {"band_power": {...}}, "eyes_closed": {...}, "breathing": {...}, "alpha_reactivity_ratio": 2.76, "relaxation_response_score": 0.58, "trance_susceptibility": "moderate", "calibrated_utc": "...", "sample_count": 54}
 
+"personality_mode": "guide | directive — agent interaction style. guide=warm permissive (default), directive=authoritative commanding. Set via Settings→Profile→Agent Style. When 'directive', _DIRECTIVE_MODE_APPENDIX is injected into the agent system prompt."
+
 }
 
 }

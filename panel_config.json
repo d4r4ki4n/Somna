@@ -1642,10 +1642,10 @@
         "SLEEP",
         "CUE_TEST"
       ],
-      "tooltip": "Arm width multiplier (u_thickness uniform).",
+      "tooltip": "Arm width multiplier. 4=hairline, 24=thick arms.",
       "range": [
-        0.0,
-        1.0
+        4,
+        40
       ]
     },
     {

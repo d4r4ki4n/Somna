@@ -112,7 +112,7 @@ timeline:
       center_flash_on_time:     140
       center_flash_off_time:    350
       entrainment_strength:     0.1
-      pp_ca_strength:           0.15
+      pp_ca_strength:           0.002
 
   # ─── 5:00 · DISMANTLE ──────────────────────────────────────────────────────
   # Vortex: the explicit pull. The agent is taking thoughts apart.
@@ -140,7 +140,7 @@ timeline:
       entrainment_strength:     0.25
       trail_decay:              0.0
       pp_bloom_intensity:       0.25
-      pp_ca_strength:           0.30
+      pp_ca_strength:           0.003
       pp_film_grain:            0.02
 
   # ─── 9:00 · THE FUZZ ───────────────────────────────────────────────────────
@@ -168,7 +168,7 @@ timeline:
       center_flash_off_time:    220
       entrainment_strength:     0.40
       pp_bloom_intensity:       0.45
-      pp_ca_strength:           0.45
+      pp_ca_strength:           0.004
       pp_film_grain:            0.04
 
   # ─── 14:00 · MINE ──────────────────────────────────────────────────────────
@@ -198,7 +198,7 @@ timeline:
       entrainment_strength:     0.50
       trail_decay:              0.30
       pp_bloom_intensity:       0.55
-      pp_ca_strength:           0.55
+      pp_ca_strength:           0.005
       pp_film_grain:            0.05
 
   # ─── 19:00 · EMERGE ────────────────────────────────────────────────────────
@@ -228,7 +228,7 @@ timeline:
       trail_decay:              0.0
       feedback_mode:            none
       pp_bloom_intensity:       0.20
-      pp_ca_strength:           0.20
+      pp_ca_strength:           0.002
 
   # ─── 20:30 · REDROP ────────────────────────────────────────────────────────
   # Rapid redescent. Vortex returns — the pull is familiar now.
@@ -255,7 +255,7 @@ timeline:
       entrainment_strength:     0.45
       trail_decay:              0.20
       pp_bloom_intensity:       0.50
-      pp_ca_strength:           0.50
+      pp_ca_strength:           0.005
       pp_film_grain:            0.04
 
   # ─── 23:00 · OPERATE ───────────────────────────────────────────────────────
@@ -288,7 +288,7 @@ timeline:
       feedback_mode:            alpha_decay
       feedback_strength:        0.60
       pp_bloom_intensity:       0.70
-      pp_ca_strength:           0.60
+      pp_ca_strength:           0.006
       pp_film_grain:            0.06
 
   # ─── 29:00 · SOAK ──────────────────────────────────────────────────────────
@@ -320,7 +320,7 @@ timeline:
       feedback_mode:            alpha_decay
       feedback_strength:        0.65
       pp_bloom_intensity:       0.70
-      pp_ca_strength:           0.60
+      pp_ca_strength:           0.006
       pp_film_grain:            0.06
 
   # ─── 32:00 · RELEASE ───────────────────────────────────────────────────────
@@ -350,7 +350,7 @@ timeline:
       trail_decay:              0.0
       feedback_mode:            none
       pp_bloom_intensity:       0.15
-      pp_ca_strength:           0.15
+      pp_ca_strength:           0.002
       pp_film_grain:            0.0
 
   # ─── 34:30 · RETURN ────────────────────────────────────────────────────────

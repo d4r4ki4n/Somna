@@ -898,6 +898,9 @@ class VisualDisplay:
                     }
                     mode = mode_map.get(cfg.get("feedback_mode", "alpha_decay"), 0)
                     self.trail_prog["u_feedback_mode"].value = mode
+                    self.trail_prog["u_feedback_strength"].value = float(
+                        cfg.get("feedback_strength", 1.0) or 1.0
+                    )
                     self.trail_prog["u_zoom_speed"].value = float(
                         cfg.get("feedback_zoom_speed", 0.01)
                     )

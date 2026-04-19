@@ -14,6 +14,7 @@ out vec4 fragColor;
 uniform sampler2D u_current;
 uniform sampler2D u_previous;
 uniform float     u_trail_decay;
+uniform float     u_feedback_strength;
 uniform int       u_feedback_mode;
 uniform float     u_zoom_speed;
 uniform float     u_rotation_speed;
@@ -113,7 +114,9 @@ void main() {
     }
 
     // Composite: additive blend with decay — previous frames accumulate and fade
-    vec4 trailed = prev * u_trail_decay;
+    float strength = max(0.0, min(1.0, u_feedback_strength));
+    float effective_decay = u_trail_decay * (0.3 + 0.7 * strength);
+    vec4 trailed = prev * effective_decay;
     // Additive: previous frames build up as glowing trails behind current
     fragColor = vec4(
         min(curr.r + trailed.r, 1.0),

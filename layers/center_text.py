@@ -208,9 +208,14 @@ class CenterTextLayer:
         frozen. This method silently advances the cursor by one position so
         that any inter-TTS gap flashes the next phrase in sequence rather
         than rewinding to the beginning.
+
+        Increments _seq_cursor directly instead of calling pick() to avoid
+        chain expansion side effects — if the skipped position contains a
+        >> chain, it should stay as an unexpanded slot, not start consuming
+        chain elements silently.
         """
-        if self.pool._seq_mode and self.pool._pool:
-            self.pool.pick()
+        if self.pool._seq_mode and self.pool._pool and self.pool._active_chain is None:
+            self.pool._seq_cursor += 1
 
     def _color(self):
         c = self.config.get("text_color", [255, 105, 180])

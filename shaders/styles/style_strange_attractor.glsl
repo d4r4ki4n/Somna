@@ -16,16 +16,16 @@ vec4 style_strange_attractor(vec2 p) {
 
         // Sample points along the curve and measure minimum distance
         float min_dist = 10.0;
-        for (int j = 0; j < 24; j++) {
-            float t = float(j) / 24.0 * TWO_PI;
-            float cx = sin(a * t + phase_shift) * 1.6;
-            float cy = sin(b * t) * 1.6;
+        for (int j = 0; j < 16; j++) {
+            float t = float(j) / 16.0 * TWO_PI;
+            float cx = sin(a * t + phase_shift) * 0.8;
+            float cy = sin(b * t) * 0.8;
             float d = length(p - vec2(cx, cy));
             min_dist = min(min_dist, d);
         }
 
         // Width varies by radius and thickness param
-        float w = (0.04 + r * 0.012) * u_thickness * 0.8;
+        float w = (0.03 + r * 0.01) * u_thickness * 0.8;
         float line = smoothstep(w, 0.0, min_dist);
         float glow = exp(-min_dist * min_dist * 25.0) * 0.25;
 

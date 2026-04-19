@@ -210,11 +210,13 @@ class CenterTextLayer:
         than rewinding to the beginning.
 
         Increments _seq_cursor directly instead of calling pick() to avoid
-        chain expansion side effects — if the skipped position contains a
-        >> chain, it should stay as an unexpanded slot, not start consuming
-        chain elements silently.
+        chain expansion side effects. Chains at the skipped position are
+        consumed (TTS is speaking that beat via its own pool); center_text
+        moves to the next narrative position.
         """
-        if self.pool._seq_mode and self.pool._pool and self.pool._active_chain is None:
+        if self.pool._seq_mode and self.pool._pool:
+            self.pool._active_chain = None
+            self.pool._active_chain_pos = 0
             self.pool._seq_cursor += 1
 
     def _color(self):

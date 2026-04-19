@@ -228,6 +228,7 @@ class ControlPanelImGui:
         # Spectrogram console (replaces plain text log)
         self._console = SpectrogramConsole()
         self._console.system("Somna control panel started.")
+        self._console.system("Tip: Ctrl+Click any slider to type a value.")
 
         # Winamp-style session player
         self._player = SessionPlayer()

@@ -284,7 +284,7 @@ timeline:
       center_flash_on_time:     17
       center_flash_off_time:    145
       entrainment_strength:     0.70
-      trail_decay:              0.85
+      trail_decay:              0.78
       feedback_mode:            alpha_decay
       feedback_strength:        0.60
       pp_bloom_intensity:       0.70
@@ -316,7 +316,7 @@ timeline:
       center_flash_on_time:     16
       center_flash_off_time:    400
       entrainment_strength:     0.70
-      trail_decay:              0.88
+      trail_decay:              0.80
       feedback_mode:            alpha_decay
       feedback_strength:        0.65
       pp_bloom_intensity:       0.70

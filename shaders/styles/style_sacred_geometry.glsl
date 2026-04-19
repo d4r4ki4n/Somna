@@ -1,44 +1,58 @@
-// Style 21 — Sacred Geometry (hexagonal tiling, GENUS-compatible)
+// Style 21 — Flower of Life (overlapping circle geometry, luminous edges only)
 vec4 style_sacred_geometry(vec2 p) {
-    // Scale to tile space
-    vec2 tp = p * 3.0;
+    float r     = length(p);
+    float angle = atan(p.y, p.x);
+    float g     = 0.0;
 
-    // Hex grid — two interleaved offsets
-    const vec2 s = vec2(1.0, 1.7320508); // 1, sqrt(3)
-    vec2 p1 = mod(tp, s) - s * 0.5;
-    vec2 p2 = mod(tp + s * 0.5, s) - s * 0.5;
-    vec2 hex_p = (dot(p1, p1) < dot(p2, p2)) ? p1 : p2;
+    // Flower of Life: hexagonal grid of circle centers
+    // Each circle has radius = grid spacing, so neighbors overlap
+    float scale = 1.8 + u_tightness * 0.4;
+    vec2 sp = p * scale;
 
-    // Distance to hex edge
-    float hex_d = max(
-        abs(hex_p.x),
-        dot(abs(hex_p), vec2(0.5, 0.8660254))
-    );
+    // Hex grid basis vectors
+    const vec2 e1 = vec2(1.0, 0.0);
+    const vec2 e2 = vec2(0.5, 0.8660254);  // 60 degrees
 
-    // Cell identity for per-cell animation
-    vec2 cell_id = floor(tp / s);
-    float cell_hash = fract(sin(dot(cell_id, vec2(127.1, 311.7))) * 43758.5453);
+    // Check nearest few cells for circle edges
+    for (int j = -2; j <= 2; j++) {
+        for (int i = -2; i <= 2; i++) {
+            vec2 center = e1 * float(i) + e2 * float(j);
+            float d = length(sp - center);
 
-    // Phase-animated fill: cells light up in waves
-    float wave = sin(cell_hash * TWO_PI + u_time * 0.8);
-    float fill = smoothstep(0.0, 0.3, wave);
+            // Circle edge — narrow bright ring
+            float edge_width = (0.02 + u_chaos * 0.01) * u_thickness * 0.3;
+            float edge = smoothstep(edge_width, 0.0, abs(d - 1.0));
 
-    // Edge glow
-    float edge = 1.0 - smoothstep(0.35, 0.5, hex_d);
-    float edge_glow = exp(-(hex_d - 0.45) * 20.0) * 0.3;
+            // Soft outer glow
+            float glow = exp(-pow(d - 1.0, 2.0) * 80.0) * 0.15;
 
-    // Chaos: domain-warp the fill
-    if (u_chaos > 0.1) {
-        fill *= 1.0 + snoise(tp * 2.0 + u_time * 0.1) * u_chaos * 0.5;
+            // Phase wave traveling along the pattern
+            float wave = sin(d * 4.0 - u_time * 1.2 + float(i + j) * 0.8) * 0.5 + 0.5;
+            float brightness = edge * (0.6 + wave * 0.4) + glow;
+
+            g = max(g, brightness);
+        }
     }
 
-    float g = (fill * 0.7 + edge * 0.2 + edge_glow) * breath();
-    float phase = fract(cell_hash + u_time * 0.1);
-    vec3 col = arm_color(phase, g);
+    // Add subtle spoke structure for visual interest
+    float spoke_angle = TWO_PI / float(u_count * 2);
+    float nearest = abs(mod(angle + PI, spoke_angle) - spoke_angle * 0.5);
+    float spoke = exp(-nearest * nearest * 150.0 / (r + 0.3)) * 0.2;
+    g += spoke * breath();
 
-    float r = length(p);
+    // Central seed circle — brighter
+    float center_circle = smoothstep(0.025, 0.0, abs(r * scale - 1.0)) * 0.8;
+    g = max(g, center_circle);
+
+    g *= breath();
+
+    // Center glow
+    float core = exp(-r * r * 5.0) * 0.6;
+    g += core;
+
+    vec3 col = arm_color(fract(r * 0.2 - u_time * 0.04 + angle / TWO_PI * 0.5), g);
     float alpha = g * u_opacity;
-    alpha *= smoothstep(2.2, 0.2, r);
+    alpha *= smoothstep(2.0, 0.1, r);
 
     return vec4(col, alpha) * entrainmentModulation();
 }

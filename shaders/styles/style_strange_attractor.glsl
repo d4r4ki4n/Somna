@@ -1,44 +1,53 @@
-// Style 19 — Strange Attractor (Rössler density projection)
+// Style 19 — Lissajous Weave (interlocking parametric curves)
 vec4 style_strange_attractor(vec2 p) {
-    float intensity = 0.0;
+    float r     = length(p);
+    float angle = atan(p.y, p.x);
+    float g     = 0.0;
+    float hue_acc = 0.0;
 
-    float a_param = 0.2 + u_chaos * 0.1;
-    float b_param = 0.2;
-    float c_param = 5.7 + u_chaos * 3.0;
-    float dt = 0.01;
+    // 5 interlocking Lissajous curves with different frequency ratios
+    for (int i = 0; i < 5; i++) {
+        float fi = float(i);
 
-    // Integrate Rössler attractor, accumulate density
-    vec3 pos = vec3(1.0, 1.0, 1.0);
-    float speed = 0.8 + u_thickness * 0.2;
+        // Frequency ratios produce evolving weave patterns
+        float a = 3.0 + fi * 0.7 + u_tightness * 0.3;
+        float b = 2.0 + fi * 0.5;
+        float phase_shift = fi * PI * 0.4 + u_time * (0.3 + fi * 0.08);
 
-    // 512 iterations — balance quality vs performance
-    for (int i = 0; i < 512; i++) {
-        vec3 dp = vec3(
-            -pos.y - pos.z,
-            pos.x + a_param * pos.y,
-            b_param + pos.z * (pos.x - c_param)
-        );
-        pos += dp * dt;
+        // Sample points along the curve and measure minimum distance
+        float min_dist = 10.0;
+        for (int j = 0; j < 16; j++) {
+            float t = float(j) / 16.0 * TWO_PI;
+            float cx = sin(a * t + phase_shift) * 0.8;
+            float cy = sin(b * t) * 0.8;
+            float d = length(p - vec2(cx, cy));
+            min_dist = min(min_dist, d);
+        }
 
-        // Rotate projection over time
-        float ct = cos(u_time * speed * 0.05);
-        float st = sin(u_time * speed * 0.05);
-        vec2 projected = vec2(
-            pos.x * ct - pos.z * st,
-            pos.y
-        ) * 0.12;
+        // Width varies by radius and thickness param
+        float w = (0.03 + r * 0.01) * u_thickness * 0.8;
+        float line = smoothstep(w, 0.0, min_dist);
+        float glow = exp(-min_dist * min_dist * 25.0) * 0.25;
 
-        float dist = length(p - projected);
-        intensity += exp(-dist * dist * 150.0) * 0.04;
+        float layer = (line + glow) * (1.0 - fi * 0.08);
+        g = g + layer * (1.0 - g);
+        hue_acc += min_dist * 0.5;
     }
 
-    intensity = clamp(intensity, 0.0, 1.0) * breath();
+    // Chaos adds noise perturbation to the weave
+    if (u_chaos > 0.1) {
+        g *= 1.0 + snoise(p * 3.0 + u_time * 0.2) * u_chaos * 0.3;
+    }
 
-    float phase = fract(u_time * speed * 0.1 + intensity);
-    vec3 col = arm_color(phase, intensity);
-    float r = length(p);
-    float alpha = intensity * u_opacity;
-    alpha *= smoothstep(2.0, 0.3, r);
+    g *= breath();
+
+    // Center glow
+    float core = exp(-r * r * 5.0) * 0.75;
+    g += core;
+
+    vec3 col = arm_color(fract(hue_acc * 0.3 + u_time * 0.05), g);
+    float alpha = g * u_opacity;
+    alpha *= smoothstep(2.2, 0.05, r);
 
     return vec4(col, alpha) * entrainmentModulation();
 }

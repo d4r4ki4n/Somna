@@ -1763,7 +1763,8 @@
       "section": "Spirals",
       "modes": ["TRANCE"],
       "tooltip": "Intensity of the feedback effect. 0.5=default, 1.0=maximum visual echo.",
-      "range": [0.0, 1.0]
+      "range": [0.0, 1.0],
+      "default": 0.7
     },
     {
       "key": "font_switch_mode",

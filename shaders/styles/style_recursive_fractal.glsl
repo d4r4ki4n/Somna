@@ -1,34 +1,58 @@
-// Style 22 — Recursive Fractal Zoom (infinite self-similar depth)
+// Style 22 — Morphing Julia (smooth iteration fractal)
 vec4 style_recursive_fractal(vec2 p) {
-    float intensity = 0.0;
+    float r = length(p);
 
-    // Layered zoom: each layer is a scaled copy with rotation
-    for (int i = 0; i < 6; i++) {
-        float layer_time = u_time * 0.8 + float(i) * 1.5;
-        float zoom = exp(mod(layer_time * 0.3, 3.0) - 1.5);
-        float rotation = layer_time * 0.05 * (1.0 + u_chaos);
+    // Animate c along the Mandelbrot boundary for continuously morphing fractals
+    float t = u_time * 0.06 * (0.5 + u_tightness * 0.1);
+    vec2 c = vec2(
+        0.7885 * cos(t),
+        0.7885 * sin(t)
+    );
 
-        // Rotate and scale
-        float cr = cos(rotation), sr = sin(rotation);
-        vec2 zp = vec2(p.x * cr - p.y * sr, p.x * sr + p.y * cr) * zoom;
+    // Chaos perturbs c for extra variation
+    c += vec2(
+        u_chaos * 0.05 * sin(u_time * 0.3),
+        u_chaos * 0.05 * cos(u_time * 0.4)
+    );
 
-        // Pattern at this zoom level
-        float r = length(zp);
-        float theta = atan(zp.y, zp.x);
-        float pattern = sin(theta * (3.0 + u_chaos * 5.0) + r * 8.0) * 0.5 + 0.5;
+    // Julia iteration
+    vec2 z = p * (1.5 + u_thickness * 0.05);
+    float iter = 0.0;
+    const int MAX_ITER = 48;
 
-        // Fade by depth
-        float depth_fade = exp(-abs(mod(layer_time * 0.3, 3.0) - 1.5) * 2.0);
-        intensity += pattern * depth_fade * 0.25;
+    for (int i = 0; i < MAX_ITER; i++) {
+        z = vec2(z.x * z.x - z.y * z.y, 2.0 * z.x * z.y) + c;
+        if (dot(z, z) > 4.0) break;
+        iter += 1.0;
     }
 
-    intensity = clamp(intensity, 0.0, 1.0) * breath();
+    // Smooth iteration count for anti-aliased coloring
+    float smooth_iter = iter;
+    if (iter < float(MAX_ITER)) {
+        smooth_iter = iter - log2(log2(dot(z, z))) + 4.0;
+    }
 
-    float phase = fract(u_time * 0.15);
-    vec3 col = arm_color(phase, intensity);
-    float r_outer = length(p);
-    float alpha = intensity * u_opacity;
-    alpha *= smoothstep(2.2, 0.2, r_outer);
+    // Normalize and create intensity
+    float normalized = smooth_iter / float(MAX_ITER);
+    float g = normalized * breath();
+
+    // Interior (converged) regions: subtle glow based on final |z|
+    if (iter >= float(MAX_ITER)) {
+        float interior_glow = 1.0 - smoothstep(0.0, 2.0, length(z));
+        g = interior_glow * 0.15 * breath();
+    }
+
+    // Edge enhancement: fractal boundaries are the brightest
+    float edge_boost = smoothstep(0.3, 0.7, normalized) * 0.4;
+    g += edge_boost;
+
+    // Center glow
+    float core = exp(-r * r * 4.0) * 0.5;
+    g += core;
+
+    vec3 col = arm_color(fract(normalized * 2.0 + u_time * 0.03), g);
+    float alpha = clamp(g, 0.0, 1.5) * u_opacity;
+    alpha *= smoothstep(2.2, 0.05, r);
 
     return vec4(col, alpha) * entrainmentModulation();
 }

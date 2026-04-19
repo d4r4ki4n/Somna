@@ -1117,7 +1117,7 @@ The spiral renderer uses a modular shader system. The monolith `spiral.glsl` is 
 - `kaleidoscopic_fold` — mirrored symmetry persistence
 Live key: `feedback_mode` (str, one of the above or `none`). Live key: `feedback_strength` (float 0.0–1.0) — modulates effective trail decay; at 1.0 the full `trail_decay` value applies, at 0.0 the effective decay is reduced to 30%. Default 1.0. Works as a user/agent ceiling to prevent blowout — set to 0.5–0.7 for high-density spirals. The shader formula is `effective_decay = trail_decay * (0.3 + 0.7 * strength)`.
 
-**Phase 4 — Five new styles** (23 total, indices 18–22):
+**Phase 4 — Five new styles** (22 total, indices 18–22):
 - `cobwebs` (18) — irregular radial threads with structural variation
 - `strange_attractor` (19) — Lorenz-like swirling particle trails
 - `flow_field` (20) — organic curl-noise-driven streams
@@ -1130,11 +1130,11 @@ Live key: `feedback_mode` (str, one of the above or `none`). Live key: `feedback
 - `u_entrainment_phase` (float 0.0–1.0) — normalized phase locked to target beat frequency, uploaded from `beat_phase` accumulator in `spirals_opengl.py`
 - `u_entrainment_strength` (float 0.0–0.10) — modulation depth; 0.0 = free-running (no flicker), 0.10 = maximum safe phase-locking. Read from `entrainment_strength` in `live_control.json`, default 0.0
 - `sinEnvelope(phase)` — returns 0.5 + 0.5 * cos(phase * 2π); 1.0 at phase boundaries, 0.0 at 0.5
-- `entrainmentModulation()` — returns `mix(1.0, sinEnvelope(u_entrainment_phase), u_entrainment_strength)`; applied to all 26 style return values
+- `entrainmentModulation()` — returns `mix(1.0, sinEnvelope(u_entrainment_phase), u_entrainment_strength)`; applied to all 22 style return values
 - Separates **pattern animation** (style-specific, driven by `u_time`) from **entrainment flicker** (universal, driven by `u_entrainment_phase`)
 - Conductor/user controls via `entrainment_strength` key in `live_control.json`; renderer only exposes the uniform, does not auto-map
 
-**Regression test:** `tests/test_spiral_shader_assembly.py` — regression test verifying all 26 modular styles compile and render. Run with `pytest tests/test_spiral_shader_assembly.py -v`.
+**Regression test:** `tests/test_spiral_shader_assembly.py` — regression test verifying all 22 modular styles compile and render. Run with `pytest tests/test_spiral_shader_assembly.py -v`.
 
 ---
 

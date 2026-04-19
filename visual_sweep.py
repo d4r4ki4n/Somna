@@ -91,14 +91,15 @@ ALL_STYLES = [
     "flow_field",
     "sacred_geometry",
     "recursive_fractal",
+    "potter_tunnel",
+    "fractal_scale",
+    "neuro_vortex",
 ]
 
 NEW_STYLES = [
-    "cobwebs",
-    "strange_attractor",
-    "flow_field",
-    "sacred_geometry",
-    "recursive_fractal",
+    "potter_tunnel",
+    "fractal_scale",
+    "neuro_vortex",
 ]
 
 FEEDBACK_MODES = [

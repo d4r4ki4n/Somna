@@ -2,8 +2,7 @@
 Spiral shader assembly regression test.
 
 Verifies that the modular shader (common.glsl + per-style files) compiles
-and produces pixel-identical output to the monolith (spiral.glsl) for all
-18 implemented styles.
+and renders for all 26 implemented styles.
 
 Run:  python -m tests.test_spiral_shader_assembly
       pytest tests/test_spiral_shader_assembly.py -v
@@ -21,7 +20,6 @@ from pathlib import Path
 SHADER_DIR = Path(__file__).parent.parent / "shaders"
 STYLES_DIR = SHADER_DIR / "styles"
 COMMON_PATH = SHADER_DIR / "common.glsl"
-MONOLITH_PATH = SHADER_DIR / "spiral.glsl"
 
 VERT = """
 #version 330 core
@@ -57,9 +55,12 @@ STYLE_NAMES = [
     "flow_field",
     "sacred_geometry",
     "recursive_fractal",
+    "potter_tunnel",
+    "fractal_scale",
+    "neuro_vortex",
 ]
 
-STYLE_IDS = list(range(23))
+STYLE_IDS = list(range(26))
 
 TEST_W, TEST_H = 320, 240
 
@@ -73,6 +74,8 @@ UNIFORM_DEFAULTS = dict(
     u_resolution=(TEST_W, TEST_H),
     u_thickness=1.0,
     u_beat_phase=0.25,
+    u_entrainment_phase=0.0,
+    u_entrainment_strength=0.0,
     u_color_cycle=1.0,
     u_style=0,
     u_golden_spiral=0,
@@ -97,7 +100,6 @@ def _assemble_shader() -> str:
         "    vec4 result;",
     ]
     for i, name in enumerate(STYLE_NAMES):
-        indent = "    " if i == 0 else "    else "
         connector = "" if i == 0 else "else "
         dispatch.append(f"    {connector}if (u_style == {i}) result = style_{name}(p);")
     dispatch.append("    fragColor = result;")
@@ -139,42 +141,17 @@ class TestShaderAssembly(unittest.TestCase):
         prog = self.ctx.program(vertex_shader=VERT, fragment_shader=src)
         self.assertIsNotNone(prog)
 
-    def test_monolith_compiles(self):
-        src = MONOLITH_PATH.read_text(encoding="utf-8")
-        prog = self.ctx.program(vertex_shader=VERT, fragment_shader=src)
-        self.assertIsNotNone(prog)
-
     def test_assembled_uniforms_match(self):
         src = _assemble_shader()
         prog = self.ctx.program(vertex_shader=VERT, fragment_shader=src)
         for name in UNIFORM_DEFAULTS:
             self.assertIn(name, prog, f"Missing uniform: {name}")
 
-    def test_all_styles_pixel_identical(self):
-        """Original 18 styles must be pixel-identical to the monolith."""
-        assembled_src = _assemble_shader()
-        mono_src = MONOLITH_PATH.read_text(encoding="utf-8")
-        prog_a = self.ctx.program(vertex_shader=VERT, fragment_shader=assembled_src)
-        prog_m = self.ctx.program(vertex_shader=VERT, fragment_shader=mono_src)
-
-        original_styles = list(range(18))
-        for idx in original_styles:
-            name = STYLE_NAMES[idx]
-            with self.subTest(style=name, idx=idx):
-                img_a = self._render(prog_a, idx)
-                img_m = self._render(prog_m, idx)
-                diff = np.abs(img_a.astype(int) - img_m.astype(int))
-                max_diff = diff.max()
-                self.assertEqual(
-                    max_diff, 0, f"Style {idx} ({name}): max pixel diff = {max_diff}"
-                )
-
-    def test_new_styles_render(self):
-        """Phase 4 styles (18-22) must compile and render without error."""
+    def test_all_styles_render(self):
+        """All 26 styles must compile and render non-black output."""
         assembled_src = _assemble_shader()
         prog = self.ctx.program(vertex_shader=VERT, fragment_shader=assembled_src)
-        new_style_ids = list(range(18, len(STYLE_NAMES)))
-        for idx in new_style_ids:
+        for idx in STYLE_IDS:
             name = STYLE_NAMES[idx]
             with self.subTest(style=name, idx=idx):
                 img = self._render(prog, idx)
@@ -190,9 +167,6 @@ class TestShaderAssembly(unittest.TestCase):
 
     def test_common_glsl_exists(self):
         self.assertTrue(COMMON_PATH.exists())
-
-    def test_monolith_exists(self):
-        self.assertTrue(MONOLITH_PATH.exists())
 
 
 if __name__ == "__main__":

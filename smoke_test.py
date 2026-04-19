@@ -834,7 +834,8 @@ def test_shaders():
     sh = Path("shaders")
     _result("shaders/ directory", sh.exists())
     if sh.exists():
-        _result("shaders/spiral.glsl", (sh / "spiral.glsl").exists())
+        _result("shaders/common.glsl", (sh / "common.glsl").exists())
+        _result("shaders/styles/ directory", (sh / "styles").exists())
 
 
 def test_gitignore():

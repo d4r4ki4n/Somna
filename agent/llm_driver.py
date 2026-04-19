@@ -40,7 +40,10 @@ PARAMS = {
     # ── Spirals ───────────────────────────────────────────────────────────────
     "spiral_style": "str    one of: tunnel_dream | galaxy | archimedean | "
     "kaleidoscope | interference | electric | vortex | dna | "
-    "fibonacci | rose | moire | spirograph | fermat | superformula",
+    "fibonacci | rose | moire | spirograph | fermat | superformula | "
+    "liminal | resonant | nebula | bifurcate | cobwebs | strange_attractor | "
+    "flow_field | sacred_geometry | recursive_fractal | "
+    "potter_tunnel | fractal_scale | neuro_vortex",
     "spiral_count": "int    1–8         — number of arms/petals",
     "spiral_tightness": "float  2.0–12.0    — winding tightness",
     "spiral_thickness": "int    4–40        — line width",

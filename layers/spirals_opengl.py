@@ -41,6 +41,9 @@ STYLE_MAP = {
     "flow_field": 20,
     "sacred_geometry": 21,
     "recursive_fractal": 22,
+    "potter_tunnel": 23,
+    "fractal_scale": 24,
+    "neuro_vortex": 25,
     # authoring guide aliases (Reese spiral_authoring_guide.md)
     "galaxy_arms": 1,
     "bloom": 9,
@@ -100,13 +103,8 @@ class SpiralsLayer:
         shader_dir = Path(__file__).parent.parent / "shaders"
         styles_dir = shader_dir / "styles"
         common_path = shader_dir / "common.glsl"
-        monolith_path = shader_dir / "spiral.glsl"
 
-        if common_path.exists() and styles_dir.exists():
-            frag_src = self._assemble_shader(common_path, styles_dir)
-        else:
-            with open(monolith_path, "r", encoding="utf-8") as f:
-                frag_src = f.read()
+        frag_src = self._assemble_shader(common_path, styles_dir)
 
         return self.ctx.program(
             vertex_shader="""
@@ -150,6 +148,9 @@ class SpiralsLayer:
             "flow_field",
             "sacred_geometry",
             "recursive_fractal",
+            "potter_tunnel",
+            "fractal_scale",
+            "neuro_vortex",
         ]
 
         for name in style_names:
@@ -187,6 +188,9 @@ class SpiralsLayer:
             "    else if (u_style == 20) result = style_flow_field(p);",
             "    else if (u_style == 21) result = style_sacred_geometry(p);",
             "    else if (u_style == 22) result = style_recursive_fractal(p);",
+            "    else if (u_style == 23) result = style_potter_tunnel(p);",
+            "    else if (u_style == 24) result = style_fractal_scale(p);",
+            "    else if (u_style == 25) result = style_neuro_vortex(p);",
             "    else                    result = style_tunnel(p);",
             "    fragColor = result;",
             "}",

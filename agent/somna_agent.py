@@ -795,7 +795,8 @@ _ADJUSTABLE_PARAMS = {
     "interference|electric|vortex|dna|fibonacci|rose|"
     "moire|spirograph|fermat|superformula|liminal|"
     "resonant|nebula|bifurcate|cobwebs|strange_attractor|"
-    "flow_field|sacred_geometry|recursive_fractal",
+    "flow_field|sacred_geometry|recursive_fractal|"
+    "potter_tunnel|fractal_scale|neuro_vortex",
     "spiral_speed_multiplier": "float 0.1–3.0",
     "spiral_chaos": "float 0.0–0.8",
     "spiral_opacity": "int 10–100",

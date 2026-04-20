@@ -311,6 +311,8 @@ When the user moves a slider, the touched param is added to `timeline_locked_par
 
 - `tmr_lockout_until` — float POSIX timestamp; `SlowWaveEnhancer.tick()` skips if `now < tmr_lockout_until`. Written by `TMREngine.tick()` after each replay cue, `TMREngine.eeg_loss_shutdown()` (5-minute lockout), and `Conductor._enter_sleep_training()` (HTW duration + 60 s).
 
+- \`tmr_haptic_cue\` — dict written alongside \`tmr_cue_cmd\` when haptic device is connected. Keys: \`ts\`, \`intensity\`, \`duration_s\`. Consumed by \`engines/haptic_engine.py\` to trigger a vibrotactile TMR anchor.
+
 **PPG / IMU sensor keys** (Bible Ch.2) — written by `ppg_engine.py` and `imu_engine.py`; absent on synthetic board:
 
 - `ppg_available` — bool; True when PPG buffer is warm and producing valid R-peaks.
@@ -546,11 +548,11 @@ The timeline runner (`TimelineRunner` in `timeline_runner.py`) reads `session.ya
 
 ## Veil modes
 
-Current valid `veil_mode` values: `scroll`, `rain`, `drift`, `converge`, `strobe`, `tunnel`, `null`.
+Current valid \`veil_mode\` values: \`scroll\`, \`rain\`, \`drift\`, \`converge\`, \`strobe\`, \`tunnel\`.
 
 **`mirror` is removed** — it was deleted from `layers/veil.py`. Do not reference it anywhere. The `_ADJUSTABLE_PARAMS` dict in `somna_agent.py` and the combobox in `control_panel_imgui.py` both use the current list.
 
-`null` means auto-rotate through modes on a timer (excluding `strobe` and `tunnel` which are excluded from random rotation).
+
 
 ---
 
@@ -1375,7 +1377,7 @@ CONDUCTOR_OWNED_PARAMS = frozenset({
 
 The agent strips these keys from any LLM `adjustments` dict before writing. Do not add these params to `_ADJUSTABLE_PARAMS` in a way that lets the LLM write them while the Conductor is active.
 
-**Phases** — `ConductorPhase` enum; core arc: `CALIBRATION` → `INDUCTION` → `DEEPENING` → `MAINTENANCE`. Fractionation sub-cycle: `FRAC_EMERGE` → `FRAC_EMERGE_HOLD` → `FRAC_REDROP`. Sleep path: `SLEEP_APPROACH` → `SLEEP_ONSET` → `SLEEP_MAINTAIN` → `SLEEP_TRAINING` → `SLEEP_WAKE`. Phase transitions are written to `live_control.json` as `conductor_phase` for the UI and agent to read.
+**Phases** — `ConductorPhase` enum; core arc: `CALIBRATION` → `INDUCTION` → `DEEPENING` → `MAINTENANCE`. Fractionation sub-cycle: `FRAC_EMERGE` → `FRAC_EMERGE_HOLD` → `FRAC_REDROP`. Sleep path: `SLEEP_APPROACH` → `SLEEP_ONSET` → `SLEEP_MAINTAIN` → `SLEEP_TRAINING` → `SLEEP_WAKE`. Phase transitions are written to `live_control.json` as `conductor_phase` for the UI and agent to read. Edison path: `EDISON_PREPARATION` → `EDISON_SEED` → `EDISON_MONITORING` → `EDISON_N1_HOLD` → `EDISON_CAPTURE` → `EDISON_CYCLE_END`. SSILD path: `SSILD_PRE_TECHNIQUE` → `SSILD_QUICK_CYCLES` → `SSILD_SLOW_CYCLES` → `SSILD_POST_TECHNIQUE` → `SSILD_REM_MONITORING` → `SSILD_DREAM_JOURNAL`. Terminal: `SESSION_END`. Special: `GENUS_BLOCK` (40 Hz protocol replaces normal depth).
 
 **EEG integration** — the Conductor reads `eeg_\*` keys from `live_control.json` on every tick. Without EEG it falls back to a timer-based schedule. Degraded mode activates when `eeg_confidence = "none"` for all channels.
 
@@ -1530,6 +1532,98 @@ Acquires EEG via BrainFlow, processes band powers, and writes results to `live_c
 | `eeg_entrainment_recommend_reason` | str or null | Human-readable explanation of modality recommendation |
 
 | `eeg_timestamp` | float | Wall time of last valid EEG update |
+
+
+| \`eeg_device_name\` | str | Discovered EEG device name |
+
+
+
+| \`eeg_signal_lost\` | bool | True when SQI confidence is none; False on recovery |
+
+
+
+| \`eeg_genus_ratio\` | float | Gamma (38-42 Hz) / broadband ratio for GENUS monitoring |
+
+
+
+| \`eeg_trance_score_v2\` | float | Three-axis composite depth (Bible Ch.2 x5x2.8): spectral slope + coherence + beta env corr |
+
+
+
+| \`eeg_slope_confidence\` | float | Spectral slope measurement confidence 0-1 |
+
+
+
+| \`eeg_coherence_frontal_alpha\` | float | AF7-AF8 alpha band coherence |
+
+
+
+| \`eeg_coherence_frontal_beta\` | float | AF7-AF8 beta band coherence |
+
+
+
+| \`eeg_coherence_temporal_theta\` | float | TP9-TP10 theta band coherence |
+
+
+
+| \`eeg_beta_env_corr\` | float | Beta envelope correlation (inter-hemispheric) |
+
+
+
+| \`eeg_coherence_depth\` | float | Weighted coherence depth indicator (EMA smoothed) |
+
+
+
+| \`eeg_faa\` | float | Smoothed frontal alpha asymmetry value |
+
+
+
+| \`eeg_faa_raw\` | float | Raw (unsmoothed) FAA |
+
+
+
+| \`eeg_faa_state\` | str | FAA receptivity state: alpha_suppressed / positive / insufficient_data |
+
+
+
+| \`eeg_faa_baseline_mean\` | float or null | FAA baseline mean (populated after first-10-session calibration) |
+
+
+
+| \`eeg_faa_baseline_std\` | float or null | FAA baseline std |
+
+
+
+| \`eeg_delta_phase\` | float | Delta wave phase 0-1 for SWE gating |
+
+
+
+| \`eeg_delta_in_gate\` | bool | Whether delta phase is in up-state gate window |
+
+
+
+| \`eeg_delta_amplitude\` | float | Delta wave amplitude |
+
+
+
+| \`eeg_sleep_stage\` | str | Sleep stage classification: WAKE / N1 / N2 / N3 / REM |
+
+
+
+| \`eeg_sleep_confidence\` | float | Sleep stage classification confidence 0-1 |
+
+
+
+| \`eeg_raw_af7_last_256\` | list[float] | Last 256 raw AF7 samples (for VR paroxysmal check) |
+
+
+
+| \`eeg_raw_af8_last_256\` | list[float] | Last 256 raw AF8 samples (for VR paroxysmal check) |
+
+
+
+| \`eeg_n2_n3_banked_s\` | float | Cumulative N2+N3 sleep seconds banked in current session |
+
 
 **Calibration microfeedback keys** — written by `run_iaf_calibration()` every 5 s during calibration and cleared on completion:
 

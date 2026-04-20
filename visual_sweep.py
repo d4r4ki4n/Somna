@@ -93,6 +93,8 @@ ALL_STYLES = [
     "ojascki",
     "tunnel_warp",
     "ganzflicker",
+    "vogel_spiral",
+    "galaxy_morph",
 ]
 
 NEW_STYLES = [
@@ -102,6 +104,8 @@ NEW_STYLES = [
     "ojascki",
     "tunnel_warp",
     "ganzflicker",
+    "vogel_spiral",
+    "galaxy_morph",
 ]
 
 FEEDBACK_MODES = [

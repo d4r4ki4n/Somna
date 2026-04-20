@@ -797,7 +797,7 @@ _ADJUSTABLE_PARAMS = {
     "nebula|cobwebs|strange_attractor|"
     "flow_field|sacred_geometry|recursive_fractal|"
     "potter_tunnel|fractal_scale|neuro_vortex|"
-    "ojascki|tunnel_warp|ganzflicker",
+    "ojascki|tunnel_warp|ganzflicker|vogel_spiral|galaxy_morph",
     "spiral_speed_multiplier": "float 0.1–3.0",
     "spiral_chaos": "float 0.0–0.8",
     "spiral_opacity": "int 10–100",

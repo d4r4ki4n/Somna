@@ -57,6 +57,8 @@ STYLE_NAMES = [
     "ojascki",
     "tunnel_warp",
     "ganzflicker",
+    "vogel_spiral",
+    "galaxy_morph",
 ]
 
 STYLE_IDS = [
@@ -85,6 +87,8 @@ STYLE_IDS = [
     26,
     27,
     28,
+    29,
+    30,
 ]
 
 TEST_W, TEST_H = 320, 240

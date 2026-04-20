@@ -2,7 +2,7 @@
 veil.py
 Somna — Veil affirmation layer
 
-Seven animation modes, randomly selected and periodically changed.
+Six animation modes, randomly selected and periodically changed.
 Mode can also be set via config["veil_mode"] for LLM/session control.
 
 Modes:
@@ -11,7 +11,6 @@ Modes:
   drift     — individual phrases float with independent velocities, fade in/out
   converge  — phrases flow inward from all edges toward center
   strobe    — single large phrase flashes supraliminal center (follows flash timing)
-  mirror    — scroll but every other tile is horizontally flipped (symmetry wall)
   tunnel    — phrases spawn small at center, scale up as they rush toward the viewer
 """
 
@@ -40,45 +39,45 @@ _TUNNEL_SIZES = [10, 13, 17, 22, 28, 36, 46, 60, 78, 100, 130, 164]
 
 class _DriftPhrase:
     """A single floating phrase for drift mode."""
-    __slots__ = ("text", "x", "y", "vx", "vy", "alpha", "fade_dir",
-                 "font_path", "size")
+
+    __slots__ = ("text", "x", "y", "vx", "vy", "alpha", "fade_dir", "font_path", "size")
 
     def __init__(self, text, x, y, vx, vy, font_path, size):
-        self.text      = text
+        self.text = text
         self.x, self.y = float(x), float(y)
         self.vx, self.vy = vx, vy
-        self.alpha     = 0.0
-        self.fade_dir  = 1   # 1=fading in, -1=fading out
+        self.alpha = 0.0
+        self.fade_dir = 1  # 1=fading in, -1=fading out
         self.font_path = font_path
-        self.size      = size
+        self.size = size
 
 
 class VeilLayer:
     """Dense affirmation veil with multiple animated display modes."""
 
     def __init__(self, config: dict):
-        self.config   = config
+        self.config = config
         self.font_mgr = FontManager(config)
-        self.pool     = PhrasePool(config)
+        self.pool = PhrasePool(config)
 
         self.opacity_base = config.get("veil_opacity", 45)
-        self.density      = config.get("veil_density", 1.3)
+        self.density = config.get("veil_density", 1.3)
 
         self._w = pygame.display.get_surface().get_width()
         self._h = pygame.display.get_surface().get_height()
 
         # Mode state
-        self._mode        = None   # set by _pick_mode()
-        self._mode_timer  = 0.0
+        self._mode = None  # set by _pick_mode()
+        self._mode_timer = 0.0
         self._mode_change = random.uniform(_MODE_CHANGE_MIN, _MODE_CHANGE_MAX)
-        self._last_color  = None   # for scroll surface rebuild on color change
+        self._last_color = None  # for scroll surface rebuild on color change
 
         # Scroll mode state
         self._scroll_surface = None
-        self._scroll_x       = 0.0
-        self._scroll_y       = 0.0
-        self._scroll_vx      = 0.0
-        self._scroll_vy      = 0.0
+        self._scroll_x = 0.0
+        self._scroll_y = 0.0
+        self._scroll_vx = 0.0
+        self._scroll_vy = 0.0
 
         # Rain mode state — list of (x, y, speed, phrase, alpha) per column
         self._rain_cols: list = []
@@ -90,10 +89,10 @@ class VeilLayer:
         self._converge_phrases: list = []
 
         # Strobe mode state
-        self._strobe_phrase:  str   = "..."
-        self._strobe_visible: bool  = False
-        self._strobe_timer:   float = 0.0
-        self._strobe_surf:    object = None  # cached rendered surface
+        self._strobe_phrase: str = "..."
+        self._strobe_visible: bool = False
+        self._strobe_timer: float = 0.0
+        self._strobe_surf: object = None  # cached rendered surface
 
         # Tunnel mode state — list of phrase dicts with depth/angle/spread
         self._tunnel_phrases: list = []
@@ -108,13 +107,13 @@ class VeilLayer:
     # ── Mode selection ────────────────────────────────────────────────────────
 
     def _pick_mode(self, force: bool = False):
-        # Respect config override (exclude strobe/mirror from random rotation
+        # Respect config override (exclude strobe and tunnel from random rotation
         # so they only appear when explicitly requested — they're strong effects)
         cfg_mode = self.config.get("veil_mode")
         if cfg_mode and cfg_mode in _MODES:
             new_mode = cfg_mode
         else:
-            # strobe, mirror, tunnel only appear when explicitly requested —
+            # strobe and tunnel only appear when explicitly requested —
             # they're strong effects that don't suit random rotation
             new_mode = random.choice(["scroll", "rain", "drift", "converge", "tunnel"])
 
@@ -159,26 +158,35 @@ class VeilLayer:
         # paired with layouts whose per-row/column offsets prevent phrase smearing.
         cardinal_h = [(1.0, 0.0), (-1.0, 0.0)]
         cardinal_v = [(0.0, 1.0), (0.0, -1.0)]
-        diagonals  = [
-            (0.8,  0.8), (-0.8, 0.8), (0.8, -0.8), (-0.8, -0.8),
-            (0.4,  1.0), (1.0,  0.4), (-0.4, 1.0), (1.0, -0.4),
-            (0.4, -1.0), (-1.0, 0.4),
+        diagonals = [
+            (0.8, 0.8),
+            (-0.8, 0.8),
+            (0.8, -0.8),
+            (-0.8, -0.8),
+            (0.4, 1.0),
+            (1.0, 0.4),
+            (-0.4, 1.0),
+            (1.0, -0.4),
+            (0.4, -1.0),
+            (-1.0, 0.4),
         ]
         direction_type = random.choice(["horizontal", "vertical", "diagonal"])
         if direction_type == "horizontal":
-            _dir    = random.choice(cardinal_h)
+            _dir = random.choice(cardinal_h)
             pattern = random.choice(["stagger", "scatter"])
         elif direction_type == "vertical":
-            _dir    = random.choice(cardinal_v)
+            _dir = random.choice(cardinal_v)
             pattern = random.choice(["columns", "scatter"])
         else:
-            _dir    = random.choice(diagonals)
-            pattern = random.choice(["rows", "columns", "diagonal", "scatter", "stagger"])
+            _dir = random.choice(diagonals)
+            pattern = random.choice(
+                ["rows", "columns", "diagonal", "scatter", "stagger"]
+            )
 
         if pattern == "rows":
             # Dense horizontal rows — phrases repeat across each row, rows fill height
             font_sz = random.choice([36, 44, 52])
-            font    = self.font_mgr.get_font(font_sz)
+            font = self.font_mgr.get_font(font_sz)
             row_gap = int(font_sz * 1.6)
             col_gap = 40
             y = 0
@@ -195,10 +203,10 @@ class VeilLayer:
 
         elif pattern == "columns":
             # Multiple independent vertical columns of text
-            font_sz   = random.choice([32, 40, 48])
-            font      = self.font_mgr.get_font(font_sz)
+            font_sz = random.choice([32, 40, 48])
+            font = self.font_mgr.get_font(font_sz)
             col_width = int(font_sz * 10)
-            row_gap   = int(font_sz * 1.8)
+            row_gap = int(font_sz * 1.8)
             phrase_idx = 0
             col_x = 0
             while col_x < w:
@@ -213,10 +221,10 @@ class VeilLayer:
 
         elif pattern == "diagonal":
             # Phrases along parallel diagonal bands
-            font_sz  = random.choice([40, 52, 60])
-            font     = self.font_mgr.get_font(font_sz)
-            step_x   = int(font_sz * 7)
-            step_y   = int(font_sz * 1.8)
+            font_sz = random.choice([40, 52, 60])
+            font = self.font_mgr.get_font(font_sz)
+            step_x = int(font_sz * 7)
+            step_y = int(font_sz * 1.8)
             phrase_idx = 0
             y = -step_y
             while y < h + step_y:
@@ -235,9 +243,9 @@ class VeilLayer:
             count = int(self.density * max(40, len(lines) * 4))
             for _ in range(count):
                 font_sz = random.choice([28, 36, 44, 52])
-                font    = self.font_mgr.get_font(font_sz)
-                phrase  = lines[phrase_idx % len(lines)]
-                txt     = font.render(phrase.upper(), True, color)
+                font = self.font_mgr.get_font(font_sz)
+                phrase = lines[phrase_idx % len(lines)]
+                txt = font.render(phrase.upper(), True, color)
                 x = random.randint(0, max(1, w - txt.get_width()))
                 y = random.randint(0, max(1, h - txt.get_height()))
                 self._scroll_surface.blit(txt, (x, y))
@@ -245,11 +253,11 @@ class VeilLayer:
 
         else:  # stagger — alternating rows offset by half the line width
             font_sz = random.choice([36, 44, 52])
-            font    = self.font_mgr.get_font(font_sz)
+            font = self.font_mgr.get_font(font_sz)
             row_gap = int(font_sz * 1.7)
             col_gap = 36
-            y       = 0
-            row_n   = 0
+            y = 0
+            row_n = 0
             phrase_idx = 0
             while y < h:
                 x_start = (col_gap * 3 // 2) if (row_n % 2 == 1) else 0
@@ -267,7 +275,7 @@ class VeilLayer:
         self._scroll_y = 0.0
 
         dx, dy = _dir
-        speed  = random.uniform(0.5, 1.6)
+        speed = random.uniform(0.5, 1.6)
         self._scroll_vx = dx * speed
         self._scroll_vy = dy * speed
 
@@ -294,37 +302,39 @@ class VeilLayer:
     # ── Rain mode ─────────────────────────────────────────────────────────────
 
     def _init_rain(self, w: int, h: int):
-        col_w   = 220
-        n_cols  = max(1, w // col_w)
+        col_w = 220
+        n_cols = max(1, w // col_w)
         self._rain_cols = []
         for i in range(n_cols):
             x = i * col_w + random.randint(0, col_w - 1)
-            self._rain_cols.append({
-                "x":       float(x),
-                "y":       float(random.randint(-h, 0)),
-                "speed":   random.uniform(80, 260),
-                "phrase":  self.pool.pick(),
-                "alpha":   random.randint(30, 120),
-                "size":    random.choice([48, 56, 64, 72]),
-            })
+            self._rain_cols.append(
+                {
+                    "x": float(x),
+                    "y": float(random.randint(-h, 0)),
+                    "speed": random.uniform(80, 260),
+                    "phrase": self.pool.pick(),
+                    "alpha": random.randint(30, 120),
+                    "size": random.choice([48, 56, 64, 72]),
+                }
+            )
 
     def _update_rain(self, dt: float):
         h = self._h
         for col in self._rain_cols:
             col["y"] += col["speed"] * dt
             if col["y"] > h + 80:
-                col["y"]    = random.randint(-200, -40)
+                col["y"] = random.randint(-200, -40)
                 col["phrase"] = self.pool.pick()
                 col["speed"] = random.uniform(80, 260)
                 col["alpha"] = random.randint(30, 120)
 
     def _draw_rain(self, surface: pygame.Surface, beat_freq: float):
-        pulse        = self._beat_pulse(beat_freq)
+        pulse = self._beat_pulse(beat_freq)
         opacity_mult = self.opacity_base / 50.0 * (1 + pulse)
         color = self._text_color()
         for col in self._rain_cols:
             surf = self._render_cached(col["phrase"], col["size"], color)
-            a    = int(min(255, col["alpha"] * opacity_mult * 2.55))
+            a = int(min(255, col["alpha"] * opacity_mult * 2.55))
             surf.set_alpha(a)
             surface.blit(surf, (int(col["x"]), int(col["y"])))
 
@@ -335,16 +345,16 @@ class VeilLayer:
         self._drift_phrases = []
         font_pool = self.font_mgr.config.get("_font_pool", [None])
         for _ in range(count):
-            speed  = random.uniform(10, 80)
-            angle  = random.uniform(0, math.tau)
+            speed = random.uniform(10, 80)
+            angle = random.uniform(0, math.tau)
             phrase = _DriftPhrase(
-                text      = self.pool.pick(),
-                x         = random.randint(0, w),
-                y         = random.randint(0, h),
-                vx        = math.cos(angle) * speed,
-                vy        = math.sin(angle) * speed,
-                font_path = None,
-                size      = random.choice([52, 64, 76, 90]),
+                text=self.pool.pick(),
+                x=random.randint(0, w),
+                y=random.randint(0, h),
+                vx=math.cos(angle) * speed,
+                vy=math.sin(angle) * speed,
+                font_path=None,
+                size=random.choice([52, 64, 76, 90]),
             )
             phrase.alpha = random.uniform(0, 100)
             self._drift_phrases.append(phrase)
@@ -358,30 +368,34 @@ class VeilLayer:
             p.alpha += p.fade_dir * dt * random.uniform(20, 50)
             if p.alpha >= 120:
                 p.fade_dir = -1
-                p.alpha    = 120.0
+                p.alpha = 120.0
             elif p.alpha <= 0:
                 p.fade_dir = 1
-                p.alpha    = 0.0
-                p.text     = self.pool.pick()
-                p.x        = random.randint(0, w)
-                p.y        = random.randint(0, h)
-                angle      = random.uniform(0, math.tau)
-                speed      = random.uniform(10, 80)
-                p.vx       = math.cos(angle) * speed
-                p.vy       = math.sin(angle) * speed
+                p.alpha = 0.0
+                p.text = self.pool.pick()
+                p.x = random.randint(0, w)
+                p.y = random.randint(0, h)
+                angle = random.uniform(0, math.tau)
+                speed = random.uniform(10, 80)
+                p.vx = math.cos(angle) * speed
+                p.vy = math.sin(angle) * speed
             # Soft wrap
-            if p.x < -200: p.x = w + 50
-            if p.x > w + 200: p.x = -50
-            if p.y < -100: p.y = h + 30
-            if p.y > h + 100: p.y = -30
+            if p.x < -200:
+                p.x = w + 50
+            if p.x > w + 200:
+                p.x = -50
+            if p.y < -100:
+                p.y = h + 30
+            if p.y > h + 100:
+                p.y = -30
 
     def _draw_drift(self, surface: pygame.Surface, beat_freq: float):
-        pulse        = self._beat_pulse(beat_freq)
+        pulse = self._beat_pulse(beat_freq)
         opacity_mult = self.opacity_base / 50.0 * (1 + pulse)
         color = self._text_color()
         for p in self._drift_phrases:
             surf = self._render_cached(p.text, p.size, color)
-            a    = int(min(255, p.alpha * opacity_mult * 2.55))
+            a = int(min(255, p.alpha * opacity_mult * 2.55))
             surf.set_alpha(a)
             surface.blit(surf, (int(p.x), int(p.y)))
 
@@ -393,22 +407,28 @@ class VeilLayer:
     def _converge_spawn(self, w, h, cx, cy, progress=None):
         """Return a fresh converge-phrase dict. progress=None → random stagger."""
         edge = random.randint(0, 3)
-        if edge == 0:   ox, oy = random.randint(0, w), -60
-        elif edge == 1: ox, oy = random.randint(0, w), h + 60
-        elif edge == 2: ox, oy = -60, random.randint(0, h)
-        else:           ox, oy = w + 60, random.randint(0, h)
+        if edge == 0:
+            ox, oy = random.randint(0, w), -60
+        elif edge == 1:
+            ox, oy = random.randint(0, w), h + 60
+        elif edge == 2:
+            ox, oy = -60, random.randint(0, h)
+        else:
+            ox, oy = w + 60, random.randint(0, h)
         t = random.uniform(0.0, 0.95) if progress is None else progress
         x = ox + (cx - ox) * t
         y = oy + (cy - oy) * t
-        dx = cx - x; dy = cy - y
-        dist = math.sqrt(dx*dx + dy*dy) or 1
+        dx = cx - x
+        dy = cy - y
+        dist = math.sqrt(dx * dx + dy * dy) or 1
         speed = random.uniform(50, 120)
         return {
-            "text":         self.pool.pick(),
-            "x": float(x), "y": float(y),
+            "text": self.pool.pick(),
+            "x": float(x),
+            "y": float(y),
             "vx": dx / dist * speed,
             "vy": dy / dist * speed,
-            "alpha":        random.randint(50, 140),
+            "alpha": random.randint(50, 140),
             "size_at_edge": random.choice([64, 72, 84]),
         }
 
@@ -426,12 +446,13 @@ class VeilLayer:
             p["x"] += p["vx"] * dt
             p["y"] += p["vy"] * dt
             # Crossed center: dot product flips sign
-            dx = cx - p["x"]; dy = cy - p["y"]
+            dx = cx - p["x"]
+            dy = cy - p["y"]
             if p["vx"] * dx + p["vy"] * dy < 0:
                 p.update(self._converge_spawn(w, h, cx, cy, progress=0.0))
 
     def _draw_converge(self, surface: pygame.Surface, beat_freq: float):
-        pulse        = self._beat_pulse(beat_freq)
+        pulse = self._beat_pulse(beat_freq)
         opacity_mult = self.opacity_base / 50.0 * (1 + pulse)
         color = self._text_color()
         cx, cy = self._w / 2, self._h / 2
@@ -440,44 +461,43 @@ class VeilLayer:
         for p in self._converge_phrases:
             dist_to_c = math.sqrt((p["x"] - cx) ** 2 + (p["y"] - cy) ** 2)
             # Size shrinks from size_at_edge (far) to ~30% (near center)
-            scale    = 0.30 + 0.70 * min(1.0, dist_to_c / (max_dist * 0.75))
+            scale = 0.30 + 0.70 * min(1.0, dist_to_c / (max_dist * 0.75))
             raw_size = int(p["size_at_edge"] * scale)
-            size     = min(self._CONVERGE_SIZES,
-                           key=lambda s: abs(s - raw_size))
+            size = min(self._CONVERGE_SIZES, key=lambda s: abs(s - raw_size))
             surf = self._render_cached(p["text"], size, color)
             # Fade out as phrases approach center
             center_fade = min(1.0, dist_to_c / (max_dist * 0.3 + 1e-6))
-            a    = int(min(255, p["alpha"] * center_fade * opacity_mult * 2.55))
+            a = int(min(255, p["alpha"] * center_fade * opacity_mult * 2.55))
             surf.set_alpha(a)
-            bx = int(p["x"] - surf.get_width()  / 2)
+            bx = int(p["x"] - surf.get_width() / 2)
             by = int(p["y"] - surf.get_height() / 2)
             surface.blit(surf, (bx, by))
 
     # ── Strobe mode ───────────────────────────────────────────────────────────
 
     def _init_strobe(self):
-        self._strobe_phrase  = self.pool.pick() or "..."
+        self._strobe_phrase = self.pool.pick() or "..."
         self._strobe_visible = False
-        self._strobe_timer   = 0.0
-        self._strobe_surf    = None
+        self._strobe_timer = 0.0
+        self._strobe_surf = None
 
     def _update_strobe(self, dt: float):
-        on_ms  = max(16, self.config.get("center_flash_on_time",  120))
+        on_ms = max(16, self.config.get("center_flash_on_time", 120))
         off_ms = max(16, self.config.get("center_flash_off_time", 80))
         self._strobe_timer += dt * 1000.0
 
         if self._strobe_visible:
             if self._strobe_timer >= on_ms:
                 self._strobe_visible = False
-                self._strobe_timer   = 0.0
+                self._strobe_timer = 0.0
         else:
             if self._strobe_timer >= off_ms:
                 self._strobe_visible = True
-                self._strobe_timer   = 0.0
+                self._strobe_timer = 0.0
                 phrase = self.pool.pick() or "..."
                 if phrase != self._strobe_phrase:
                     self._strobe_phrase = phrase
-                    self._strobe_surf   = None  # invalidate
+                    self._strobe_surf = None  # invalidate
 
     def _draw_strobe(self, surface: pygame.Surface):
         if not self._strobe_visible:
@@ -487,10 +507,10 @@ class VeilLayer:
         color = self._text_color()
 
         if self._strobe_surf is None:
-            words   = self._strobe_phrase.upper().split()
-            lines   = []
+            words = self._strobe_phrase.upper().split()
+            lines = []
             current = []
-            font    = self.font_mgr.get_font(target_size)
+            font = self.font_mgr.get_font(target_size)
             # Greedy word-wrap: break when line would exceed 80% of screen width
             for word in words:
                 test = " ".join(current + [word])
@@ -504,10 +524,10 @@ class VeilLayer:
 
             # Render each line and composite onto a single surface
             line_surfs = [font.render(ln, True, color) for ln in lines]
-            line_h     = max(s.get_height() for s in line_surfs)
-            total_h    = len(line_surfs) * line_h
-            total_w    = max(s.get_width() for s in line_surfs)
-            composite  = pygame.Surface((total_w, total_h), pygame.SRCALPHA)
+            line_h = max(s.get_height() for s in line_surfs)
+            total_h = len(line_surfs) * line_h
+            total_w = max(s.get_width() for s in line_surfs)
+            composite = pygame.Surface((total_w, total_h), pygame.SRCALPHA)
             for idx, ls in enumerate(line_surfs):
                 composite.blit(ls, ((total_w - ls.get_width()) // 2, idx * line_h))
             self._strobe_surf = composite
@@ -529,29 +549,31 @@ class VeilLayer:
             angle = (i / arm_count) * math.tau
             # Stagger starting progress so arms aren't all at the same position
             progress = random.uniform(0.02, 0.95)
-            self._tunnel_phrases.append({
-                "text":     self.pool.pick(),
-                "progress": progress,   # 0 = born at centre, 1 = reached edge
-                "speed":    random.uniform(0.18, 0.42),
-                "angle":    angle,
-            })
+            self._tunnel_phrases.append(
+                {
+                    "text": self.pool.pick(),
+                    "progress": progress,  # 0 = born at centre, 1 = reached edge
+                    "speed": random.uniform(0.18, 0.42),
+                    "angle": angle,
+                }
+            )
 
     def _update_tunnel(self, dt: float):
         for p in self._tunnel_phrases:
             p["progress"] += p["speed"] * dt
             if p["progress"] >= 1.0:
                 p["progress"] = 0.0
-                p["text"]     = self.pool.pick()
-                p["speed"]    = random.uniform(0.18, 0.42)
+                p["text"] = self.pool.pick()
+                p["speed"] = random.uniform(0.18, 0.42)
                 # Keep the same arm angle — renew phrase on same arm
 
     def _draw_tunnel(self, surface: pygame.Surface, beat_freq: float):
-        pulse        = self._beat_pulse(beat_freq)
+        pulse = self._beat_pulse(beat_freq)
         opacity_mult = self.opacity_base / 50.0 * (1 + pulse)
-        color  = self._text_color()
-        w, h   = self._w, self._h
+        color = self._text_color()
+        w, h = self._w, self._h
         cx, cy = w / 2.0, h / 2.0
-        reach  = min(w, h) * 0.62  # max radius a phrase travels before reset
+        reach = min(w, h) * 0.62  # max radius a phrase travels before reset
 
         # Draw back-to-front (lowest progress = smallest/nearest-centre first)
         for p in sorted(self._tunnel_phrases, key=lambda x: x["progress"]):
@@ -560,11 +582,11 @@ class VeilLayer:
                 continue
 
             # Size: starts at 10 px, reaches ~14% of screen height at the edge
-            raw_size = int(10 + h * 0.13 * prog ** 1.4)
-            size     = min(_TUNNEL_SIZES, key=lambda s: abs(s - raw_size))
+            raw_size = int(10 + h * 0.13 * prog**1.4)
+            size = min(_TUNNEL_SIZES, key=lambda s: abs(s - raw_size))
 
             # Radial position along the arm
-            radius = prog ** 1.1 * reach
+            radius = prog**1.1 * reach
             px = cx + math.cos(p["angle"]) * radius
             py = cy + math.sin(p["angle"]) * radius
 
@@ -595,7 +617,7 @@ class VeilLayer:
         because we blit immediately after each set_alpha, so frame-to-frame
         ordering never conflicts even when two phrases share the same surface.
         """
-        font     = self.font_mgr.get_font(size)
+        font = self.font_mgr.get_font(size)
         font_key = self.font_mgr.current_font
 
         # Font switched — old rendered surfaces are wrong typeface, nuke them
@@ -612,7 +634,7 @@ class VeilLayer:
         surf = font.render(text.upper(), True, color)
         self._render_cache[key] = surf
         if len(self._render_cache) > _RENDER_CACHE_MAX:
-            self._render_cache.popitem(last=False)   # evict least-recently-used
+            self._render_cache.popitem(last=False)  # evict least-recently-used
         return surf
 
     # ── Beat pulse helper ─────────────────────────────────────────────────────
@@ -620,8 +642,8 @@ class VeilLayer:
     def _beat_pulse(self, beat_freq: float) -> float:
         if beat_freq <= 0.1:
             return 0.0
-        duty  = self.config.get("flash_duty_cycle", 0.38)
-        var   = self.config.get("flash_variance", 0.22)
+        duty = self.config.get("flash_duty_cycle", 0.38)
+        var = self.config.get("flash_variance", 0.22)
         # Use audio engine's authoritative phase when available; fall back to wall clock
         audio_phase = self.config.get("beat_phase")
         if audio_phase is not None:
@@ -640,7 +662,7 @@ class VeilLayer:
         self._h = pygame.display.get_surface().get_height()
 
         # Pool or color change — scroll mode needs a surface rebuild
-        pool_changed  = self.pool.update(self.config)
+        pool_changed = self.pool.update(self.config)
         color_changed = self._text_color() != self._last_color
         if pool_changed or color_changed:
             if self._mode == "scroll":

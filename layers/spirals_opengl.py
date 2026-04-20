@@ -67,7 +67,7 @@ _TEXT_FONT_SIZE = 42
 
 
 class SpiralsLayer:
-    """ModernGL GPU spiral shader — 27 styles, beat breathing, text-on-spiral,
+    """ModernGL GPU spiral shader — 26 styles, beat breathing, text-on-spiral,
     IAF rotation lock (Bible Ch.10 §10.2 §2.3), motion aftereffect cycle (Bible Ch.10 §10.2 §2.4)."""
 
     def __init__(self, config: dict, ctx: moderngl.Context):

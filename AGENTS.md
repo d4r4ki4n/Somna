@@ -64,9 +64,9 @@ The project is called **Somna**. The control panel entry point is `main_imgui.py
 
 | `session/timeline_runner.py` | Session timeline playback; the authoritative writer of session-managed keys |
 
-| `somna_agent.py` | Always-on LLM agent; active mode (interactive session ticks) + idle mode (planning, nudge, console); never overrides user-locked params |
+| `agent/somna_agent.py` | Always-on LLM agent; active mode (interactive session ticks) + idle mode (planning, nudge, console); never overrides user-locked params |
 
-| `content_agent.py` | CLI content studio; interactive LLM authoring of sessions, affirmations, images |
+| `agent/content_agent.py` | CLI content studio; interactive LLM authoring of sessions, affirmations, images |
 
 | `engines/audio_engine.py` | Binaural beat generation; reads `live_control.json` |
 
@@ -74,7 +74,7 @@ The project is called **Somna**. The control panel entry point is `main_imgui.py
 
 | `config.py` | Thin watcher: `os.stat()` poll at 100 ms, full JSON read only on mtime/size change |
 
-| `llm_driver.py` | Helper API for external agents: `send()`, `read_state()`, `prompt_user()` etc. |
+| `agent/llm_driver.py` | Helper API for external agents: `send()`, `read_state()`, `prompt_user()` etc. |
 
 | `session/conductor.py` | Session Conductor FSM (Bible Ch.4); instantiated per session by `somna_agent.py`; owns structural params when active |
 
@@ -1117,12 +1117,25 @@ The spiral renderer uses a modular shader system. The monolith `spiral.glsl` is 
 - `kaleidoscopic_fold` — mirrored symmetry persistence
 Live key: `feedback_mode` (str, one of the above or `none`). Live key: `feedback_strength` (float 0.0–1.0) — modulates effective trail decay; at 1.0 the full `trail_decay` value applies, at 0.0 the effective decay is reduced to 30%. Default 1.0. Works as a user/agent ceiling to prevent blowout — set to 0.5–0.7 for high-density spirals. The shader formula is `effective_decay = trail_decay * (0.3 + 0.7 * strength)`.
 
-**Phase 4 — Five new styles** (22 total, indices 18–22):
+**Phase 4 — Five new styles** (indices 18–22):
 - `cobwebs` (18) — irregular radial threads with structural variation
 - `strange_attractor` (19) — Lorenz-like swirling particle trails
 - `flow_field` (20) — organic curl-noise-driven streams
 - `sacred_geometry` (21) — concentric geometric forms (Flower of Life, Metatron)
 - `recursive_fractal` (22) — nested self-similar branching patterns
+
+**Phase 4b — Four additional styles** (indices 23–26):
+- `potter_tunnel` (23) — Potter-style tunnel with depth layers
+- `fractal_scale` (24) — fractal scaling pattern
+- `neuro_vortex` (25) — restored independent-oscillator vortex
+- `ojascki` (26) — Ojascki noise spiral (from Shadertoy evaluation)
+
+**Phase 4c — Three Shadertoy-evaluated styles** (indices 27–29):
+- `tunnel_warp` (27) — time-bent radial interference
+- `ganzflicker` (28) — ganzfeld-compatible flicker pattern
+- `galaxy_morph` (29) — FBM-based morphing galaxy
+
+**26 styles total** (vogel_spiral dropped). Index gaps at 5, 8, 15, 17.
 
 **PP pipeline vertex shader** — PP passes use `_PP_VERT` (straight UV, no Y-flip). `copy_framebuffer` preserves GL orientation, so using `_BLIT_VERT` (which flips Y) caused a double-flip. `pp_composite.glsl` also passes scene alpha through instead of forcing 1.0, preserving desktop transparency.
 
@@ -1348,9 +1361,13 @@ Lives in `agent/somna_agent.py` (chord monitoring + selection + recording) and `
 
 CONDUCTOR_OWNED_PARAMS = frozenset({
 
-"beat_frequency", "veil_mode", "spiral_style",
+"beat_frequency", "beat_type", "spiral_chaos", "trail_decay",
 
-"shadow_opacity_target", "sr_noise_level", ...
+"veil_mode", "spiral_style", "shadow_opacity_target", "sr_noise_level",
+
+"breath_mod", "breath_rate", "pp_bloom_intensity", "pp_film_grain",
+
+"pp_ca_strength", "entrainment_strength",
 
 })
 

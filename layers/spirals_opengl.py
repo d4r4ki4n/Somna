@@ -43,8 +43,7 @@ STYLE_MAP = {
     "ojascki": 26,
     "tunnel_warp": 27,
     "ganzflicker": 28,
-    "vogel_spiral": 29,
-    "galaxy_morph": 30,
+    "galaxy_morph": 29,
     # authoring guide aliases (Reese spiral_authoring_guide.md)
     "galaxy_arms": 1,
     "bloom": 9,
@@ -150,7 +149,6 @@ class SpiralsLayer:
             "ojascki",
             "tunnel_warp",
             "ganzflicker",
-            "vogel_spiral",
             "galaxy_morph",
         ]
 
@@ -191,8 +189,7 @@ class SpiralsLayer:
             "    else if (u_style == 26) result = style_ojascki(p);",
             "    else if (u_style == 27) result = style_tunnel_warp(p);",
             "    else if (u_style == 28) result = style_ganzflicker(p);",
-            "    else if (u_style == 29) result = style_vogel_spiral(p);",
-            "    else if (u_style == 30) result = style_galaxy_morph(p);",
+            "    else if (u_style == 29) result = style_galaxy_morph(p);",
             "    else                    result = style_tunnel(p);",
             "    fragColor = result;",
             "}",

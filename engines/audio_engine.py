@@ -803,7 +803,14 @@ class BinauralAudioEngine:
                         self._vol_change_at = None
                         self._active.set_volume(self.volume)
 
-                # ── Frequency: 80 ms debounce then crossfade ───────────────
+                # ── Frequency update ──────────────────────────────────────
+                # Two paths:
+                #  1. Small changes (< 2 Hz combined) — apply in-place immediately.
+                #     The phase accumulator handles continuity; no debounce needed.
+                #     Debouncing small changes creates stair-step artifacts during
+                #     smooth timeline interpolation (the "buzzing at 9.99 Hz" bug).
+                #  2. Large changes (≥ 2 Hz) — debounce 80 ms, then crossfade.
+                #     Needed to coalesce rapid slider drags into a single crossfade.
                 ref_c = (
                     self._pending_carrier
                     if self._pending_carrier is not None
@@ -815,12 +822,25 @@ class BinauralAudioEngine:
                     else self.current_beat
                 )
 
-                moving = abs(new_carrier - ref_c) > 0.05 or abs(new_beat - ref_b) > 0.05
+                delta_c = abs(new_carrier - ref_c)
+                delta_b = abs(new_beat - ref_b)
+                moving = delta_c > 0.05 or delta_b > 0.05
 
                 if moving:
-                    self._pending_carrier = new_carrier
-                    self._pending_beat = new_beat
-                    self._change_at = now
+                    total_delta = delta_c + delta_b
+                    if total_delta < 2.0:
+                        # Small change — apply immediately, no crossfade needed
+                        with self._lock:
+                            self.current_carrier = new_carrier
+                            self.current_beat = new_beat
+                        self._pending_carrier = None
+                        self._pending_beat = None
+                        self._change_at = None
+                    else:
+                        # Large change — debounce then crossfade
+                        self._pending_carrier = new_carrier
+                        self._pending_beat = new_beat
+                        self._change_at = now
                 elif self._pending_carrier is not None:
                     if now - self._change_at >= self._DEBOUNCE_SEC:
                         old_c = self.current_carrier
@@ -831,10 +851,6 @@ class BinauralAudioEngine:
                         self._pending_carrier = None
                         self._pending_beat = None
                         self._change_at = None
-                        # Only crossfade for large jumps (slider drag, agent command).
-                        # Tiny gradient steps update in-place — the next queued chunk
-                        # picks up the new frequency at a natural boundary with no
-                        # hard stop and no audible click.
                         if (
                             abs(self.current_carrier - old_c)
                             + abs(self.current_beat - old_b)

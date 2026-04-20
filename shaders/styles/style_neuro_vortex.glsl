@@ -1,61 +1,64 @@
 // Style 25 — Neuro Vortex
 // Based on "Neuro-Adaptive Hypnosis" by TripZilla (Shadertoy wcBGW3)
-// Adapted: uses our uniforms, arm_color, breath(), entrainment system
-// Key technique: asymmetric time shifts + peripheral desync for entrainment
+// Key technique: internal strobe + breath sync + peripheral desync + asymmetric motion
+// The animation comes from internal oscillators creating continuous phase transformations.
+// The strobe frequency scales with u_tightness so it can be tuned per-session.
 vec4 style_neuro_vortex(vec2 p) {
     float r     = length(p);
     float angle = atan(p.y, p.x);
 
-    // Breath-synced pulse (our breath() already tracks beat_phase)
-    float breathPulse = breath();
+    // Internal animation oscillators
+    float breathPulse = 0.5 + 0.5 * sin(u_time * 0.6);
+    float strobeFreq = 6.0 + u_tightness * 0.5;
+    float strobe = 0.5 + 0.5 * sin(u_time * strobeFreq);
 
-    // Peripheral motion desync: outer regions "drag behind" time
-    // Creates post-entrainment hallucination effect
-    float periphDesync = sin(r * 12.0 - u_time * 0.02 * u_chaos * 50.0) * 0.4;
+    // Peripheral motion desync: outer regions drag behind time
+    float periphDesync = sin(r * 12.0 - u_time * 0.02) * 0.6;
 
     // Asymmetric time shifts — different radial zones move at different speeds
     float asyncShift = sin(u_time * 0.45 + r * 6.0) * 1.3;
 
-    // Depth warp with entrainment-scaled distortion
-    float distortIntensity = 3.0 + u_tightness;
+    // Depth warp
+    float distortIntensity = 3.0 + u_tightness * 0.2;
     float warp = pow(r * distortIntensity + asyncShift, 1.5) * 50.0;
 
-    // Spiral arms — integer angular coefficient for seamless wrap
-    float spirals = float(u_count) * 2.0;
+    // Spiral arms — high count for fine lenticular structure
+    float spirals = float(u_count) * 6.0;
     float spiralTwist = mod(
         angle * spirals + warp - u_time * 0.85 * breathPulse,
         TWO_PI
     );
 
-    // Strobe layer — subtle brightness modulation at entrainment frequency
-    // Uses beat_phase for synchronization with audio
-    float strobe = 0.7 + 0.3 * (sin(u_entrainment_phase * TWO_PI) * 0.5 + 0.5);
-
-    // Main pattern: cosine spiral with less radial interference
+    // Main pattern
     float comp = cos(spiralTwist) * strobe
-               - sin(r * 25.0) * 0.15
+               - sin(r * 55.0)
                + periphDesync;
 
-    // Power curve for contrast — lower sharp = smoother, more vortex-like
-    float sharp = 3.0 + u_thickness * 0.3;
-    float g = pow((comp + 1.0) / 2.0, sharp) * breath();
+    // High-contrast power curve for sharp lenticular lines
+    float sharp = 6.0 + u_thickness * 0.1;
+    float g = pow((comp + 1.0) / 2.0, sharp);
 
-    // Fade center to avoid singularity
+    // Chaos adds extra peripheral lag
+    g += u_chaos * sin(r * 12.0 - u_time * u_chaos * 50.0) * 0.15;
+
+    // Fade center singularity
     float fade = smoothstep(0.0, 0.08, r);
+    g *= fade;
 
-    // Color: slight RGB channel offset for chromatic aberration feel
-    // Each channel samples at slightly different radial position
-    float r_shift = 0.02;
-    float g_r = pow((cos(spiralTwist) * strobe + 1.0) / 2.0, sharp);
-    float g_g = pow((cos(spiralTwist * 1.01 + r_shift * 20.0) * strobe + 1.0) / 2.0, sharp);
-    float g_b = pow((cos(spiralTwist * 0.99 - r_shift * 20.0) * strobe + 1.0) / 2.0, sharp);
+    // RGB channel separation for chromatic depth
+    float colorShift = 0.02 + u_chaos * 0.01;
+    float g_r = pow((cos(spiralTwist) * strobe - sin(r * 55.0) + periphDesync + 1.0) / 2.0, sharp);
+    float g_g = pow((cos(mod(angle * spirals + pow(r * (1.0 + colorShift) * distortIntensity + asyncShift, 1.5) * 50.0 - u_time * 0.85 * breathPulse, TWO_PI)) * strobe - sin(r * (1.0 + colorShift) * 55.0) + periphDesync + 1.0) / 2.0, sharp);
+    float g_b = pow((cos(mod(angle * spirals + pow(r * (1.0 - colorShift) * distortIntensity + asyncShift, 1.5) * 50.0 - u_time * 0.85 * breathPulse, TWO_PI)) * strobe - sin(r * (1.0 - colorShift) * 55.0) + periphDesync + 1.0) / 2.0, sharp);
+
+    g_r *= fade;
+    g_g *= fade;
+    g_b *= fade;
 
     vec3 col;
     if (u_color_cycle < 0.5) {
-        // Solid mode: monochrome with subtle chromatic shift
-        col = u_base_color * vec3(g_r, g_g, g_b) * breath();
+        col = u_base_color * vec3(g_r, g_g, g_b);
     } else {
-        // Rainbow mode: hue shifts with depth and angle
         float hue = warp * 0.005 + u_time * 0.04 + angle / TWO_PI;
         col = arm_color(hue, (g_r + g_g + g_b) / 3.0);
     }
@@ -67,5 +70,5 @@ vec4 style_neuro_vortex(vec2 p) {
         col = mix(col, txt.rgb * 1.5, txt.a * g * 0.8);
     }
 
-    return vec4(col, g * u_opacity * fade) * entrainmentModulation();
+    return vec4(col, g * u_opacity * fade * breath()) * entrainmentModulation();
 }

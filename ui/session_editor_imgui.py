@@ -71,7 +71,6 @@ _STR_PARAMS: dict[str, list[str]] = {
         "ojascki",
         "tunnel_warp",
         "ganzflicker",
-        "vogel_spiral",
         "galaxy_morph",
     ],
     "veil_mode": ["scroll", "rain", "drift", "converge", "strobe", "tunnel", "null"],

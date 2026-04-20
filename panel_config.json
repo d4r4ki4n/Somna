@@ -1503,9 +1503,26 @@
         "ojascki",
         "tunnel_warp",
         "ganzflicker",
-        "vogel_spiral",
         "galaxy_morph"
       ]
+    },
+    {
+      "key": "spiral_count",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Essential",
+      "label": "Arm Count",
+      "section": "Spirals",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Number of spiral arms (1–8). Some styles use this differently.",
+      "min": 1,
+      "max": 8,
+      "default": 4
     },
     {
       "key": "spiral_geometry",

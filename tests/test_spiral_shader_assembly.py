@@ -119,8 +119,11 @@ def _assemble_shader() -> str:
         "    vec4 result;",
     ]
     for i, name in enumerate(STYLE_NAMES):
+        idx = STYLE_IDS[i]
         connector = "" if i == 0 else "else "
-        dispatch.append(f"    {connector}if (u_style == {i}) result = style_{name}(p);")
+        dispatch.append(
+            f"    {connector}if (u_style == {idx}) result = style_{name}(p);"
+        )
     dispatch.append("    fragColor = result;")
     dispatch.append("}")
     src += "\n".join(dispatch)

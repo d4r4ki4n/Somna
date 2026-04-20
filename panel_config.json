@@ -1507,24 +1507,6 @@
       ]
     },
     {
-      "key": "spiral_count",
-      "widget": "Slider",
-      "classification": "USER_CONTROL",
-      "layer": "Advanced",
-      "label": "Arm Count",
-      "section": "Spirals",
-      "modes": [
-        "TRANCE",
-        "GENUS",
-        "SLEEP",
-        "CUE_TEST"
-      ],
-      "tooltip": "Number of spiral arms (1\u20138). Some styles use this differently.",
-      "min": 1,
-      "max": 8,
-      "default": 4
-    },
-    {
       "key": "spiral_geometry",
       "widget": "Dropdown",
       "classification": "USER_CONTROL",
@@ -1630,6 +1612,24 @@
         "CUE_TEST"
       ],
       "tooltip": "Spiral color used when Color Mode is set to Solid."
+    },
+    {
+      "key": "spiral_count",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Arm Count",
+      "section": "Spirals",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Number of spiral arms (1\u20138). Some styles use this differently.",
+      "min": 1,
+      "max": 8,
+      "default": 4
     },
     {
       "key": "spiral_tightness",

@@ -90,12 +90,18 @@ ALL_STYLES = [
     "potter_tunnel",
     "fractal_scale",
     "neuro_vortex",
+    "ojascki",
+    "tunnel_warp",
+    "ganzflicker",
 ]
 
 NEW_STYLES = [
     "potter_tunnel",
     "fractal_scale",
     "neuro_vortex",
+    "ojascki",
+    "tunnel_warp",
+    "ganzflicker",
 ]
 
 FEEDBACK_MODES = [

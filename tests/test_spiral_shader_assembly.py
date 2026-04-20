@@ -54,6 +54,9 @@ STYLE_NAMES = [
     "potter_tunnel",
     "fractal_scale",
     "neuro_vortex",
+    "ojascki",
+    "tunnel_warp",
+    "ganzflicker",
 ]
 
 STYLE_IDS = [
@@ -79,6 +82,9 @@ STYLE_IDS = [
     23,
     24,
     25,
+    26,
+    27,
+    28,
 ]
 
 TEST_W, TEST_H = 320, 240

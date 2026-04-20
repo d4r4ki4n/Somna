@@ -40,6 +40,9 @@ STYLE_MAP = {
     "potter_tunnel": 23,
     "fractal_scale": 24,
     "neuro_vortex": 25,
+    "ojascki": 26,
+    "tunnel_warp": 27,
+    "ganzflicker": 28,
     # authoring guide aliases (Reese spiral_authoring_guide.md)
     "galaxy_arms": 1,
     "bloom": 9,
@@ -63,7 +66,7 @@ _TEXT_FONT_SIZE = 42
 
 
 class SpiralsLayer:
-    """ModernGL GPU spiral shader — 17 styles, beat breathing, text-on-spiral,
+    """ModernGL GPU spiral shader — 25 styles, beat breathing, text-on-spiral,
     IAF rotation lock (Bible Ch.10 §10.2 §2.3), motion aftereffect cycle (Bible Ch.10 §10.2 §2.4)."""
 
     def __init__(self, config: dict, ctx: moderngl.Context):
@@ -142,6 +145,9 @@ class SpiralsLayer:
             "potter_tunnel",
             "fractal_scale",
             "neuro_vortex",
+            "ojascki",
+            "tunnel_warp",
+            "ganzflicker",
         ]
 
         for name in style_names:
@@ -178,6 +184,9 @@ class SpiralsLayer:
             "    else if (u_style == 23) result = style_potter_tunnel(p);",
             "    else if (u_style == 24) result = style_fractal_scale(p);",
             "    else if (u_style == 25) result = style_neuro_vortex(p);",
+            "    else if (u_style == 26) result = style_ojascki(p);",
+            "    else if (u_style == 27) result = style_tunnel_warp(p);",
+            "    else if (u_style == 28) result = style_ganzflicker(p);",
             "    else                    result = style_tunnel(p);",
             "    fragColor = result;",
             "}",

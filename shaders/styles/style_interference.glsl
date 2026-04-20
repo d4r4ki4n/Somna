@@ -13,17 +13,20 @@ vec4 style_interference(vec2 p) {
     float a2   = atan(p.y - src2.y, p.x - src2.x);
 
     float count = float(u_count);
-    float tight = u_tightness * 2.0;
+    // round() forces integer angular coefficients so atan's 2π jump
+    // at the negative x-axis is absorbed exactly by sin()'s periodicity.
+    float k      = round(count * 0.5);
+    float tight  = u_tightness * 2.0;
 
-    // Primary waves
+    // Primary waves — k and count are both integer → seamless
     float wave1 = sin(r1 * tight - a1 * count - u_time * 2.5);
     float wave2 = sin(r2 * tight - a2 * count + u_time * 2.0);
 
-    // Third harmonic — offset orbit
+    // Third harmonic — offset orbit, integer coefficient k
     vec2  src3 = vec2(cos(src_angle * 0.7 + 2.0), sin(src_angle * 0.6 + 1.0)) * src_r * 0.6;
     float r3   = length(p - src3);
     float a3   = atan(p.y - src3.y, p.x - src3.x);
-    float wave3 = sin(r3 * tight * 0.7 - a3 * count * 0.5 - u_time * 1.8) * 0.4;
+    float wave3 = sin(r3 * tight * 0.7 - a3 * k - u_time * 1.8) * 0.4;
 
     float interference = wave1 + wave2 + wave3;
 

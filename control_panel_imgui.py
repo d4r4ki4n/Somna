@@ -1698,9 +1698,19 @@ class ControlPanelImGui:
         self._display_proc = subprocess.Popen(args, cwd=str(self._root))
 
     def _stop_display(self) -> None:
+        # Write audio_muted BEFORE terminating — the timeline runner inside the
+        # display subprocess writes audio_muted: False (from APP_DEFAULTS) on every
+        # tick.  If we only write True after terminate(), a stale in-flight runner
+        # write can arrive at the state server later and overwrite it.
+        patch_live({"audio_muted": True})
         if self._display_proc and self._display_proc.poll() is None:
             self._display_proc.terminate()
         self._display_proc = None
+        # Brief sleep lets any in-flight state-server writes from the killed runner
+        # settle before we write the definitive post-stop state.
+        import time as _t
+
+        _t.sleep(0.10)
         # terminate() on Windows skips visual_display_runner's finally block so
         # session_time never gets zeroed there — do it here.
         # Also clear any pending agent-relaunch command so the running agent

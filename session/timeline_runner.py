@@ -35,6 +35,7 @@ INTERPOLATABLE = {
     "veil_scroll_speed_x",
     "veil_scroll_speed_y",
     "slideshow_interval",
+    "bg_opacity",
     # Text timing
     "center_flash_on_time",
     "center_flash_off_time",
@@ -51,6 +52,14 @@ INTERPOLATABLE = {
     "spiral_count",
     "spiral_thickness",
     "spiral_speed_multiplier",
+    "entrainment_strength",
+    "trail_decay",
+    "feedback_strength",
+    "sr_noise_level",
+    # Post-processing pipeline
+    "pp_bloom_intensity",
+    "pp_ca_strength",
+    "pp_film_grain",
     # TTS FX chain (entrainment_effects.md §2)
     "tts_reverb_wet",
     "tts_reverb_room_ms",
@@ -68,14 +77,15 @@ INSTANT_ONLY = {
     "start_fullscreen",
     "beat_sync_master",
     "phrases",
-    "audio_muted",  # bool on/off switch for binaural + noise layer
-    "beat_type",  # "binaural" | "isochronic" | "both"
-    "carrier_waveform",  # "sine" | "square" | "triangle" | "sawtooth"
-    "noise_color",  # string color name — switches instantly
-    "tts_enabled",  # user can toggle voice on/off mid-session
-    "tts_subliminal",  # user can toggle silent-sub layer mid-session
-    "tts_duck_ms",  # int 0-200 — audio duck duration ms
-    "tts_duck_trigger",  # one-shot: "next" arms duck, cleared by audio engine
+    "audio_muted",
+    "beat_type",
+    "carrier_waveform",
+    "noise_color",
+    "tts_enabled",
+    "tts_subliminal",
+    "tts_duck_ms",
+    "tts_duck_trigger",
+    "feedback_mode",
 }
 
 # Application-level fallbacks — used if not set in session defaults or timeline

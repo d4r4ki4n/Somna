@@ -460,7 +460,7 @@ class TimelineRunner(threading.Thread):
                     print(f"[Timeline] Manual playlist prev → {prv}")
 
             elif cmd == "seek":
-                seek_to = float(data.get("seek_time", 0.0))
+                seek_to = float(data.get("seek_time") or 0.0)
                 if self._session:
                     seek_to = max(0.0, min(seek_to, self._session.duration))
                 else:
@@ -595,7 +595,6 @@ class TimelineRunner(threading.Thread):
         if isinstance(pl, list):
             self._playlist = [str(s) for s in pl]
             self._playlist_mode = str(data.get("playlist_mode", "sequential"))
-            self._playlist_index = int(data.get("playlist_index", 0))
 
     def _session_is_over(self) -> bool:
         """True when the session timeline has naturally reached its end.
@@ -626,6 +625,10 @@ class TimelineRunner(threading.Thread):
         if not self._playlist or idx < 0 or idx >= len(self._playlist):
             return
         self._playlist_index = idx
+        try:
+            patch_live({"playlist_index": idx})
+        except Exception:
+            pass
         name = self._playlist[idx]
         path = self.root / "sessions" / name
         if path.exists():
@@ -663,6 +666,10 @@ class TimelineRunner(threading.Thread):
                 return
 
         self._playlist_index = next_idx
+        try:
+            patch_live({"playlist_index": next_idx})
+        except Exception:
+            pass
         session_name = self._playlist[next_idx]
         session_path = self.root / "sessions" / session_name
         if session_path.exists():

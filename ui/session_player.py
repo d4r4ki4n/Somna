@@ -92,6 +92,9 @@ class SessionPlayer:
         self._beats_on: bool = False
         self._queue: list[SessionEntry] = []
         self.agent_running: bool = False
+        self._seek_value: float = 0.0
+        self._seeking: bool = False
+        self._seek_live: Optional[Callable[[], dict]] = None
 
         self._footer_h_cache: float = 0.0  # measured last frame; 0 = first frame
 
@@ -102,6 +105,8 @@ class SessionPlayer:
         self.on_new_session: Optional[Callable[[], None]] = None
         self.on_edit_session: Optional[Callable[[Optional[SessionEntry]], None]] = None
         self.on_queue_change: Optional[Callable[[list[str]], None]] = None
+        self.on_timeline_cmd: Optional[Callable[[str], None]] = None
+        self.on_seek: Optional[Callable[[float], None]] = None
 
     def _notify_queue_change(self) -> None:
         if self.on_queue_change:
@@ -145,6 +150,9 @@ class SessionPlayer:
     def state(self, v: SessionState) -> None:
         self._state = v
 
+    def set_live_fn(self, fn: Callable[[], dict]) -> None:
+        self._seek_live = fn
+
     # ── Rendering — called by sidebar fn each frame ───────────────────────────
 
     def render(self, width: float = -1, height: float = -1) -> None:
@@ -167,6 +175,9 @@ class SessionPlayer:
         desc_h = self._calc_description_height(w)
         actions_h = 22.0 + 8.0
         transport_h = 28.0 + 8.0
+        seek_h = 0.0
+        if self._state == SessionState.RUNNING:
+            seek_h = 65.0
         queue_h = 0.0
         if self._queue:
             queue_h = 22.0 + len(self._queue) * 20.0 + 16.0
@@ -177,7 +188,13 @@ class SessionPlayer:
 
         remaining = max(
             0.0,
-            avail_h - header_end_y - desc_h - actions_h - transport_h - queue_h,
+            avail_h
+            - header_end_y
+            - desc_h
+            - actions_h
+            - transport_h
+            - seek_h
+            - queue_h,
         )
         playlist_h = max(20.0, remaining)
 
@@ -185,6 +202,7 @@ class SessionPlayer:
         self._draw_description(w, max_h=desc_h)
         self._draw_actions(w)
         self._draw_transport(w)
+        self._draw_seek_bar(w)
 
         if self._queue:
             imgui.spacing()
@@ -460,12 +478,16 @@ class SessionPlayer:
             rmax = imgui.get_item_rect_max()
             ty = rmin.y + (_ROW_H - imgui.get_text_line_height()) * 0.5
 
-            # Remove button far right
+            # Remove button far right — left-click on × to remove
             rm_lbl = "\u00d7"
-            rm_w = imgui.calc_text_size(rm_lbl).x + 6
-            rm_x = rmax.x - rm_w - 4
-            dl.add_text(imgui.ImVec2(rm_x, ty), sub_u32, rm_lbl)
-            if imgui.is_item_hovered() and imgui.is_mouse_clicked(1):
+            rm_w = imgui.calc_text_size(rm_lbl).x + 8
+            rm_x = rmax.x - rm_w - 2
+            dl.add_text(imgui.ImVec2(rm_x + 2, ty), sub_u32, rm_lbl)
+            rm_min = imgui.ImVec2(rm_x, rmin.y)
+            rm_max = imgui.ImVec2(rm_x + rm_w, rmax.y)
+            if imgui.is_mouse_hovering_rect(rm_min, rm_max) and imgui.is_mouse_clicked(
+                0
+            ):
                 to_remove = qi
 
             # Name + detail
@@ -579,6 +601,56 @@ class SessionPlayer:
             if self.on_toggle_beats:
                 self.on_toggle_beats()
         imgui.pop_style_color(3)
+
+    def _draw_seek_bar(self, w: float) -> None:
+        if self._state != SessionState.RUNNING:
+            return
+        if self._seek_live is None:
+            return
+
+        live = self._seek_live()
+        t = float(live.get("session_time", 0) or 0)
+        dur = float(live.get("session_duration", 0) or 0)
+        lbl = live.get("timeline_label", "")
+        paused = bool(live.get("timeline_paused", False))
+
+        imgui.spacing()
+
+        bw = (w - _BTN_GAP) / 2
+        btn_h = 22
+
+        imgui.push_style_color(imgui.Col_.button, _HL_MED)
+        imgui.push_style_color(imgui.Col_.button_hovered, _HL_HIGH)
+        imgui.push_style_color(imgui.Col_.text, _TEXT)
+        if imgui.button("Resume" if paused else "Pause", imgui.ImVec2(bw, btn_h)):
+            if self.on_timeline_cmd:
+                self.on_timeline_cmd("resume" if paused else "pause")
+        imgui.same_line(spacing=_BTN_GAP)
+        if imgui.button("Next##pl", imgui.ImVec2(bw, btn_h)):
+            if self.on_timeline_cmd:
+                self.on_timeline_cmd("playlist_next")
+        imgui.pop_style_color(3)
+
+        if dur > 0:
+            if not self._seeking:
+                self._seek_value = t / dur
+            imgui.set_next_item_width(w)
+            imgui.push_style_color(imgui.Col_.frame_bg, _OVERLAY)
+            _, self._seek_value = imgui.slider_float(
+                "##seek", self._seek_value, 0.0, 1.0, ""
+            )
+            imgui.pop_style_color()
+            if imgui.is_item_active():
+                self._seeking = True
+            if self._seeking and imgui.is_item_deactivated_after_edit():
+                self._seeking = False
+                if self.on_seek:
+                    self.on_seek(self._seek_value * dur)
+            mins, secs = int(t) // 60, int(t) % 60
+            tot_m, tot_s = int(dur) // 60, int(dur) % 60
+            imgui.text_colored(
+                _SUBTLE, f"{mins}:{secs:02d} / {tot_m}:{tot_s:02d}  {lbl}"
+            )
 
     # ── Helpers ────────────────────────────────────────────────────────────────
 

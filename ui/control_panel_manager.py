@@ -606,15 +606,10 @@ class ControlPanelManager:
                 self._console_bar_height = max(
                     120.0,
                     min(
-                        right_avail.y - 100.0,
+                        imgui.get_content_region_avail().y - 80.0,
                         self._console_bar_height + imgui.get_io().mouse_delta.y,
                     ),
                 )
-
-        # Transport strip (seek bar / pause-restart)
-        if self._transport_fn is not None:
-            self._transport_fn(imgui.get_content_region_avail().x)
-            imgui.separator()
 
         # Scrollable sections pane fills whatever height remains in the right column
         imgui.begin_child(

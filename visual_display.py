@@ -823,6 +823,12 @@ class VisualDisplay:
             cfg = _eeg_visual_apply(cfg)
             beat = cfg.get("beat_frequency", 10.0)
 
+            # When paused, clear to transparent and skip all rendering
+            if cfg.get("timeline_paused", False):
+                self.ctx.clear(0.0, 0.0, 0.0, 0.0)
+                pygame.display.flip()
+                continue
+
             # Apply overlay flags every 30 frames (only when values change)
             self._win_flag_tick += 1
             if self._win_flag_tick >= 30:

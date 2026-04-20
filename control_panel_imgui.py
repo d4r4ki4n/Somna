@@ -240,6 +240,9 @@ class ControlPanelImGui:
         self._player.on_new_session = self._new_session
         self._player.on_edit_session = lambda e: self._edit_session(e)
         self._player.on_queue_change = self._sync_playlist_to_live
+        self._player.on_timeline_cmd = self._send_timeline_cmd
+        self._player.on_seek = self._seek_to
+        self._player.set_live_fn(lambda: self._live)
 
         # Visualization toggle registry (populated after panel_manager is built)
         self._viz = VisualizationRegistry(
@@ -276,9 +279,6 @@ class ControlPanelImGui:
         # Background poll timers
         self._audio_poll_timer: threading.Timer | None = None
         self._session_poll_timer: threading.Timer | None = None
-
-        # Seek bar state (updated from live; only written back on drag-release)
-        self._seek_value: float = 0.0
 
         # Agent console (SpectrogramConsole created above; keep tracking state)
         # Seed dedup timestamps from live_control.json so stale messages
@@ -351,7 +351,6 @@ class ControlPanelImGui:
         config_path = self._root / "panel_config.json"
         self._panel_manager = ControlPanelManager(
             config_path,
-            transport_fn=lambda cw: self._render_timeline_strip(),
         )
         _geom0 = self._load_panel_geometry()
         self._panel_manager.set_sidebar(
@@ -451,7 +450,10 @@ class ControlPanelImGui:
             except Exception:
                 pass
             try:
-                result = self._tts_engine.poll_ready(session_active=self._is_running())
+                timeline_paused = bool(self._live.get("timeline_paused", False))
+                result = self._tts_engine.poll_ready(
+                    session_active=self._is_running() and not timeline_paused
+                )
                 if result:
                     phrase, dur_ms = result
                     ts = time.time()
@@ -1413,58 +1415,6 @@ class ControlPanelImGui:
 
         self._render_settings_modal()
 
-    def _render_timeline_strip(self) -> None:
-        """Thin strip: seek bar + pause/restart, visible only when a session is running."""
-        avail_w = imgui.get_content_region_avail().x
-        running = self._is_running()
-        if not running:
-            return
-
-        t = float(self._live.get("session_time", 0) or 0)
-        dur = float(self._live.get("session_duration", 0) or 0)
-        lbl = self._live.get("timeline_label", "")
-        paused = bool(self._live.get("timeline_paused", False))
-        third = avail_w / 3 - 3
-
-        if imgui.button("Resume" if paused else "Pause", imgui.ImVec2(third, 0)):
-            self._send_timeline_cmd("resume" if paused else "pause")
-        imgui.same_line()
-        if imgui.button("Restart", imgui.ImVec2(third, 0)):
-            self._send_timeline_cmd("restart")
-        imgui.same_line()
-        imgui.push_style_color(
-            imgui.Col_.button,
-            imgui.ImVec4(*hex_to_rgba("#c4a7e7", 0.45 if self._vr_mode else 0.0)),
-        )
-        _svr_lbl = "Mirror on" if self._vr_mode else "Mirror off"
-        if imgui.button(_svr_lbl, imgui.ImVec2(third, 0)):
-            self._vr_mode = not self._vr_mode
-        imgui.pop_style_color()
-        if imgui.is_item_hovered():
-            imgui.set_tooltip(
-                "Mirrors the Somna desktop window into the headset via SteamVR overlay "
-                "(visual_display --vr). Separate from native OpenXR flicker — "
-                "use Essential strip or Advanced → OpenXR for OpenXR."
-            )
-
-        if dur > 0:
-            if not imgui.is_item_active():
-                self._seek_value = t / dur
-            imgui.set_next_item_width(avail_w)
-            _, self._seek_value = imgui.slider_float(
-                "##seek", self._seek_value, 0.0, 1.0, ""
-            )
-            if imgui.is_item_deactivated_after_edit():
-                patch_live(
-                    {
-                        "seek_time": self._seek_value * dur,
-                        "_timeline_cmd": "seek",
-                    }
-                )
-            mins, secs = int(t) // 60, int(t) % 60
-            tot_m, tot_s = int(dur) // 60, int(dur) % 60
-            imgui.text_disabled(f"{mins}:{secs:02d} / {tot_m}:{tot_s:02d}  {lbl}")
-
     def _render_essential_extras(self, avail_w: float) -> None:
         """Noise color selector + binaural preset buttons for the Essential panel."""
         from ui.panel_theme import token_rgba
@@ -1682,6 +1632,8 @@ class ControlPanelImGui:
 
     def _launch_display_for(self, name: str) -> None:
         """Start a session by name (called from SessionPlayer callback)."""
+        if self._is_running():
+            self._stop_display()
         try:
             self._selected_session_idx = self._session_names.index(name)
         except ValueError:
@@ -1706,6 +1658,9 @@ class ControlPanelImGui:
 
     def _send_timeline_cmd(self, cmd: str) -> None:
         patch_live({"_timeline_cmd": cmd})
+
+    def _seek_to(self, t: float) -> None:
+        patch_live({"seek_time": t, "_timeline_cmd": "seek"})
 
     def _is_running(self) -> bool:
         return self._display_proc is not None and self._display_proc.poll() is None
@@ -1805,7 +1760,6 @@ class ControlPanelImGui:
             {
                 "playlist": queue,
                 "playlist_mode": "sequential",
-                "playlist_index": 0,
             }
         )
 

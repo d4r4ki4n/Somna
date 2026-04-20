@@ -1617,3 +1617,15 @@ The condition is self-healing: deleting or resetting `user_profile.json` will ca
 - Glow render order in the Interference Graph: draw the glow stroke (wide, low alpha) **before** the solid line stroke (narrow, full alpha) so the glow doesn't overdraw the line.
 
 - Unavailable hardware channels (Haptic, VNS) in the Interference Graph are rendered at reduced opacity and block drag interaction; their nodes are still tracked in the data model for future hardware integration without schema changes.
+
+- **`ControlPanelManager.render()` is DEAD CODE** — the ImGui panel uses hello_imgui `DockableWindow` instances (Sessions, Console, Controls, Biosignal, per-section dynamic windows). The monolithic `render()` method with the sidebar/right-column/transport-strip layout was from a pre-docking design and is never called. Any UI that needs to be visible must be in a `DockableWindow.gui_function` or wired through `SessionPlayer`, NOT in `ControlPanelManager.render()`.
+
+- **Seek bar + pause controls** live in `SessionPlayer._draw_seek_bar()` inside the Sessions dockable window. Visible only when a session is running. Pause/Next buttons + seek slider + timestamp. The slider uses a `_seeking` flag to prevent live updates from overwriting the drag position. `on_timeline_cmd` sends pause/resume/playlist_next; `on_seek` sends seek_time + seek command.
+
+- **Pause hides the display** — when `timeline_paused` is True, `visual_display.py` clears to transparent (alpha=0) and skips all rendering. The desktop shows through. On resume, rendering resumes on the next frame. No separate key needed — reads `timeline_paused` directly from config.
+
+- **`_sync_playlist_from_live` does NOT sync `playlist_index`** — the timeline runner owns the playlist index exclusively. The runner writes `playlist_index` to `live_control.json` via `patch_live()` when it changes (for UI display), but never reads it back. The control panel's `_sync_playlist_to_live` writes `playlist` and `playlist_mode` only, not the index.
+
+- **Session switching while running** — `_launch_display_for()` calls `_stop_display()` before launching the new session, so clicking Session on a different entry while one is running switches cleanly.
+
+- **TTS stops on timeline pause** — `control_panel_imgui.py` `_poll_audio()` passes `session_active=self._is_running() and not timeline_paused` to `poll_ready()`. Regular affirmations are gated; agent one-shot prompts (priority queue) still fire regardless.

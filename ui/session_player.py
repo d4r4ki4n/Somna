@@ -587,14 +587,14 @@ class SessionPlayer:
 
         # ▶ Start Beats / ■ Stop Beats
         if self._beats_on:
-            imgui.push_style_color(imgui.Col_.button, _GOLD)
-            imgui.push_style_color(imgui.Col_.button_hovered, _FOAM)
-            imgui.push_style_color(imgui.Col_.text, _BASE)
-            lbl = "\u25a0 Beats##sb"
-        else:
             imgui.push_style_color(imgui.Col_.button, _HL_MED)
             imgui.push_style_color(imgui.Col_.button_hovered, _HL_HIGH)
             imgui.push_style_color(imgui.Col_.text, _SUBTLE)
+            lbl = "\u25a0 Beats##sb"
+        else:
+            imgui.push_style_color(imgui.Col_.button, _GOLD)
+            imgui.push_style_color(imgui.Col_.button_hovered, _FOAM)
+            imgui.push_style_color(imgui.Col_.text, _BASE)
             lbl = "\u25b6 Beats##sb"
         if imgui.button(lbl, imgui.ImVec2(bw, btn_h)):
             self._beats_on = not self._beats_on
@@ -701,5 +701,6 @@ class SessionPlayer:
     def _stop(self) -> None:
         self._state = SessionState.IDLE
         self._playing = -1
+        self._beats_on = False
         if self.on_stop_session:
             self.on_stop_session()

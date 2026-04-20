@@ -1681,6 +1681,7 @@ class ControlPanelImGui:
             )
             live_sel = self._live.get("session_folder", "")
             pre: dict = {"session_time": 0, "audio_muted": False}
+            self._player._beats_on = True
             if sel:
                 pre["session_folder"] = sel
             elif live_sel:
@@ -1760,9 +1761,8 @@ class ControlPanelImGui:
 
     def _toggle_beats(self) -> None:
         """Toggle audio engine mute — wired to the session player's Beats button."""
-        muted = bool(self._live.get("audio_muted", True))
-        patch_live({"audio_muted": not muted})
-        self._player._beats_on = muted  # beats_on = not muted
+        want_on = self._player._beats_on
+        patch_live({"audio_muted": not want_on})
 
     def _sync_playlist_to_live(self, queue: list[str]) -> None:
         """Mirror the session queue to live_control.json so the timeline runner sees it."""

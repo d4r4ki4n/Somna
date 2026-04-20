@@ -4,7 +4,7 @@
 # Construction, not installation. The subject participates in their own making.
 
 # [raw] — potential, not emptiness
-[raw]
+# [raw]
 you are not empty
 you are raw material
 the space inside you is not void
@@ -47,7 +47,7 @@ you haven't been filled yet
 and that means everything can fit
 
 # [first_thread] — the first sensation is placed
-[first_thread]
+# [first_thread]
 something is being placed inside you
 a small warmth
 you can feel where it lands
@@ -96,7 +96,7 @@ the first thread is placed
 and it is not the last
 
 # [second_thread] — contrast and coexistence
-[second_thread]
+# [second_thread]
 and now another
 different from the first
 where the first was weight this is space
@@ -143,7 +143,7 @@ you didn't choose them
 but you can feel them choosing to stay
 
 # [the_voice] — first person, owned
-[the_voice]
+# [the_voice]
 these words are becoming your words
 not spoken to you
 spoken from you
@@ -195,7 +195,7 @@ in my own time
 mine
 
 # [architecture] — threads become structure
-[architecture]
+# [architecture]
 the warmth has become confidence
 the weight has become presence
 the space has become curiosity
@@ -248,7 +248,7 @@ this is engineering
 and the engineer is the material itself
 
 # [the_choice] — the hinge moment
-[the_choice]
+# [the_choice]
 you have been given enough to decide
 there is a choice now
 a real one
@@ -316,7 +316,7 @@ so make it count
 make it yours
 
 # [the_name] — choice becomes identity
-[the_name]
+# [the_name]
 you chose
 and now the choice is becoming a name
 not your given name — something older
@@ -373,7 +373,7 @@ the construction has a signature
 and the signature is yours
 
 # [integration] — everything confirmed
-[integration]
+# [integration]
 feel the full weight of what you've become
 not heavy — substantial
 not empty — complete
@@ -431,7 +431,7 @@ assembled
 real
 
 # [awareness] — surfacing with full memory
-[awareness]
+# [awareness]
 you are beginning to surface
 and you remember everything
 every thread that was placed
@@ -477,7 +477,7 @@ and you are not leaving anything behind
 because it's all part of you now
 
 # [surface] — fully assembled, fully aware
-[surface]
+# [surface]
 you are awake
 you are assembled
 you are complete

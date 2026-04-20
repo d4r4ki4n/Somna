@@ -1,5 +1,5 @@
 // Style 3 — Kaleidoscope
-// Sector-folded interference with three wave layers, depth shimmer, and chromatic beat.
+// Sector-folded interference with three wave layers, depth shimmer, and continuous hue.
 vec4 style_kaleidoscope(vec2 p) {
     float r     = length(p);
     float angle = atan(p.y, p.x);
@@ -19,7 +19,7 @@ vec4 style_kaleidoscope(vec2 p) {
     float g = smoothstep(0.0, 0.4, pattern)
             + smoothstep(0.5, 0.9, pattern) * 0.5;
 
-    // Fine concentric ring overlay — traveling outward through the kaleidoscope
+    // Fine concentric ring overlay — traveling outward
     float rings = smoothstep(0.4, 0.0, abs(sin(r * 12.0 - u_time * 3.0))) * 0.15;
 
     // Radial spoke accent — highlights the fold lines
@@ -32,8 +32,10 @@ vec4 style_kaleidoscope(vec2 p) {
     float core = exp(-r * r * 6.0) * 0.7;
     g += core;
 
-    // Chromatic kaleidoscope — each sector gets a shifted hue
-    float hue = r * 0.25 - u_time * 0.06 + folded * 2.0 + floor(angle / sector_angle) * 0.1;
+    // Hue uses only continuous terms — no floor(), no per-sector indexing.
+    // r and time are seam-free; folded is symmetric within each sector
+    // so the color at the fold line matches on both sides.
+    float hue = r * 0.25 - u_time * 0.06 + folded * 0.5;
     vec3 col = arm_color(hue, g);
     col += u_base_color * core * 0.5;
 

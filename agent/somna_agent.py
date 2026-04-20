@@ -5925,11 +5925,11 @@ class SomnaAgent:
         # Audio duck / pattern interrupt — arm duck when style includes duck=True
         if resolved_style.get("duck"):
             patch["tts_duck_trigger"] = "next"
-            duck_raw = resolved_style.get("tts_duck_ms", 80)
+            duck_raw = resolved_style.get("tts_duck_ms", 120)
             try:
                 patch["tts_duck_ms"] = max(0, min(200, int(duck_raw)))
             except (TypeError, ValueError):
-                patch["tts_duck_ms"] = 80
+                patch["tts_duck_ms"] = 120
 
         self._write_live(patch)
 

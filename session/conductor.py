@@ -1692,7 +1692,7 @@ class Conductor:
                     "freq_lead_enabled": True,
                     "freq_lead_mode": "lead",
                     "tts_pool_style": {"rate": "-35%"},
-                    "tts_duck_ms": 80,
+                    "tts_duck_ms": 120,
                 }
             )
             self._say("Settling back down.")

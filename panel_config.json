@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Somna control panel widget configuration. Generated from Doc 51 Â§4 key inventory.",
+  "description": "Somna control panel widget configuration. Generated from Doc 51 \u00c2\u00a74 key inventory.",
   "widgets": [
     {
       "key": "volume",
@@ -15,7 +15,7 @@
         "SLEEP",
         "CUE_TEST"
       ],
-      "tooltip": "Master binaural + carrier output level (0—100).",
+      "tooltip": "Master binaural + carrier output level (0\u2014100).",
       "range": [
         0,
         100
@@ -34,7 +34,7 @@
         "SLEEP",
         "CUE_TEST"
       ],
-      "tooltip": "Colored noise output level (0—100). Color set via buttons.",
+      "tooltip": "Colored noise output level (0\u2014100). Color set via buttons.",
       "range": [
         0,
         100
@@ -672,14 +672,14 @@
         "SLEEP",
         "CUE_TEST"
       ],
-      "tooltip": "True when Y-axis pitch shows sustained forward drop – behavioural N1 onset marker."
+      "tooltip": "True when Y-axis pitch shows sustained forward drop \u2013 behavioural N1 onset marker."
     },
     {
       "key": "eeg_visual_coupling_enabled",
       "widget": "Toggle",
       "classification": "USER_CONTROL",
       "layer": "Advanced",
-      "label": "EEG→Visual Coupling",
+      "label": "EEG\u2192Visual Coupling",
       "section": "EEG",
       "modes": [
         "TRANCE",
@@ -687,7 +687,7 @@
         "SLEEP",
         "CUE_TEST"
       ],
-      "tooltip": "Route live EEG band powers into visual parameters. Alpha→spiral brightness, Theta→speed, Delta→veil depth, Beta→chaos."
+      "tooltip": "Route live EEG band powers into visual parameters. Alpha\u2192spiral brightness, Theta\u2192speed, Delta\u2192veil depth, Beta\u2192chaos."
     },
     {
       "key": "eeg_visual_coupling_gain",
@@ -702,7 +702,7 @@
         "SLEEP",
         "CUE_TEST"
       ],
-      "tooltip": "Master gain for the EEG→Visual coupling matrix. 0 = no effect, 2 = double sensitivity.",
+      "tooltip": "Master gain for the EEG\u2192Visual coupling matrix. 0 = no effect, 2 = double sensitivity.",
       "range": [
         0.0,
         2.0
@@ -1342,7 +1342,7 @@
         "SLEEP",
         "CUE_TEST"
       ],
-      "tooltip": "Veil particle layer opacity (0—100).",
+      "tooltip": "Veil particle layer opacity (0\u2014100).",
       "range": [
         0,
         100
@@ -1361,7 +1361,7 @@
         "SLEEP",
         "CUE_TEST"
       ],
-      "tooltip": "Number of active veil particles (0—100).",
+      "tooltip": "Number of active veil particles (0\u2014100).",
       "range": [
         0,
         100
@@ -1510,7 +1510,7 @@
       "key": "spiral_count",
       "widget": "Slider",
       "classification": "USER_CONTROL",
-      "layer": "Essential",
+      "layer": "Advanced",
       "label": "Arm Count",
       "section": "Spirals",
       "modes": [
@@ -1519,7 +1519,7 @@
         "SLEEP",
         "CUE_TEST"
       ],
-      "tooltip": "Number of spiral arms (1–8). Some styles use this differently.",
+      "tooltip": "Number of spiral arms (1\u20138). Some styles use this differently.",
       "min": 1,
       "max": 8,
       "default": 4
@@ -1553,7 +1553,7 @@
         "SLEEP",
         "CUE_TEST"
       ],
-      "tooltip": "Spiral layer opacity (0—100).",
+      "tooltip": "Spiral layer opacity (0\u2014100).",
       "range": [
         0,
         100
@@ -1697,7 +1697,7 @@
         "SLEEP",
         "CUE_TEST"
       ],
-      "tooltip": "How much the spiral zooms in and out (0 = subtle, 1 = dramatic Â±25% swing).",
+      "tooltip": "How much the spiral zooms in and out (0 = subtle, 1 = dramatic \u00c2\u00b125% swing).",
       "range": [
         0.0,
         1.0
@@ -1749,9 +1749,14 @@
       "layer": "Advanced",
       "label": "Trail Decay",
       "section": "Spirals",
-      "modes": ["TRANCE"],
+      "modes": [
+        "TRANCE"
+      ],
       "tooltip": "Trail persistence. 0=no trails, 0.85-0.98=active range. Longer trails for deeper states, 0 for fractionation drops.",
-      "range": [0.0, 0.99]
+      "range": [
+        0.0,
+        0.99
+      ]
     },
     {
       "key": "entrainment_strength",
@@ -1760,9 +1765,14 @@
       "layer": "Advanced",
       "label": "Entrainment Flicker",
       "section": "Spirals",
-      "modes": ["TRANCE"],
+      "modes": [
+        "TRANCE"
+      ],
       "tooltip": "Visual entrainment flicker depth. 0=free-running (no flicker), 0.10=fully phase-locked to beat frequency.",
-      "range": [0.0, 0.10]
+      "range": [
+        0.0,
+        0.1
+      ]
     },
     {
       "key": "feedback_mode",
@@ -1771,9 +1781,19 @@
       "layer": "Advanced",
       "label": "Feedback Mode",
       "section": "Spirals",
-      "modes": ["TRANCE"],
+      "modes": [
+        "TRANCE"
+      ],
       "tooltip": "Spiral persistence/feedback mode. Adds temporal echo effects to the spiral renderer.",
-      "enum": ["none", "alpha_decay", "radial_zoom", "rotational_smear", "directional_blur", "reaction_diffusion", "kaleidoscopic_fold"]
+      "enum": [
+        "none",
+        "alpha_decay",
+        "radial_zoom",
+        "rotational_smear",
+        "directional_blur",
+        "reaction_diffusion",
+        "kaleidoscopic_fold"
+      ]
     },
     {
       "key": "feedback_strength",
@@ -1782,9 +1802,14 @@
       "layer": "Advanced",
       "label": "Feedback Strength",
       "section": "Spirals",
-      "modes": ["TRANCE"],
+      "modes": [
+        "TRANCE"
+      ],
       "tooltip": "Intensity of the feedback effect. 0.5=default, 1.0=maximum visual echo.",
-      "range": [0.0, 1.0],
+      "range": [
+        0.0,
+        1.0
+      ],
       "default": 0.7
     },
     {
@@ -1969,7 +1994,7 @@
         "SLEEP",
         "CUE_TEST"
       ],
-      "tooltip": "TTS voice output level (0—100).",
+      "tooltip": "TTS voice output level (0\u2014100).",
       "range": [
         0,
         100
@@ -2241,9 +2266,17 @@
       "layer": "Advanced",
       "label": "Haptic Connected",
       "section": "Haptic",
-      "modes": ["TRANCE", "GENUS", "SLEEP", "CUE_TEST"],
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
       "tooltip": "Lovense device BLE connection status.",
-      "badge_colors": {"true": "#44cc66", "false": "#888888"}
+      "badge_colors": {
+        "true": "#44cc66",
+        "false": "#888888"
+      }
     },
     {
       "key": "haptic_intensity",
@@ -2252,9 +2285,16 @@
       "layer": "Advanced",
       "label": "Haptic Intensity",
       "section": "Haptic",
-      "modes": ["TRANCE", "GENUS", "CUE_TEST"],
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "CUE_TEST"
+      ],
       "tooltip": "Vibration intensity 0-100. Safety-capped by unlock tier and comfort calibration.",
-      "range": [0, 100]
+      "range": [
+        0,
+        100
+      ]
     },
     {
       "key": "haptic_pattern",
@@ -2263,9 +2303,21 @@
       "layer": "Advanced",
       "label": "Pattern",
       "section": "Haptic",
-      "modes": ["TRANCE", "GENUS", "CUE_TEST"],
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "CUE_TEST"
+      ],
       "tooltip": "Vibration pattern type. Continuous=steady, Pulse=on/off, Wave=sinusoidal, Fractionation=follows Conductor FSM.",
-      "enum": ["continuous", "pulse", "wave", "ramp", "fractionation", "tmr_cue", "conditioned_anchor"]
+      "enum": [
+        "continuous",
+        "pulse",
+        "wave",
+        "ramp",
+        "fractionation",
+        "tmr_cue",
+        "conditioned_anchor"
+      ]
     },
     {
       "key": "haptic_pattern_speed",
@@ -2274,9 +2326,16 @@
       "layer": "Advanced",
       "label": "Pattern Speed",
       "section": "Haptic",
-      "modes": ["TRANCE", "GENUS", "CUE_TEST"],
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "CUE_TEST"
+      ],
       "tooltip": "Pattern cycle speed multiplier.",
-      "range": [0.1, 10.0]
+      "range": [
+        0.1,
+        10.0
+      ]
     },
     {
       "key": "haptic_actual_intensity",
@@ -2285,9 +2344,17 @@
       "layer": "Advanced",
       "label": "Actual Intensity",
       "section": "Haptic",
-      "modes": ["TRANCE", "GENUS", "SLEEP", "CUE_TEST"],
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
       "tooltip": "Safety-capped output intensity currently being sent to the device.",
-      "range": [0.0, 100.0]
+      "range": [
+        0.0,
+        100.0
+      ]
     },
     {
       "key": "haptic_device_name",
@@ -2296,7 +2363,12 @@
       "layer": "Debug",
       "label": "Device",
       "section": "Haptic",
-      "modes": ["TRANCE", "GENUS", "SLEEP", "CUE_TEST"],
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
       "tooltip": "Connected Lovense device model name."
     },
     {
@@ -2306,7 +2378,9 @@
       "layer": "Advanced",
       "label": "Sleep N1/N2 Haptic",
       "section": "Haptic",
-      "modes": ["SLEEP"],
+      "modes": [
+        "SLEEP"
+      ],
       "tooltip": "Allow haptic TMR cues during N1/N2 sleep. N3/REM always disabled."
     },
     {
@@ -2316,9 +2390,17 @@
       "layer": "Advanced",
       "label": "taVNS Connected",
       "section": "taVNS",
-      "modes": ["TRANCE", "GENUS", "SLEEP", "CUE_TEST"],
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
       "tooltip": "DG Labs Coyote BLE connection status.",
-      "badge_colors": {"true": "#44cc66", "false": "#888888"}
+      "badge_colors": {
+        "true": "#44cc66",
+        "false": "#888888"
+      }
     },
     {
       "key": "tavns_intensity",
@@ -2327,9 +2409,16 @@
       "layer": "Advanced",
       "label": "Stimulation Intensity",
       "section": "taVNS",
-      "modes": ["TRANCE", "GENUS", "CUE_TEST"],
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "CUE_TEST"
+      ],
       "tooltip": "taVNS stimulation intensity 0-100. Safety-capped by unlock tier, comfort calibration, and impedance.",
-      "range": [0, 100]
+      "range": [
+        0,
+        100
+      ]
     },
     {
       "key": "tavns_waveform",
@@ -2338,9 +2427,17 @@
       "layer": "Advanced",
       "label": "Waveform",
       "section": "taVNS",
-      "modes": ["TRANCE", "GENUS", "CUE_TEST"],
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "CUE_TEST"
+      ],
       "tooltip": "Stimulation waveform shape.",
-      "enum": ["sine", "square", "biphasic"]
+      "enum": [
+        "sine",
+        "square",
+        "biphasic"
+      ]
     },
     {
       "key": "tavns_actual_current_ua",
@@ -2349,9 +2446,17 @@
       "layer": "Advanced",
       "label": "Actual Current (uA)",
       "section": "taVNS",
-      "modes": ["TRANCE", "GENUS", "SLEEP", "CUE_TEST"],
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
       "tooltip": "Safety-capped output current in microamps currently being delivered.",
-      "range": [0.0, 500.0]
+      "range": [
+        0.0,
+        500.0
+      ]
     },
     {
       "key": "tavns_impedance_ok",
@@ -2360,7 +2465,12 @@
       "layer": "Advanced",
       "label": "Impedance OK",
       "section": "taVNS",
-      "modes": ["TRANCE", "GENUS", "SLEEP", "CUE_TEST"],
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
       "tooltip": "True when electrode contact impedance is below 5 kOhm threshold."
     },
     {
@@ -2370,9 +2480,17 @@
       "layer": "Debug",
       "label": "Impedance (Ohm)",
       "section": "taVNS",
-      "modes": ["TRANCE", "GENUS", "SLEEP", "CUE_TEST"],
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
       "tooltip": "Last measured electrode contact impedance.",
-      "range": [0.0, 50000.0]
+      "range": [
+        0.0,
+        50000.0
+      ]
     }
   ]
 }

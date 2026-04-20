@@ -11,6 +11,7 @@ against Bible Ch.1–Ch.11 spec.  Exits 0 on success, 1 on any failure.
 import sys
 import os
 import importlib
+import inspect
 import traceback
 from pathlib import Path
 
@@ -358,6 +359,27 @@ def test_timeline_runner():
     _result("session.TimelineRunner", *_has(m, "TimelineRunner"))
     _result("session.Session", *_has(m, "Session"))
 
+    tr_cls = getattr(m, "TimelineRunner", None)
+    if tr_cls is not None:
+        src = inspect.getsource(tr_cls)
+        _result(
+            "TimelineRunner._sync_playlist_from_live ignores playlist_index",
+            "_playlist_index"
+            not in src.split("def _sync_playlist_from_live")[1].split("def ")[0],
+        )
+        _result(
+            "TimelineRunner._jump_to_playlist writes playlist_index",
+            "patch_live" in src.split("def _jump_to_playlist")[1].split("def ")[0],
+        )
+
+    seek_src = inspect.getsource(m)
+    seek_block = seek_src[seek_src.find('cmd == "seek"') :]
+    seek_block = seek_block[: seek_block.find("elif cmd")]
+    _result(
+        "seek handler uses 'or 0.0' for None safety",
+        "or 0.0" in seek_block and 'data.get("seek_time"' in seek_block,
+    )
+
 
 def test_tmr_cue_manager():
     m, e = _import("session.tmr_cue_manager")
@@ -680,6 +702,20 @@ def test_ui_modules():
         m, e = _import(mod)
         _result(f"{mod}.{name}", m is not None and hasattr(m, name), e)
 
+    sp, e = _import("ui.session_player")
+    if sp is not None:
+        try:
+            inst = sp.SessionPlayer()
+            _result("SessionPlayer.on_seek callback", hasattr(inst, "on_seek"))
+            _result(
+                "SessionPlayer.on_timeline_cmd callback",
+                hasattr(inst, "on_timeline_cmd"),
+            )
+            _result("SessionPlayer.set_live_fn", hasattr(inst, "set_live_fn"))
+            _result("SessionPlayer._seeking flag", hasattr(inst, "_seeking"))
+        except Exception as ex:
+            _result("SessionPlayer instantiation", False, str(ex))
+
 
 def test_interference_graph_channels():
     m, e = _import("ui.interference_graph")
@@ -709,6 +745,34 @@ def test_biosignal_dashboard():
         _result("BiosignalDashboard.render", *_has(dash, "render"))
     except Exception as ex:
         _result("BiosignalDashboard()", False, str(ex))
+
+
+def test_playlist_index_contract():
+    cp, e = _import("control_panel_imgui")
+    _result("control_panel_imgui imports", cp is not None, e)
+    if cp is None:
+        return
+    src = inspect.getsource(cp)
+    sync_fn = src[src.find("def _sync_playlist_to_live") :]
+    sync_body = sync_fn[: sync_fn.find("\n    def ")]
+    _result(
+        "_sync_playlist_to_live does NOT write playlist_index",
+        "playlist_index" not in sync_body,
+    )
+    launch_fn = src[src.find("def _launch_display_for") :]
+    launch_body = launch_fn[: launch_fn.find("\n    def ")]
+    _result(
+        "_launch_display_for stops current session before launching new",
+        "_stop_display" in launch_body,
+    )
+
+    vd, e = _import("visual_display")
+    if vd is not None:
+        vd_src = inspect.getsource(vd)
+        _result(
+            "visual_display reads timeline_paused",
+            "timeline_paused" in vd_src,
+        )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -929,7 +993,12 @@ TESTS = [
     ),
     (
         "Ch.9 — Console UI",
-        [test_ui_modules, test_interference_graph_channels, test_biosignal_dashboard],
+        [
+            test_ui_modules,
+            test_interference_graph_channels,
+            test_biosignal_dashboard,
+            test_playlist_index_contract,
+        ],
     ),
     ("Session YAMLs", [test_session_yamls]),
     ("Knowledge Base", [test_knowledge_files]),

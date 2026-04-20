@@ -5,7 +5,7 @@ description: >
   into something complete. Each keyframe adds a new element: first sensation,
   then identity, then choice, then ownership.
 
-  The critical moment comes at 18:00 (the_choice) where the subject is offered
+  The critical moment comes at 13:00 (the_choice) where the subject is offered
   a real moment of agency. What they choose determines the final form. This
   makes it assembly, not installation — the subject participates in their own
   construction.
@@ -23,7 +23,7 @@ description: >
   Designed by Resonance. Built for a specific sensor.
 
 duration: 1800
-category: entrainment
+category: Induction
 
 defaults:
   carrier_frequency:          200.0
@@ -37,6 +37,13 @@ defaults:
   tts_enabled:                true
   tts_subliminal:             false
   affirmation_rate:           1.5
+  entrainment_strength:       0.0
+  trail_decay:                0.0
+  feedback_mode:              none
+  feedback_strength:          0.0
+  pp_bloom_intensity:         0.0
+  pp_ca_strength:             0.0
+  pp_film_grain:              0.0
 
 timeline:
 
@@ -125,6 +132,7 @@ timeline:
   # to first person. "I am..." not "You are..." The subject starts to
   # own what's being built. The spiral changes style — archimedean to
   # galaxy — the first transformation. What was simple begins to rotate.
+  # Entrainment flicker begins — subtle, the first pulse.
   - t: 420
     label: the_voice
     ease: ease_in_out
@@ -147,12 +155,14 @@ timeline:
       center_flash_on_time:     150
       center_flash_off_time:    350
       affirmation_rate:         2.5
+      entrainment_strength:     0.1
 
   # ─── 10:00 · ARCHITECTURE ───────────────────────────────────────────────────
   # Raw threads become structure. Warmth becomes confidence.
   # Lightness becomes curiosity. Weight becomes presence.
-  # The spiral is now a tunnel — the shape implies direction.
-  # The subject is becoming something recognizable.
+  # tunnel_warp: the animated lenticular tunnel creates a sense of directed
+  # motion — the subject is going somewhere. The construction has a trajectory.
+  # Bloom begins. The edges start to soften. Entrainment deepens.
   - t: 600
     label: architecture
     ease: ease_in_out
@@ -160,7 +170,7 @@ timeline:
       phrases:                  architecture
       beat_frequency:           5.0
       carrier_frequency:        175.0
-      spiral_style:             tunnel_dream
+      spiral_style:             tunnel_warp
       spiral_count:             5
       spiral_opacity:           72
       spiral_speed_multiplier:  0.6
@@ -175,14 +185,15 @@ timeline:
       center_flash_on_time:     100
       center_flash_off_time:    280
       affirmation_rate:         3.0
+      entrainment_strength:     0.2
+      pp_bloom_intensity:       0.25
 
   # ─── 13:00 · THE CHOICE ─────────────────────────────────────────────────────
   # The critical moment. The subject has been built to a point where
   # they contain enough to decide. The affirmations offer options.
   # Not commands. Invitations. "You could be..." "What if..."
-  # The spiral is interference — multiple patterns overlapping,
-  # representing multiple possible futures coexisting.
-  # The beat holds steady. The subject decides.
+  # ojascki: clean, precise spiral rings — clarity at the moment of choice.
+  # The entrainment is at its strongest visual level yet. The pulses are clear.
   # This is the hinge. Everything before was preparation.
   # Everything after is consequence.
   - t: 780
@@ -192,7 +203,7 @@ timeline:
       phrases:                  the_choice
       beat_frequency:           5.0
       carrier_frequency:        175.0
-      spiral_style:             interference
+      spiral_style:             ojascki
       spiral_count:             5
       spiral_opacity:           75
       spiral_speed_multiplier:  0.55
@@ -207,12 +218,15 @@ timeline:
       center_flash_on_time:     80
       center_flash_off_time:    250
       affirmation_rate:         2.0
+      entrainment_strength:     0.3
+      pp_bloom_intensity:       0.30
+      pp_ca_strength:           0.002
 
   # ─── 16:00 · THE NAME ───────────────────────────────────────────────────────
   # The choice has been made. Now it becomes identity.
-  # The spiral shifts to fibonacci — the golden spiral, the shape
-  # that appears in sunflowers and galaxies and the curve of a wave.
-  # Ancient, natural, inevitable. This is what you chose to become.
+  # Fermat — the golden spiral, the shape that appears in sunflowers
+  # and galaxies and the curve of a wave. Ancient, natural, inevitable.
+  # This is what you chose to become.
   # The noise drops — the world quiets so the subject can hear
   # their own form solidifying.
   - t: 960
@@ -237,6 +251,9 @@ timeline:
       center_flash_on_time:     60
       center_flash_off_time:    220
       affirmation_rate:         2.5
+      entrainment_strength:     0.2
+      pp_bloom_intensity:       0.35
+      pp_ca_strength:           0.003
 
   # ─── 19:00 · INTEGRATION ────────────────────────────────────────────────────
   # Everything assembled is confirmed. The subject feels the full weight
@@ -267,6 +284,10 @@ timeline:
       center_flash_on_time:     40
       center_flash_off_time:    180
       affirmation_rate:         2.0
+      entrainment_strength:     0.15
+      pp_bloom_intensity:       0.40
+      pp_ca_strength:           0.003
+      pp_film_grain:            0.02
 
   # ─── 22:00 · HOLD ───────────────────────────────────────────────────────────
   # Let it settle. Nothing changes for three minutes.
@@ -294,12 +315,17 @@ timeline:
       center_flash_on_time:     500
       center_flash_off_time:    500
       affirmation_rate:         1.0
+      entrainment_strength:     0.15
+      pp_bloom_intensity:       0.40
+      pp_ca_strength:           0.003
+      pp_film_grain:            0.02
 
   # ─── 25:00 · AWARENESS ──────────────────────────────────────────────────────
   # The subject begins to surface. But unlike amnesia, they remember.
   # Every layer. Every choice. Every thread that was placed.
-  # The spiral shifts to rose — the shape named for a flower.
-  # Something organic. Something grown, not built.
+  # Rose — the shape named for a flower. Something organic.
+  # Something grown, not built. The entrainment eases.
+  # Bloom fades. The visual field sharpens.
   - t: 1500
     label: awareness
     ease: ease_out
@@ -322,12 +348,16 @@ timeline:
       center_flash_on_time:     120
       center_flash_off_time:    320
       affirmation_rate:         2.5
+      entrainment_strength:     0.05
+      pp_bloom_intensity:       0.15
+      pp_ca_strength:           0.001
 
   # ─── 27:30 · SURFACE ────────────────────────────────────────────────────────
   # Full awareness. Beat at alpha. Volume at comfortable level.
-  # The spiral is fermat — mathematical, complete, golden.
+  # Fermat — mathematical, complete, golden.
   # The subject is fully awake and fully assembled.
   # They remember everything. That is the point.
+  # All post-processing off. Clear and bright.
   - t: 1650
     label: surface
     ease: ease_out
@@ -350,6 +380,9 @@ timeline:
       center_flash_on_time:     180
       center_flash_off_time:    380
       affirmation_rate:         2.0
+      entrainment_strength:     0.0
+      pp_bloom_intensity:       0.0
+      pp_ca_strength:           0.0
 
   # ─── 30:00 · COMPLETE ───────────────────────────────────────────────────────
   - t: 1800
@@ -374,3 +407,4 @@ timeline:
       center_flash_on_time:     200
       center_flash_off_time:    400
       affirmation_rate:         1.5
+      entrainment_strength:     0.0

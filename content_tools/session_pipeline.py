@@ -28,7 +28,7 @@ import time
 import urllib.request
 from pathlib import Path
 
-_ROOT     = Path(__file__).parent.parent
+_ROOT = Path(__file__).parent.parent
 _SESSIONS = _ROOT / "sessions"
 
 # ── Session format reference ──────────────────────────────────────────────────
@@ -92,8 +92,12 @@ session.yaml — flat structure (params sit directly on each keyframe, NOT under
 
 PARAMETER RANGES:
   beat_frequency: 0.5–40 Hz   (delta 0.5–4, theta 4–8, alpha 8–13, beta 13–30, gamma 30–40)
+  beat_type: binaural | isochronic | both | fm
+  fm_mod_depth: 0.5–30 Hz (only when beat_type = fm; narrow ≈ subtle warble, wide ≈ vibrato)
   carrier_frequency: 80–400 Hz
   volume: 0–100
+  noise_color: white | pink | brown | blue | violet | grey | off
+  noise_volume: 0–100
   spiral_opacity: 0–100
   veil_opacity: 0–100
   shadow_opacity: 0–100
@@ -101,24 +105,44 @@ PARAMETER RANGES:
   spiral_thickness: 2–40
   spiral_speed_multiplier: 0.1–5.0
   spiral_chaos: 0.0–1.0
+  trail_decay: 0.0–0.80 (SAFETY CAP at 0.80 — above causes additive blowout; 0.5–0.7 active range)
+  feedback_mode: alpha_decay | radial_zoom | rotational_smear | directional_blur | reaction_diffusion | kaleidoscopic_fold | none
+  feedback_strength: 0.0–1.0 (use 0.5–0.7 for dense spiral centers; compounds with trail_decay)
+  entrainment_strength: 0.0–0.10 (MAX 0.10 — phase-lock to beat frequency; 0.0 = free-running)
+  breath_mod_enabled: true | false
+  breath_rate_bpm: 4.0–12.0
+  breath_depth: 0.0–1.0
+  bilateral_panning: true | false (independent L/R modulation layer; stacks with any beat_type)
+  bilateral_rate: 0.1–20 Hz (match beat_frequency for spatial entrainment; 0.5–2 Hz for EMDR-rate)
+  bilateral_mode: smooth | hard (smooth = sinusoidal pan; hard = square wave alternation)
+  bilateral_depth: 0.0–1.0
   slideshow_interval: 1–30 (seconds)
   flash_duty_cycle: 0.1–0.9
   center_flash_on_time: 20–500 (ms)
   center_flash_off_time: 20–500 (ms)
   shadow_flash_on_time: 10–100 (ms) — keep ≤ 50 for subliminal threshold
 
-SPIRAL STYLES (valid values only):
+SPIRAL STYLES (canonical 26 — source: STYLE_MAP in layers/spirals_opengl.py):
   tunnel_dream, galaxy, archimedean, kaleidoscope, interference,
-  electric, vortex, dna, fibonacci, rose, moire, spirograph, fermat, superformula
+  vortex, dna, rose, moire, spirograph, fermat, superformula, liminal, nebula,
+  cobwebs, strange_attractor, flow_field, sacred_geometry, recursive_fractal,
+  potter_tunnel, fractal_scale, neuro_vortex, ojascki, tunnel_warp, ganzflicker, galaxy_morph
+
+  Aliases: galaxy_arms → galaxy, bloom → rose
+
+  NOT valid (silently fall back to tunnel_dream — do not use):
+    fibonacci, electric, fractal_arms
 
   (Legacy aliases still accepted by the renderer but do not use in new sessions:
    zyntaks_hybrid/fan_blade → archimedean, star_polygon → kaleidoscope,
-   fractal_arms → electric, dense_web → interference, wide_vortex → vortex,
+   dense_web → interference, wide_vortex → vortex,
    interlocked → dna, radiating_pulse → tunnel_dream)
 
 VEIL MODES: scroll, rain, drift, converge, strobe, tunnel, null (auto-rotate)
+  (mirror was removed — do not reference)
 
 EASING: linear, ease_in, ease_out, ease_in_out, instant
+  (step is NOT valid — silently falls through to linear; use instant instead)
 
 AFFIRMATIONS FORMAT (affirmations.txt):
   # Untagged lines (always available — appear when phrases: null)
@@ -130,9 +154,10 @@ AFFIRMATIONS FORMAT (affirmations.txt):
   Let go.
   You are drifting deeper.
 
-  # [deepening]
+  # [deepening:seq]
   Deeper now.
   Your thoughts are slowing.
+  Nothing to hold.
 
   # [depth]
   You are fully under.
@@ -142,14 +167,28 @@ AFFIRMATIONS FORMAT (affirmations.txt):
   Waking gently.
   Carry this feeling.
 
+  # [shadows]
+  empty
+  open
+  gone
+
   Rules:
-  - Tag names in timeline phrases: field must exactly match # [tagname] headers
-  - 4–8 phrases per phase, 3–10 words each
-  - Chains: word1 >> word2 >> word3 (flash in sequence)
-  - Variants: phrase A | phrase B (random pick)
+  - Tag names in timeline phrases: field must exactly match # [tagname] headers (without :seq suffix)
+  - 4–8 phrases per phase minimum; sequential arcs (retrieve/update/return) benefit from 10–15
+  - Chains: word1 >> word2 >> word3
+      Once picked, plays consecutively in order, then resumes random selection.
+      Use for thought progressions that only make sense in order.
+  - Variants: phrase A | phrase B (random pick — expands into separate pool entries)
+  - Sequential tag: # [tag:seq]
+      Whole tag plays in written order, looping on exhaust.
+      Use for ordered arcs (openings, recon retrieve/update, closings).
+  - Shadows section: # [shadows] — single words only, used by subliminal layer
+  - Recon tags: # [recon_retrieve_<trace>] MUST pair with # [recon_update_<trace>]
+      Orphan tags are ignored. Use :seq for both; use >> chains within for flow.
 """
 
 # ── LLM helpers ───────────────────────────────────────────────────────────────
+
 
 def _llm_base_url() -> str:
     return os.environ.get("SOMNA_LLM_URL", "http://localhost:8000").rstrip("/")
@@ -167,8 +206,8 @@ def _chat(
     llm_model: str | None = None,
 ) -> str:
     body: dict = {
-        "model":       llm_model or _llm_model(),
-        "messages":    messages,
+        "model": llm_model or _llm_model(),
+        "messages": messages,
         "temperature": temperature,
     }
     if max_tokens is not None:
@@ -179,8 +218,9 @@ def _chat(
     if base.endswith("/v1"):
         base = base[:-3]
     url = base + "/v1/chat/completions"
-    req = urllib.request.Request(url, data=payload,
-                                 headers={"Content-Type": "application/json"})
+    req = urllib.request.Request(
+        url, data=payload, headers={"Content-Type": "application/json"}
+    )
     with urllib.request.urlopen(req, timeout=120) as resp:
         data = json.loads(resp.read())
     return data["choices"][0]["message"]["content"]
@@ -265,16 +305,18 @@ def _write_brief(
     llm_model: str | None = None,
 ) -> dict:
     prompt = _BRIEF_PROMPT.format(
-        intent            = intent,
-        profile_ctx       = profile_ctx or "(none)",
-        existing_sessions = ", ".join(existing_sessions or []) or "none yet",
+        intent=intent,
+        profile_ctx=profile_ctx or "(none)",
+        existing_sessions=", ".join(existing_sessions or []) or "none yet",
     )
-    raw    = _chat(
-        [{"role": "system", "content": _BRIEF_SYSTEM},
-         {"role": "user",   "content": prompt}],
-        temperature = 0.75,
-        llm_url     = llm_url,
-        llm_model   = llm_model,
+    raw = _chat(
+        [
+            {"role": "system", "content": _BRIEF_SYSTEM},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.75,
+        llm_url=llm_url,
+        llm_model=llm_model,
     )
     return _parse_json(raw)
 
@@ -309,19 +351,23 @@ def _design_session(
 ) -> str:
     failure_block = ""
     if failure_note:
-        failure_block = f"\n⚠ PREVIOUS VERSION FAILED REVIEW: {failure_note}\nFix these issues.\n"
+        failure_block = (
+            f"\n⚠ PREVIOUS VERSION FAILED REVIEW: {failure_note}\nFix these issues.\n"
+        )
 
     prompt = _DESIGN_PROMPT.format(
-        format_reference = _FORMAT_REFERENCE,
-        brief_json       = json.dumps(brief, indent=2),
-        failure_block    = failure_block,
+        format_reference=_FORMAT_REFERENCE,
+        brief_json=json.dumps(brief, indent=2),
+        failure_block=failure_block,
     )
     return _chat(
-        [{"role": "system", "content": _DESIGN_SYSTEM},
-         {"role": "user",   "content": prompt}],
-        temperature = 0.4,
-        llm_url     = llm_url,
-        llm_model   = llm_model,
+        [
+            {"role": "system", "content": _DESIGN_SYSTEM},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.4,
+        llm_url=llm_url,
+        llm_model=llm_model,
     ).strip()
 
 
@@ -359,15 +405,17 @@ def _populate_affirmations(
     llm_model: str | None = None,
 ) -> str:
     prompt = _AFFIRMATIONS_PROMPT.format(
-        brief_json   = json.dumps(brief, indent=2),
-        phase_labels = ", ".join(phase_labels),
+        brief_json=json.dumps(brief, indent=2),
+        phase_labels=", ".join(phase_labels),
     )
     return _chat(
-        [{"role": "system", "content": _AFFIRMATIONS_SYSTEM},
-         {"role": "user",   "content": prompt}],
-        temperature = 0.6,
-        llm_url     = llm_url,
-        llm_model   = llm_model,
+        [
+            {"role": "system", "content": _AFFIRMATIONS_SYSTEM},
+            {"role": "user", "content": prompt},
+        ],
+        temperature=0.6,
+        llm_url=llm_url,
+        llm_model=llm_model,
     ).strip()
 
 
@@ -432,7 +480,8 @@ failure_note, suggested_fixes.
 # Structural dimensions require ≥ 4 (objective: arc Hz sense, valid YAML).
 # Content dimensions require ≥ 3 (subjective: phrase style and conditioning tone vary by intent).
 _STRUCTURAL_PASS = 4
-_CONTENT_PASS    = 3
+_CONTENT_PASS = 3
+
 
 def _passes_review(review: dict) -> bool:
     structural = all(
@@ -454,32 +503,39 @@ def _review_session(
     llm_model: str | None = None,
 ) -> dict:
     prompt = _REVIEW_PROMPT.format(
-        brief_json = json.dumps(brief, indent=2),
-        yaml_text  = yaml_text[:6000],
-        aff_text   = aff_text[:3000],
+        brief_json=json.dumps(brief, indent=2),
+        yaml_text=yaml_text[:6000],
+        aff_text=aff_text[:3000],
     )
-    raw    = _chat(
-        [{"role": "system", "content": _REVIEW_SYSTEM},
-         {"role": "user",   "content": prompt}],
-        max_tokens  = 400,
-        temperature = 0.1,
-        llm_url     = llm_url,
-        llm_model   = llm_model,
+    raw = _chat(
+        [
+            {"role": "system", "content": _REVIEW_SYSTEM},
+            {"role": "user", "content": prompt},
+        ],
+        max_tokens=400,
+        temperature=0.1,
+        llm_url=llm_url,
+        llm_model=llm_model,
     )
     result = _parse_json(raw)
     result["keep"] = _passes_review(result)
     if not result.get("failure_note") or result["failure_note"] == "good":
         if not result["keep"]:
             scores = " ".join(
-                f"{k[:3]}={result.get(k,'?')}"
-                for k in ("arc_coherence", "phrase_quality",
-                          "technical_validity", "conditioning_effectiveness")
+                f"{k[:3]}={result.get(k, '?')}"
+                for k in (
+                    "arc_coherence",
+                    "phrase_quality",
+                    "technical_validity",
+                    "conditioning_effectiveness",
+                )
             )
             result["failure_note"] = f"scores below threshold ({scores})"
     return result
 
 
 # ── STEP 5: Commit to disk ────────────────────────────────────────────────────
+
 
 def _commit_session(
     session_name: str,
@@ -504,14 +560,15 @@ def _commit_session(
 
 # ── Session name helper ───────────────────────────────────────────────────────
 
+
 def _make_session_name(brief: dict) -> str:
     slug = brief.get("slug", "")
     if not slug:
         title = brief.get("title", "session")
-        slug  = re.sub(r"[^a-z0-9\s]", "", title.lower())
-        slug  = "_".join(slug.split()[:4])
+        slug = re.sub(r"[^a-z0-9\s]", "", title.lower())
+        slug = "_".join(slug.split()[:4])
     slug = re.sub(r"[^a-z0-9_]", "", slug) or "custom_session"
-    ts   = time.strftime("%m%d")
+    ts = time.strftime("%m%d")
     return f"{slug}_{ts}"
 
 
@@ -527,13 +584,14 @@ def _extract_phase_labels(yaml_text: str) -> list[str]:
 
 # ── Full pipeline ─────────────────────────────────────────────────────────────
 
+
 def run_session_creation_cycle(
     intent: str,
     session_name: str | None = None,
-    profile_ctx:  str = "",
-    max_retries:  int = 2,
-    llm_url:      str | None = None,
-    llm_model:    str | None = None,
+    profile_ctx: str = "",
+    max_retries: int = 2,
+    llm_url: str | None = None,
+    llm_model: str | None = None,
 ) -> dict:
     """Run a full session creation cycle from an intent string.
 
@@ -549,28 +607,28 @@ def run_session_creation_cycle(
     from content_tools.sessions import list_sessions
 
     result: dict = {
-        "intent":       intent,
+        "intent": intent,
         "session_name": None,
-        "brief":        None,
-        "status":       "ok",
-        "attempts":     0,
+        "brief": None,
+        "status": "ok",
+        "attempts": 0,
         "review_scores": None,
-        "notes":        "",
+        "notes": "",
     }
 
     # ── 1. Brief ──────────────────────────────────────────────────────────────
     print(f"[SessionPipeline] Writing brief for: {intent!r}")
     try:
         brief = _write_brief(
-            intent            = intent,
-            profile_ctx       = profile_ctx,
-            existing_sessions = list_sessions(),
-            llm_url           = llm_url,
-            llm_model         = llm_model,
+            intent=intent,
+            profile_ctx=profile_ctx,
+            existing_sessions=list_sessions(),
+            llm_url=llm_url,
+            llm_model=llm_model,
         )
     except Exception as exc:
         result["status"] = "brief_error"
-        result["notes"]  = str(exc)
+        result["notes"] = str(exc)
         return result
 
     result["brief"] = brief
@@ -580,9 +638,9 @@ def run_session_creation_cycle(
 
     # ── 2-4. Design → Populate → Review loop ─────────────────────────────────
     failure_note = ""
-    last_review  = {}
-    yaml_text    = ""
-    aff_text     = ""
+    last_review = {}
+    yaml_text = ""
+    aff_text = ""
 
     for attempt in range(1 + max_retries):
         result["attempts"] = attempt + 1
@@ -593,19 +651,20 @@ def run_session_creation_cycle(
         # Design
         try:
             yaml_text = _design_session(
-                brief        = brief,
-                failure_note = failure_note,
-                llm_url      = llm_url,
-                llm_model    = llm_model,
+                brief=brief,
+                failure_note=failure_note,
+                llm_url=llm_url,
+                llm_model=llm_model,
             )
         except Exception as exc:
             result["status"] = "design_error"
-            result["notes"]  = str(exc)
+            result["notes"] = str(exc)
             return result
 
         # Quick structural pre-check before paying for affirmations + review
         try:
             import yaml as _yaml
+
             parsed = _yaml.safe_load(yaml_text)
             assert isinstance(parsed, dict), "Top-level must be a dict"
             assert "timeline" in parsed, "Missing timeline"
@@ -618,55 +677,69 @@ def run_session_creation_cycle(
         phase_labels = _extract_phase_labels(yaml_text)
         try:
             aff_text = _populate_affirmations(
-                brief        = brief,
-                phase_labels = phase_labels,
-                llm_url      = llm_url,
-                llm_model    = llm_model,
+                brief=brief,
+                phase_labels=phase_labels,
+                llm_url=llm_url,
+                llm_model=llm_model,
             )
         except Exception as exc:
             result["status"] = "affirmations_error"
-            result["notes"]  = str(exc)
+            result["notes"] = str(exc)
             return result
 
         # Review
         try:
             review = _review_session(
-                brief     = brief,
-                yaml_text = yaml_text,
-                aff_text  = aff_text,
-                llm_url   = llm_url,
-                llm_model = llm_model,
+                brief=brief,
+                yaml_text=yaml_text,
+                aff_text=aff_text,
+                llm_url=llm_url,
+                llm_model=llm_model,
             )
         except Exception as exc:
             # Can't review — commit anyway, mark as unreviewed
             review = {
-                "keep":         True,
+                "keep": True,
                 "failure_note": f"review_error: {exc}",
             }
 
-        last_review  = review
+        last_review = review
         failure_note = review.get("failure_note", "") or ""
 
         scores_str = " ".join(
-            f"{k[:3]}={review.get(k,'?')}"
-            for k in ("arc_coherence", "phrase_quality",
-                      "technical_validity", "conditioning_effectiveness")
+            f"{k[:3]}={review.get(k, '?')}"
+            for k in (
+                "arc_coherence",
+                "phrase_quality",
+                "technical_validity",
+                "conditioning_effectiveness",
+            )
         )
-        print(f"[SessionPipeline] Review attempt {attempt+1}: {scores_str} — keep={review.get('keep')}")
+        print(
+            f"[SessionPipeline] Review attempt {attempt + 1}: {scores_str} — keep={review.get('keep')}"
+        )
 
         if review.get("keep", False):
             break
 
     result["review_scores"] = {
         k: last_review.get(k)
-        for k in ("arc_coherence", "phrase_quality", "technical_validity",
-                  "conditioning_effectiveness", "failure_note", "suggested_fixes")
+        for k in (
+            "arc_coherence",
+            "phrase_quality",
+            "technical_validity",
+            "conditioning_effectiveness",
+            "failure_note",
+            "suggested_fixes",
+        )
     }
 
     if not last_review.get("keep", False):
         result["status"] = "failed_review"
-        result["notes"]  = (f"Session did not pass review after {result['attempts']} attempts. "
-                            f"Last note: {failure_note}")
+        result["notes"] = (
+            f"Session did not pass review after {result['attempts']} attempts. "
+            f"Last note: {failure_note}"
+        )
         _persist_quality(final_name, result)
         return result
 
@@ -674,14 +747,16 @@ def run_session_creation_cycle(
     commit = _commit_session(final_name, yaml_text, aff_text)
     if not commit.get("valid"):
         result["status"] = "commit_error"
-        result["notes"]  = commit.get("error", "Unknown write error")
+        result["notes"] = commit.get("error", "Unknown write error")
         _persist_quality(final_name, result)
         return result
 
     result["status"] = "created"
-    result["notes"]  = (f"Session '{brief.get('title')}' created as {final_name!r}. "
-                        f"{commit.get('keyframes', '?')} keyframes, "
-                        f"{commit.get('duration_s', '?')}s duration.")
+    result["notes"] = (
+        f"Session '{brief.get('title')}' created as {final_name!r}. "
+        f"{commit.get('keyframes', '?')} keyframes, "
+        f"{commit.get('duration_s', '?')}s duration."
+    )
 
     print(f"[SessionPipeline] Committed: {final_name!r} — {result['notes']}")
     _persist_quality(final_name, result)
@@ -692,6 +767,7 @@ def _persist_quality(session_name: str, result: dict) -> None:
     """Write pipeline review scores to somna.db — fire-and-forget, never raises."""
     try:
         from content_tools.somna_db import save_session_quality
+
         save_session_quality(session_name, result)
     except Exception as exc:
         print(f"[SessionPipeline] Quality log error (non-fatal): {exc}")

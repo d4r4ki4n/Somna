@@ -215,6 +215,7 @@ class ControlPanelImGui:
         self._eeg_engine: Any = None
         self._eeg_stop_thread: threading.Thread | None = None
         self._eeg_cfg = self._load_eeg_cfg()
+        self._auto_eeg_connected: bool = False
 
         # Hardware output engines (BLE devices)
         self._haptic_engine: Any = None
@@ -1121,6 +1122,16 @@ class ControlPanelImGui:
             self._live = self._cfg.update()
         except Exception:
             pass
+
+        if not self._auto_eeg_connected:
+            self._auto_eeg_connected = True
+            if self._eeg_cfg.get("auto_connect", False) and self._eeg_engine is None:
+                synthetic = self._eeg_cfg.get("synthetic", True)
+                if synthetic:
+                    self._connect_eeg()
+                else:
+                    threading.Timer(3.0, self._connect_eeg).start()
+
         self._player.agent_running = self._is_agent_running()
         self._panel_manager.update(self._live)
 

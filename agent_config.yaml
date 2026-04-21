@@ -102,7 +102,7 @@ eeg:
   enabled:      true   # master enable; set true to inject EEG context into agent
   synthetic:    false    # false = real hardware
   board_id:     38      # 38 = MUSE_2_BOARD (native BLE); 22 = MUSE_2_BLED_BOARD (dongle)
-  auto_connect: false   # auto-start EEG engine when the control panel opens
+  auto_connect: true    # auto-start EEG engine when the control panel opens
 
 image_gen:
   steps:             8        # FLUX works well at 8 steps

@@ -263,6 +263,8 @@ When the user moves a slider, the touched param is added to `timeline_locked_par
 
 - `playlist_index` — current position in the playlist
 
+- `playlist_autoadvance` — bool; default `false`. When `false` (default), the timeline runner pauses at session end instead of immediately loading the next playlist entry. This protects the post-session integration window — the return keyframe's quiet alpha state must not be punched through by another session's defaults and tone-shift. When `true`, restores conveyor-belt playback (legacy pre-2026-04-21 behavior). Writer: user via control panel or session.yaml defaults. Reader: `timeline_runner._update_playlist()` via `_apply_config()`.
+
 **Commands** — written by control panel or agent, consumed and cleared by `timeline_runner.py`:
 
 - `_timeline_cmd` — `"pause"` / `"resume"` / `"restart"` / `"load"` / `"seek"` / `"playlist_next"` / `"playlist_prev"`

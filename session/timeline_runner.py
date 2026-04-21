@@ -321,6 +321,9 @@ class TimelineRunner(threading.Thread):
         self._playlist: List[str] = []
         self._playlist_mode: str = "sequential"
         self._playlist_index: int = 0
+        self._playlist_autoadvance: bool = (
+            False  # opt-in; default off protects integration window
+        )
         self._session_ended: bool = False  # one-shot flag
 
         # Fractionation state machine — None when inactive
@@ -577,12 +580,26 @@ class TimelineRunner(threading.Thread):
         # Handle loops — rewind elapsed if inside an active loop
         self._elapsed = self._apply_loops(self._elapsed)
 
-        # Check for natural session end → advance playlist (once per end event)
+        # Check for natural session end.
+        # Default: pause and hold. The return keyframe has already ramped the
+        # user back to alpha — the integration window that follows is sacred
+        # and must not be punched through by another session's defaults.
+        # Opt-in: playlist_autoadvance=true restores conveyor-belt playback.
         if not self._paused and self._session_is_over():
             if not self._session_ended:
                 self._session_ended = True
-                self._advance_playlist()
-                return  # load_session resets state; next tick starts fresh
+                if self._playlist_autoadvance and self._playlist:
+                    self._advance_playlist()
+                    return  # load_session resets state; next tick starts fresh
+                else:
+                    self._paused = True
+                    try:
+                        patch_live({"timeline_paused": True})
+                    except Exception:
+                        pass
+                    print(
+                        "[Timeline] Session ended — paused (playlist_autoadvance=False)"
+                    )
         else:
             self._session_ended = False
 
@@ -612,6 +629,7 @@ class TimelineRunner(threading.Thread):
         if isinstance(pl, list):
             self._playlist = [str(s) for s in pl]
             self._playlist_mode = str(data.get("playlist_mode", "sequential"))
+        self._playlist_autoadvance = bool(data.get("playlist_autoadvance", False))
 
     def _session_is_over(self) -> bool:
         """True when the session timeline has naturally reached its end.

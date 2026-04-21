@@ -208,7 +208,7 @@ TOOLS: list[dict] = [
                 "properties": {
                     "session_name": {
                         "type": "string",
-                        "description": "Session whose images to harvest captions from.",
+                        "description": "Session whose tags.json to harvest captions from.",
                     },
                     "target_session": {
                         "type": "string",
@@ -464,13 +464,9 @@ TOOLS: list[dict] = [
                     "trend_metric": {
                         "type": "string",
                         "enum": [
-                            "composite_score",
-                            "depth_min_sef95",
-                            "depth_mean_sef95",
-                            "entrainment_mean_assr",
-                            "receptivity_approach_pct",
-                            "signal_quality_mean",
-                            "transition_speed_sec",
+                            "composite_score", "depth_min_sef95", "depth_mean_sef95",
+                            "entrainment_mean_assr", "receptivity_approach_pct",
+                            "signal_quality_mean", "transition_speed_sec",
                         ],
                         "description": (
                             "Which metric to compute a trend for over the last 20 sessions. "
@@ -546,7 +542,6 @@ TOOLS: list[dict] = [
 
 # ── Tool dispatch ─────────────────────────────────────────────────────────────
 
-
 def dispatch(name: str, arguments: dict[str, Any]) -> Any:
     """Call a content tool by name with a dict of arguments.
 
@@ -555,118 +550,108 @@ def dispatch(name: str, arguments: dict[str, Any]) -> Any:
     """
     if name == "write_affirmations":
         from content_tools.affirmations import write_affirmations
-
         return write_affirmations(
-            session_name=arguments["session_name"],
-            tag=arguments["tag"],
-            phrases=arguments["phrases"],
-            mode=arguments.get("mode", "append"),
+            session_name = arguments["session_name"],
+            tag          = arguments["tag"],
+            phrases      = arguments["phrases"],
+            mode         = arguments.get("mode", "append"),
         )
 
     if name == "read_session_content":
         from content_tools.sessions import read_session
-
         return read_session(arguments["session_name"])
 
     if name == "write_session_yaml":
         from content_tools.sessions import write_session_yaml
-
         return write_session_yaml(
-            session_name=arguments["session_name"],
-            yaml_content=arguments["yaml_content"],
+            session_name = arguments["session_name"],
+            yaml_content = arguments["yaml_content"],
         )
+
 
     if name == "auto_tag_session":
         from content_tools.image_tags import auto_tag_session
-
         batch = arguments.get("batch_size", 20)
         batch = None if batch == 0 else int(batch)
         return auto_tag_session(
-            session_name=arguments["session_name"],
-            batch_size=batch,
-            force=bool(arguments.get("force", False)),
+            session_name = arguments["session_name"],
+            batch_size   = batch,
+            force        = bool(arguments.get("force", False)),
         )
 
     if name == "tag_stats":
         from content_tools.image_tags import tag_stats
-
         return tag_stats(arguments["session_name"])
 
     if name == "cull_session":
         from content_tools.image_tags import cull_session
-
         return cull_session(arguments["session_name"])
 
     if name == "harvest_captions":
         from content_tools.image_tags import harvest_captions_to_affirmations
-
         return harvest_captions_to_affirmations(
-            session_name=arguments["session_name"],
-            target_session=arguments.get("target_session"),
-            tag_filter=arguments.get("tag_filter"),
+            session_name   = arguments["session_name"],
+            target_session = arguments.get("target_session"),
+            tag_filter     = arguments.get("tag_filter"),
         )
 
     if name == "list_sessions":
         from content_tools.sessions import list_sessions
-
         return list_sessions()
 
     if name == "write_affirmations_batch":
         from content_tools.affirmations import write_affirmations
-
         return write_affirmations(
-            session_name=arguments["session_name"],
-            tag=arguments["tag"],
-            phrases=arguments["phrases"],
-            mode=arguments.get("mode", "append"),
+            session_name = arguments["session_name"],
+            tag          = arguments["tag"],
+            phrases      = arguments["phrases"],
+            mode         = arguments.get("mode", "append"),
         )
+
 
     if name == "image_pipeline_cycle":
         from content_tools.image_gen_pipeline import run_pipeline_cycle
-
         cfg_path = Path(__file__).parent.parent / "agent_config.yaml"
         img_cfg: dict = {}
         try:
             import yaml
-
             with open(cfg_path, encoding="utf-8") as f:
                 img_cfg = (yaml.safe_load(f) or {}).get("image_gen", {})
         except Exception:
             pass
 
-        cycles = max(1, min(10, int(arguments.get("cycles", 1))))
+        cycles         = max(1, min(10, int(arguments.get("cycles", 1))))
         forced_caption = arguments.get("forced_caption", "")
-        intensity = arguments.get(
-            "intensity", img_cfg.get("default_intensity", "suggestive")
-        )
-        llm_url = os.environ.get("SOMNA_LLM_URL", "http://localhost:8000")
-        llm_model = os.environ.get("SOMNA_LLM_MODEL", "")
+        intensity      = arguments.get("intensity",
+                         img_cfg.get("default_intensity", "suggestive"))
+        llm_url        = os.environ.get("SOMNA_LLM_URL", "http://localhost:8000")
+        llm_model      = os.environ.get("SOMNA_LLM_MODEL", "")
 
         if cycles == 1:
             return run_pipeline_cycle(
-                session_name=arguments["session_name"],
-                theme=arguments["theme"],
-                tag=arguments["tag"],
-                intensity=intensity,
-                forced_caption=forced_caption,
-                llm_url=llm_url,
-                llm_model=llm_model,
+                session_name   = arguments["session_name"],
+                theme          = arguments["theme"],
+                tag            = arguments["tag"],
+                intensity      = intensity,
+                forced_caption = forced_caption,
+                llm_url        = llm_url,
+                llm_model      = llm_model,
             )
 
         # Multi-cycle batch — run sequentially, collect compact summary
-        results = []
-        promoted = 0
-        discarded = 0
-        errors = 0
+        results      = []
+        promoted     = 0
+        discarded    = 0
+        errors       = 0
         for i in range(cycles):
             r = run_pipeline_cycle(
-                session_name=arguments["session_name"],
-                theme=arguments["theme"],
-                tag=arguments["tag"],
-                intensity=intensity,
-                forced_caption=forced_caption,
-                llm_url=llm_url,
-                llm_model=llm_model,
+                session_name   = arguments["session_name"],
+                theme          = arguments["theme"],
+                tag            = arguments["tag"],
+                intensity      = intensity,
+                forced_caption = forced_caption,
+                llm_url        = llm_url,
+                llm_model      = llm_model,
             )
             action = r.get("action", "")
             if action == "promoted":
@@ -675,93 +660,75 @@ def dispatch(name: str, arguments: dict[str, Any]) -> Any:
                 discarded += 1
             elif r.get("status") not in ("ok",):
                 errors += 1
-            results.append(
-                {
-                    "cycle": i + 1,
-                    "action": action,
-                    "status": r.get("status"),
-                    "ref": r.get("reference_image"),
-                    "gen": r.get("generated_image"),
-                    "caption": r.get("caption"),
-                    "scores": r.get("review_scores"),
-                    "note": r.get("notes", ""),
-                }
-            )
+            results.append({
+                "cycle":   i + 1,
+                "action":  action,
+                "status":  r.get("status"),
+                "ref":     r.get("reference_image"),
+                "gen":     r.get("generated_image"),
+                "caption": r.get("caption"),
+                "scores":  r.get("review_scores"),
+                "note":    r.get("notes", ""),
+            })
         return {
             "cycles_run": cycles,
-            "promoted": promoted,
-            "discarded": discarded,
-            "errors": errors,
-            "results": results,
+            "promoted":   promoted,
+            "discarded":  discarded,
+            "errors":     errors,
+            "results":    results,
         }
 
     if name == "read_session_log":
         return _read_session_log(
-            session_name=arguments["session_name"],
-            days=min(int(arguments.get("days", 7)), 30),
+            session_name = arguments["session_name"],
+            days         = min(int(arguments.get("days", 7)), 30),
         )
 
     if name == "create_session_cycle":
         from content_tools.session_pipeline import run_session_creation_cycle
-
         return run_session_creation_cycle(
-            intent=arguments["intent"],
-            session_name=arguments.get("session_name") or None,
-            llm_url=os.environ.get("SOMNA_LLM_URL", "http://localhost:8000"),
-            llm_model=os.environ.get("SOMNA_LLM_MODEL", ""),
+            intent       = arguments["intent"],
+            session_name = arguments.get("session_name") or None,
+            llm_url      = os.environ.get("SOMNA_LLM_URL", "http://localhost:8000"),
+            llm_model    = os.environ.get("SOMNA_LLM_MODEL", ""),
         )
 
     if name == "audit_affirmations":
         from content_tools.affirmations import audit_affirmations
-
         return audit_affirmations(
-            session_name=arguments["session_name"],
-            llm_url=os.environ.get("SOMNA_LLM_URL", "http://localhost:8000"),
-            llm_model=os.environ.get("SOMNA_LLM_MODEL", ""),
+            session_name = arguments["session_name"],
+            llm_url      = os.environ.get("SOMNA_LLM_URL", "http://localhost:8000"),
+            llm_model    = os.environ.get("SOMNA_LLM_MODEL", ""),
         )
 
     if name == "query_session_performance":
         from content_tools.somna_db import (
-            get_session_metrics,
-            trend_metric,
-            best_config_for_preset,
+            get_session_metrics, trend_metric, best_config_for_preset,
         )
-
-        n = min(int(arguments.get("recent_n", 10)), 20)
-        preset = (arguments.get("session_preset") or "").strip()
-        metric = arguments.get("trend_metric", "composite_score")
-        recent = get_session_metrics(n)
-        trend = trend_metric(metric, n=20)
-        best = best_config_for_preset(preset) if preset else {}
+        n       = min(int(arguments.get("recent_n", 10)), 20)
+        preset  = (arguments.get("session_preset") or "").strip()
+        metric  = arguments.get("trend_metric", "composite_score")
+        recent  = get_session_metrics(n)
+        trend   = trend_metric(metric, n=20)
+        best    = best_config_for_preset(preset) if preset else {}
         # Compact the recent rows so they don't flood context
         compact = [
-            {
-                k: v
-                for k, v in row.items()
-                if k
-                in (
-                    "session_id",
-                    "session_date",
-                    "composite_score",
-                    "depth_mean_sef95",
-                    "entrainment_mean_assr",
-                    "signal_quality_mean",
-                    "agent_notes",
-                )
-            }
+            {k: v for k, v in row.items()
+             if k in ("session_id", "session_date", "composite_score",
+                      "depth_mean_sef95", "entrainment_mean_assr",
+                      "signal_quality_mean", "agent_notes")}
             for row in recent
         ]
         return {
-            "recent_sessions": compact,
-            "trend": {metric: trend},
-            "best_config": best,
-            "total_sessions": len(recent),
+            "recent_sessions":  compact,
+            "trend":            {metric: trend},
+            "best_config":      best,
+            "total_sessions":   len(recent),
         }
 
     if name == "find_images_by_theme":
         from content_tools.somna_db import get_images_by_tags
-
-        tags = [str(t) for t in (arguments.get("tags") or []) if t]
+        tags    = [str(t) for t in (arguments.get("tags") or []) if t]
         results = get_images_by_tags(tags)
         by_session: dict = {}
         for r in results:
@@ -769,19 +736,17 @@ def dispatch(name: str, arguments: dict[str, Any]) -> Any:
         return {
             "tags_searched": tags,
             "matches_total": len(results),
-            "by_session": by_session,
+            "by_session":    by_session,
         }
 
     if name == "read_sleep_report":
         from content_tools.sleep_report import read_sleep_report
-
         return read_sleep_report(arguments["session_id"])
 
     raise ValueError(f"Unknown tool: {name!r}")
 
 
 # ── Session log reader ────────────────────────────────────────────────────────
-
 
 def _read_session_log(session_name: str, days: int = 7) -> dict:
     """Return structured summaries of past session exchanges.
@@ -793,13 +758,13 @@ def _read_session_log(session_name: str, days: int = 7) -> dict:
     complexity scores + any with actual user responses).
     """
     import time as _time
-
-    root = Path(__file__).parent.parent
+    root     = Path(__file__).parent.parent
     logs_dir = root / "session_logs"
     if not logs_dir.exists():
         return {"error": "No session_logs directory found.", "days": []}
 
-    safe_name = "".join(c if c.isalnum() or c in "-_" else "_" for c in session_name)
+    safe_name = "".join(c if c.isalnum() or c in "-_" else "_"
+                        for c in session_name)
 
     cutoff_ts = _time.time() - days * 86400
     day_summaries = []
@@ -819,7 +784,7 @@ def _read_session_log(session_name: str, days: int = 7) -> dict:
         except ValueError:
             continue
         if day_ts < cutoff_ts:
-            break  # files are sorted newest-first; older than window — stop
+            break   # files are sorted newest-first; older than window — stop
 
         exchanges = []
         for line in log_path.read_text(encoding="utf-8").splitlines():
@@ -832,54 +797,47 @@ def _read_session_log(session_name: str, days: int = 7) -> dict:
             continue
 
         # Per-day stats
-        complexities = [
-            e.get("complexity_score", 1.0)
-            for e in exchanges
-            if e.get("response") is not None
-        ]
-        beats = [e.get("beat_hz", 10.0) for e in exchanges]
-        best_cmplx = min(complexities) if complexities else None
+        complexities = [e.get("complexity_score", 1.0) for e in exchanges
+                        if e.get("response") is not None]
+        beats        = [e.get("beat_hz", 10.0) for e in exchanges]
+        best_cmplx   = min(complexities) if complexities else None
         deepest_beat = min(beats) if beats else None
 
         # Curated sample: all exchanges with real responses + the deepest ones
         with_response = [e for e in exchanges if e.get("response")]
-        deep_ones = sorted(
+        deep_ones     = sorted(
             [e for e in exchanges if e.get("complexity_score", 1.0) < 0.3],
             key=lambda e: e.get("complexity_score", 1.0),
         )[:5]
-        sample = {e.get("timestamp", 0): e for e in (with_response[-15:] + deep_ones)}
-        sample_list = sorted(sample.values(), key=lambda e: e.get("session_time", 0))
+        sample = {e.get("timestamp", 0): e
+                  for e in (with_response[-15:] + deep_ones)}
+        sample_list = sorted(sample.values(),
+                             key=lambda e: e.get("session_time", 0))
 
-        day_summaries.append(
-            {
-                "date": date_str,
-                "exchange_count": len(exchanges),
-                "best_complexity": round(best_cmplx, 2)
-                if best_cmplx is not None
-                else None,
-                "deepest_beat_hz": round(deepest_beat, 1)
-                if deepest_beat is not None
-                else None,
-                "exchanges": [
-                    {
-                        "t": f"{e.get('session_time', 0):.0f}s",
-                        "beat": e.get("beat_hz"),
-                        "spiral": e.get("spiral_style"),
-                        "prompt": e.get("prompt"),
-                        "response": e.get("response"),
-                        "complexity": e.get("complexity_score"),
-                    }
-                    for e in sample_list
-                ],
-            }
-        )
+        day_summaries.append({
+            "date":          date_str,
+            "exchange_count": len(exchanges),
+            "best_complexity": round(best_cmplx, 2) if best_cmplx is not None else None,
+            "deepest_beat_hz": round(deepest_beat, 1) if deepest_beat is not None else None,
+            "exchanges": [
+                {
+                    "t":          f"{e.get('session_time', 0):.0f}s",
+                    "beat":       e.get("beat_hz"),
+                    "spiral":     e.get("spiral_style"),
+                    "prompt":     e.get("prompt"),
+                    "response":   e.get("response"),
+                    "complexity": e.get("complexity_score"),
+                }
+                for e in sample_list
+            ],
+        })
 
         if len(day_summaries) >= days:
             break
 
     return {
-        "session": session_name,
+        "session":       session_name,
         "days_requested": days,
-        "days_found": len(day_summaries),
-        "history": day_summaries,
+        "days_found":    len(day_summaries),
+        "history":       day_summaries,
     }

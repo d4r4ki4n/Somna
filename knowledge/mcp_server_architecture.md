@@ -338,21 +338,25 @@ The first write of any session (after server start) triggers a one-shot approval
 
 ## Kilo Integration
 
-Add to `kilo.json` (project-level or global):
+Add to `.kilo/kilo.json` under the existing `"mcp"` block (NOT a new `mcpServers` key):
 
 ```json
-{
-  "mcpServers": {
-    "somna": {
-      "command": "python",
-      "args": ["-u", "tools/mcp_somna_server.py"],
-      "env": {
-        "SOMNA_ROOT": "F:\\Somna"
-      }
+"mcp": {
+  "somna": {
+    "type": "local",
+    "command": ["python", "-u", "tools/mcp_somna_server.py"],
+    "environment": {
+      "SOMNA_ROOT": "F:\\Somna"
     }
   }
 }
 ```
+
+Format notes:
+- File path: `.kilo/kilo.json` (not project root)
+- Top-level key: `"mcp"` (not `"mcpServers"`)
+- Each entry: `"type": "local"` + `"command": [array]` + optional `"environment": {...}`
+- No separate `"args"` field — arguments go inside the `"command"` array
 
 Kilo discovers tools on startup and exposes them to the agent. The agent calls them via the standard MCP tool-use protocol (function calling in the LLM API).
 

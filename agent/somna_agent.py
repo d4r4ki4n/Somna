@@ -829,7 +829,12 @@ _ADJUSTABLE_PARAMS = {
     "tts_subliminal": "bool — turn SSB silent subliminal layer on or off",
     "noise_volume": "float 0–100 — colored noise level; set to 0 to silence (color is user-set)",
     "audio_muted": "bool — binaural beats + colored noise on/off; true=off, false=on. Use to start/stop the audio layer without touching volume.",
-    "beat_type": "str binaural|isochronic|both — binaural=stereo phase-offset beats (headphones required); isochronic=AM-pulsed carrier (speakers OK, explicit pulse); both=blended dual-pathway stimulation",
+    "beat_type": "str binaural|isochronic|both|fm — binaural=stereo phase-offset beats (headphones required); isochronic=AM-pulsed carrier (speakers OK, explicit pulse); both=blended dual-pathway; fm=frequency-modulated carrier producing sustained cortical following response (vibrato/warble character, smoother than isochronic)",
+    "fm_mod_depth": "float 0.5–30.0 Hz — FM modulation depth (carrier frequency deviation). Narrow (~2 Hz) = subtle warble; wide (~20 Hz) = dramatic vibrato. Default 8.0. Only active when beat_type=fm.",
+    "bilateral_panning": "bool — enable bilateral L/R audio panning (EMDR-style spatial entrainment). Orthogonal to beat_type — stacks with any mode. Engages interhemispheric communication + working memory taxation.",
+    "bilateral_rate": "float 0.1–20.0 Hz — panning alternation rate. Match beat_frequency for spatial entrainment, or use 0.5–2.0 Hz for EMDR-rate during reconsolidation.",
+    "bilateral_mode": "str smooth|hard — smooth=sinusoidal pan (gradual), hard=square wave (percussive, stronger lateralization). Default smooth.",
+    "bilateral_depth": "float 0.0–1.0 — panning depth. 0.0=centered (off), 1.0=full L/R alternation. Default 1.0.",
     "breath_mod": "bool — enable passive respiratory entrainment: carrier amplitude modulated at breath_rate Hz (Goheen 2024 mechanism). Enable when beat ≤ 9 Hz and session ≥ 2 min.",
     "breath_rate": "float 0.04–0.20 Hz — breathing modulation rate. Population default 0.10 (6 bpm). Use transitions to ramp: start 0.12 → target 0.10 over 3 min. Match to beat depth: alpha→0.12, theta→0.10, delta→0.07.",
     "breath_depth": "float 0.0–0.50 — modulation depth as fraction of carrier amplitude. Start 0.15, ramp to 0.25 once entrainment is evident (alpha rising, beta falling).",
@@ -1092,6 +1097,7 @@ def _load_knowledge_for_agent(files: list | None = None) -> str:
         "session_design.md",
         "veil_and_spirals.md",
         "hypnosis_theory.md",
+        "entrainment_modalities.md",
     ]
     file_list = files if files is not None else default_files
     parts = []
@@ -1116,6 +1122,7 @@ _IDLE_KNOWLEDGE_FILES = [
     "training_mode.md",  # understand training context for goal updates
     "conductor_fsm.md",  # phase meanings now present in idle context
     "hypnosis_theory.md",  # guide/fill/inscribe model; informs content and goal decisions
+    "entrainment_modalities.md",  # FM and bilateral panning usage guidance
 ]
 
 # Injected only when the user has no/minimal voluntary imagery — constrains the LLM

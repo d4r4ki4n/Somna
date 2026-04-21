@@ -427,13 +427,25 @@ When the user moves a slider, the touched param is added to `timeline_locked_par
 
 **Beat type and breath modulation** — audio engine parameters:
 
-- `beat_type` — `"binaural"` | `"isochronic"` | `"both"`; default `"binaural"`. Controls audio generation mode; agent and session YAML can set this.
+- `beat_type` — `"binaural"` | `"isochronic"` | `"both"` | `"fm"`; default `"binaural"`. Controls audio generation mode; agent and session YAML can set this. `"fm"` modulates the carrier frequency itself at the entrainment target rate, producing a sustained cortical following response via tonotopic tracking — perceived as a smooth vibrato/warble.
+
+- `fm_mod_depth` — float 0.5–30.0 Hz; default `8.0`. Carrier frequency deviation for FM mode. Narrow (~2 Hz) = subtle warble; wide (~20 Hz) = dramatic vibrato. Only active when `beat_type = "fm"`.
 
 - `breath_mod_enabled` — bool; default `false`. When true, applies sinusoidal AM envelope to the binaural beat chunk at the breath rate.
 
 - `breath_rate_bpm` — float; default 6.0. Breathing rate in breaths per minute (4–12 BPM range).
 
 - `breath_depth` — float 0.0–1.0; default 0.5. Amplitude modulation depth; 1.0 = full silence on exhale, 0.0 = no modulation.
+
+**Bilateral panning** — independent spatial modulation layer (orthogonal to beat_type, stacks with any mode):
+
+- `bilateral_panning` — bool; default `false`. Enables alternating L/R audio panning. Engages interhemispheric communication + working memory taxation (EMDR-derived mechanism).
+
+- `bilateral_rate` — float 0.1–20.0 Hz; default `6.0`. Panning alternation rate. Match `beat_frequency` for spatial entrainment, or use 0.5–2.0 Hz for EMDR-rate during reconsolidation.
+
+- `bilateral_mode` — `"smooth"` | `"hard"`; default `"smooth"`. Smooth = sinusoidal pan (gradual); hard = square wave (percussive, stronger lateralization).
+
+- `bilateral_depth` — float 0.0–1.0; default `1.0`. Panning depth. 0.0 = centered (off), 1.0 = full L/R alternation.
 
 **Audio duck / pattern interrupt** — written by agent/timeline, consumed by `audio_engine.py`:
 

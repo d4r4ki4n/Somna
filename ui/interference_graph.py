@@ -308,6 +308,17 @@ PRESETS: dict[str, ChordPreset] = {
             Channel.VNS: 0.3,
         },
     ),
+    "LOCK": ChordPreset(
+        name="Lock",
+        description=(
+            "Cross-modal lock — every channel at the same frequency. "
+            "No interference beats, no tethers, just a unified pulse. "
+            "When IAF is calibrated, locks to IAF (the brain's natural "
+            "resonance). Otherwise defaults to 10 Hz. Pure convergence."
+        ),
+        frequencies={ch: 10.0 for ch in CHANNEL_ORDER},
+        iaf_multipliers={ch: 1.0 for ch in CHANNEL_ORDER},
+    ),
 }
 
 
@@ -336,9 +347,12 @@ class InterferenceGraph:
         self.spread_hz: float = 0.0
         self.iaf_hz: float | None = None
         self._active_preset: str | None = None
-
         self._tethers: list[Tether] = []
         self._pending: dict[str, float] = {}
+
+    @property
+    def locked(self) -> bool:
+        return self._active_preset == "LOCK"
 
     # ── State sync ────────────────────────────────────────────────────────
 

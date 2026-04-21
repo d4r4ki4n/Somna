@@ -116,7 +116,8 @@
       "enum": [
         "binaural",
         "isochronic",
-        "hybrid"
+        "hybrid",
+        "fm"
       ]
     },
     {
@@ -186,6 +187,97 @@
         "CUE_TEST"
       ],
       "tooltip": "Amplitude modulation depth for isochronic / breath pacing.",
+      "range": [
+        0.0,
+        1.0
+      ]
+    },
+    {
+      "key": "fm_mod_depth",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "FM Depth (Hz)",
+      "section": "Audio",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Carrier frequency deviation for FM entrainment.\nNarrow (~2 Hz) = subtle warble. Wide (~20 Hz) = dramatic vibrato.\nOnly active when Entrainment Mode is set to FM.",
+      "range": [
+        0.5,
+        30.0
+      ]
+    },
+    {
+      "key": "bilateral_panning",
+      "widget": "Toggle",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Bilateral Panning",
+      "section": "Audio",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Alternating L/R audio panning (EMDR-style).\nEngages interhemispheric communication.\nOrthogonal to beat type — stacks with any mode."
+    },
+    {
+      "key": "bilateral_rate",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Bilateral Rate (Hz)",
+      "section": "Audio",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Panning alternation rate.\nMatch beat frequency for spatial entrainment.\nUse 0.5–2.0 Hz for EMDR-rate during reconsolidation.",
+      "range": [
+        0.1,
+        20.0
+      ]
+    },
+    {
+      "key": "bilateral_mode",
+      "widget": "Dropdown",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Bilateral Mode",
+      "section": "Audio",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Smooth = sinusoidal pan (gradual).\nHard = square wave (percussive, stronger lateralization).",
+      "enum": [
+        "smooth",
+        "hard"
+      ]
+    },
+    {
+      "key": "bilateral_depth",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Bilateral Depth",
+      "section": "Audio",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "SLEEP",
+        "CUE_TEST"
+      ],
+      "tooltip": "Panning depth.\n0.0 = centered (no pan), 1.0 = full L/R alternation.",
       "range": [
         0.0,
         1.0

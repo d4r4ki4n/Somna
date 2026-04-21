@@ -2066,11 +2066,21 @@ class EEGEngine:
                     print(
                         "[EEG] ASSR absent (binaural) — recommending switch to isochronic"
                     )
-                else:
-                    patch["eeg_entrainment_recommend_modality"] = "frequency_shift"
+                elif current_modality == "isochronic":
+                    patch["eeg_entrainment_recommend_modality"] = "fm"
                     patch["eeg_entrainment_recommend_reason"] = (
-                        "isochronic_assr_also_absent — possible non-responder "
-                        "at this frequency; consider +1 Hz shift"
+                        "isochronic_assr_also_absent — FM entrainment engages "
+                        "different neural pathway via tonotopic sustained field response"
+                    )
+                    print("[EEG] ASSR absent (isochronic) — recommending switch to FM")
+                else:
+                    patch["eeg_entrainment_recommend_modality"] = "bilateral"
+                    patch["eeg_entrainment_recommend_reason"] = (
+                        "spectral/temporal/tonal ASSR all absent — bilateral panning "
+                        "provides spatial entrainment via interhemispheric alternation"
+                    )
+                    print(
+                        "[EEG] ASSR absent (all modalities) — recommending bilateral panning"
                     )
                 self._assr_tracker._switch_count += 1
 

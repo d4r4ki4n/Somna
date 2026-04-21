@@ -1599,6 +1599,7 @@ class Conductor:
                     "shadow_opacity_target": 0,
                     "sr_noise_level": 0.0,
                     "conductor_phase": new.value,
+                    "bilateral_panning": False,
                 }
             )
             self._say(
@@ -1625,6 +1626,7 @@ class Conductor:
                 "freq_lead_target_hz": freq,
                 "tts_pool_style": {"rate": "+0%"},
                 "tts_duck_ms": 0,
+                "bilateral_panning": False,
             }
             # Bible Ch.1 §15.5 — Deploy conditioned anchor during induction
             if self._haptic_connected:
@@ -1647,6 +1649,10 @@ class Conductor:
             )
 
         elif new == Phase.MAINTENANCE:
+            live = self._read_live()
+            maint_freq = self.current_target_freq or float(
+                live.get("beat_frequency") or 6.0
+            )
             patch_live(
                 {
                     "veil_mode": "tunnel",
@@ -1655,13 +1661,17 @@ class Conductor:
                     "conductor_phase": new.value,
                     "freq_lead_enabled": True,
                     "freq_lead_mode": "sustain",
-                    "freq_lead_target_hz": self.current_target_freq or 6.0,
+                    "freq_lead_target_hz": maint_freq,
                     "tts_pool_style": {"rate": "-20%"},
+                    "bilateral_panning": True,
+                    "bilateral_rate": maint_freq,
+                    "bilateral_mode": "smooth",
+                    "bilateral_depth": 0.5,
                 }
             )
 
         elif new == Phase.FRAC_EMERGE:
-            # SNAP — perceptual jolt
+            # SNAP — perceptual jolt; bilateral at EMDR-rate prevents full alertness return
             patch_live(
                 {
                     "spiral_chaos": 0.05,
@@ -1674,6 +1684,10 @@ class Conductor:
                     "freq_lead_target_hz": self.iaf or 10.0,
                     "tts_pool_style": {"rate": "+0%"},
                     "tts_duck_ms": 0,
+                    "bilateral_panning": True,
+                    "bilateral_rate": 1.0,
+                    "bilateral_mode": "hard",
+                    "bilateral_depth": 0.7,
                 }
             )
             self._say("Rising now. Notice the shift.")
@@ -1682,10 +1696,18 @@ class Conductor:
             patch_live(
                 {
                     "conductor_phase": new.value,
+                    "bilateral_panning": True,
+                    "bilateral_rate": 1.0,
+                    "bilateral_mode": "hard",
+                    "bilateral_depth": 0.5,
                 }
             )
 
         elif new == Phase.FRAC_REDROP:
+            live = self._read_live()
+            redrop_freq = self.current_target_freq or float(
+                live.get("beat_frequency") or 6.0
+            )
             patch_live(
                 {
                     "conductor_phase": new.value,
@@ -1693,6 +1715,10 @@ class Conductor:
                     "freq_lead_mode": "lead",
                     "tts_pool_style": {"rate": "-35%"},
                     "tts_duck_ms": 120,
+                    "bilateral_panning": True,
+                    "bilateral_rate": redrop_freq,
+                    "bilateral_mode": "smooth",
+                    "bilateral_depth": 0.7,
                 }
             )
             self._say("Settling back down.")
@@ -1923,6 +1949,7 @@ class Conductor:
                     "conductor_phase": new.value,
                     "freq_lead_enabled": False,
                     "agent_sleep_plan": {},  # clear stale plan before next session
+                    "bilateral_panning": False,
                 }
             )
             if self.session_type != "sleep":
@@ -2795,10 +2822,13 @@ class Conductor:
     # =========================================================================
 
     def _switch_modality(self) -> None:
-        """Binaural ↔ isochronic per Bible Ch.5 §5.4 ASSR recovery protocol."""
-        self._current_modality = (
-            "isochronic" if self._current_modality == "binaural" else "binaural"
-        )
+        """Cycle through binaural → isochronic → FM per ASSR recovery protocol."""
+        _MODALITY_ORDER = ["binaural", "isochronic", "fm"]
+        try:
+            idx = _MODALITY_ORDER.index(self._current_modality)
+            self._current_modality = _MODALITY_ORDER[(idx + 1) % len(_MODALITY_ORDER)]
+        except ValueError:
+            self._current_modality = "binaural"
         self._modality_switches += 1
         patch_live({"beat_type": self._current_modality})
         self._say(f"Adjusting audio approach — switching to {self._current_modality}.")

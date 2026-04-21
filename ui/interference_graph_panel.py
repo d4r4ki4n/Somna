@@ -462,9 +462,14 @@ class InterferenceGraphPanel:
             if imgui.is_mouse_down(0):
                 hz = InterferenceGraph.x_to_freq(io.mouse_pos.x, gx0, gx1)
                 hz = round(max(FREQ_MIN, min(FREQ_MAX, hz)) * 2.0) / 2.0
-                self.graph.set_channel_frequency(
-                    self._dragging_channel, hz, source="user"
-                )
+                if self.graph.locked:
+                    for ch in CHANNEL_ORDER:
+                        if CHANNEL_AVAILABLE[ch]:
+                            self.graph.set_channel_frequency(ch, hz, source="user")
+                else:
+                    self.graph.set_channel_frequency(
+                        self._dragging_channel, hz, source="user"
+                    )
             else:
                 self._dragging_channel = None
 
@@ -477,15 +482,21 @@ class InterferenceGraphPanel:
 
         slider_w = min(SPREAD_KNOB_W, graph_w * 0.40)
         imgui.set_next_item_width(slider_w)
+        spread_val = 0.0 if self.graph.locked else self.graph.spread_hz
+        spread_flags = (
+            imgui.SliderFlags_.none
+            if not self.graph.locked
+            else imgui.SliderFlags_.no_input
+        )
         changed, new_spread = imgui.slider_float(
             "##spread_knob",
-            self.graph.spread_hz,
+            spread_val,
             0.0,
             10.0,
             "%.1f Hz",
-            imgui.SliderFlags_.none,
+            spread_flags,
         )
-        if changed:
+        if changed and not self.graph.locked:
             self.graph.apply_spread(new_spread)
 
         # Chord summary and dominant interference on the same line only when
@@ -519,13 +530,35 @@ class InterferenceGraphPanel:
 
         # Preset stamp buttons
         imgui.dummy(imgui.ImVec2(0, 2))
+        active = self.graph._active_preset
         for preset_name, preset in PRESETS.items():
-            short = preset_name[:3]
-            clicked = imgui.small_button(f"{short}##preset_{preset_name}")
+            is_active = preset_name == active
+            label = f"{preset_name}##preset_{preset_name}"
+            if is_active:
+                imgui.push_style_color(
+                    imgui.Col_.button, imgui.ImVec4(*token_rgba("source_user_lock"))
+                )
+                imgui.push_style_color(
+                    imgui.Col_.button_hovered,
+                    imgui.ImVec4(*token_rgba("source_user_lock")),
+                )
+                imgui.push_style_color(
+                    imgui.Col_.button_active,
+                    imgui.ImVec4(*token_rgba("source_user_lock")),
+                )
+                imgui.push_style_color(
+                    imgui.Col_.text, imgui.ImVec4(0.0, 0.0, 0.0, 1.0)
+                )
+            clicked = imgui.small_button(label)
+            if is_active:
+                imgui.pop_style_color(4)
             if imgui.is_item_hovered():
                 imgui.set_tooltip(preset.description)
             if clicked:
-                self.graph.apply_preset(preset_name)
+                if is_active:
+                    self.graph._active_preset = None
+                else:
+                    self.graph.apply_preset(preset_name)
             imgui.same_line(spacing=4)
 
         imgui.dummy(imgui.ImVec2(0, 0))

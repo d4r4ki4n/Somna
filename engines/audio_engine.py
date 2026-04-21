@@ -81,9 +81,10 @@ class BinauralAudioEngine:
 
         # Per-channel phase accumulators for seamless chunk continuity.
         # [0] = left (carrier), [1] = right (carrier + beat),
-        # [2] = isochronic envelope, [3] = breath AM envelope
-        self._phases_a = [0.0, 0.0, 0.0, 0.0]
-        self._phases_b = [0.0, 0.0, 0.0, 0.0]
+        # [2] = isochronic envelope, [3] = breath AM envelope,
+        # [4] = FM modulation, [5] = bilateral panning
+        self._phases_a = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        self._phases_b = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
         # Breath modulation (Tier 1 — passive respiratory entrainment)
         self._breath_mod = False
@@ -92,7 +93,7 @@ class BinauralAudioEngine:
 
         self._lock = threading.Lock()
 
-        # Beat-type selection: "binaural" | "isochronic" | "both"
+        # Beat-type selection: "binaural" | "isochronic" | "both" | "fm"
         self._beat_type = "binaural"
 
         # Beat-phase accumulator: 0.0–1.0, written to live_control.json
@@ -357,10 +358,11 @@ class BinauralAudioEngine:
     # ------------------------------------------------------------------
 
     def _next_chunk_on(self, phases: list) -> pygame.mixer.Sound:
-        """Generate the next chunk, supporting binaural, isochronic, or both modes.
+        """Generate the next chunk, supporting binaural, isochronic, fm, or both modes.
 
-        phases = [carrier_phase, carrier+beat_phase, isochronic_envelope_phase, breath_phase]
-        All four are advanced on every call regardless of mode so switching modes
+        phases = [carrier_phase, carrier+beat_phase, isochronic_envelope_phase,
+                  breath_phase, fm_mod_phase, bilateral_pan_phase]
+        All six are advanced on every call regardless of mode so switching modes
         mid-session maintains phase continuity.
         """
         n = int(self.sample_rate * self._CHUNK_SEC)
@@ -409,6 +411,29 @@ class BinauralAudioEngine:
                 # Single carrier, amplitude-modulated at beat_freq via raised cosine
                 mono = _carrier(c, lp) * _am_envelope()
                 left = right = mono
+            elif btype == "fm":
+                # FM entrainment: carrier frequency modulated at beat_freq rate.
+                # Produces a sustained cortical following response via tonotopic
+                # tracking — smoother than isochronic, more active than binaural.
+                fm_depth = float(getattr(self, "_fm_mod_depth", 8.0))
+                fm_phase = phases[4]
+                fm_mod = (fm_depth / max(b, 0.1)) * np.sin(
+                    2.0 * np.pi * b * t + fm_phase
+                )
+                x = 2.0 * np.pi * c * t + lp + fm_mod
+                if carrier_wave == "square":
+                    mono = np.sign(np.sin(x)).astype(np.float32)
+                elif carrier_wave == "triangle":
+                    s = x / (2.0 * np.pi)
+                    mono = (2.0 * np.abs(2.0 * (s - np.floor(s + 0.5))) - 1.0).astype(
+                        np.float32
+                    )
+                elif carrier_wave == "sawtooth":
+                    s = x / (2.0 * np.pi)
+                    mono = (2.0 * (s - np.floor(s + 0.5))).astype(np.float32)
+                else:
+                    mono = np.sin(x).astype(np.float32)
+                left = right = mono
             elif btype == "both":
                 # Bible Ch.10 §10.2 §3.1 "dual": binaural + isochronic blend
                 # binaural_blend controls balance (default 0.3 = mostly isochronic)
@@ -435,13 +460,42 @@ class BinauralAudioEngine:
                 left = left * breath_env
                 right = right * breath_env
 
-            # Always advance all four phases for continuity across mode switches
+            # ── Bilateral panning (modulation layer, orthogonal to beat_type) ──
+            # Alternates L/R gain at bilateral_rate. Smooth = sinusoidal,
+            # hard = square wave (more percussive, stronger lateralization).
+            bilat_active = bool(getattr(self, "_bilateral_active", False))
+            if bilat_active:
+                bilat_rate = float(getattr(self, "_bilateral_rate", 6.0))
+                bilat_depth = float(getattr(self, "_bilateral_depth", 1.0))
+                bilat_mode = str(getattr(self, "_bilateral_mode", "smooth"))
+                bilat_phase = phases[5]
+                if bilat_mode == "hard":
+                    # Square wave: L full during first half, R full during second
+                    phase_sig = np.sign(
+                        np.sin(2.0 * np.pi * bilat_rate * t + bilat_phase)
+                    )
+                    left_gain = 1.0 - bilat_depth * 0.5 * (1.0 - phase_sig)
+                    right_gain = 1.0 - bilat_depth * 0.5 * (1.0 + phase_sig)
+                else:
+                    # Smooth sinusoidal: cos for left, -cos for right
+                    pan_sig = np.cos(2.0 * np.pi * bilat_rate * t + bilat_phase)
+                    left_gain = 1.0 - bilat_depth * 0.5 * (1.0 - pan_sig)
+                    right_gain = 1.0 - bilat_depth * 0.5 * (1.0 + pan_sig)
+                left = left * left_gain
+                right = right * right_gain
+
+            # Always advance all six phases for continuity across mode switches
             phases[0] = (lp + 2.0 * np.pi * c * self._CHUNK_SEC) % (2.0 * np.pi)
             phases[1] = (rp + 2.0 * np.pi * (c + b) * self._CHUNK_SEC) % (2.0 * np.pi)
             phases[2] = (ip + 2.0 * np.pi * b * self._CHUNK_SEC) % (2.0 * np.pi)
             phases[3] = (bp + 2.0 * np.pi * breath_rate * self._CHUNK_SEC) % (
                 2.0 * np.pi
             )
+            phases[4] = (phases[4] + 2.0 * np.pi * b * self._CHUNK_SEC) % (2.0 * np.pi)
+            bilat_rate_live = float(getattr(self, "_bilateral_rate", 6.0))
+            phases[5] = (
+                phases[5] + 2.0 * np.pi * bilat_rate_live * self._CHUNK_SEC
+            ) % (2.0 * np.pi)
 
         stereo = np.column_stack((left, right))
 
@@ -511,6 +565,8 @@ class BinauralAudioEngine:
             self._standby_phases[1] = 0.0
             self._standby_phases[2] = 0.0
             self._standby_phases[3] = 0.0
+            self._standby_phases[4] = 0.0
+            self._standby_phases[5] = 0.0
 
             # Prime standby with two new-frequency chunks
             self._standby.play(self._next_chunk_on(self._standby_phases))
@@ -532,7 +588,7 @@ class BinauralAudioEngine:
         except Exception as exc:
             print(f"[Audio] Crossfade error: {exc} — recovering")
             try:
-                self._active_phases[:] = [0.0, 0.0, 0.0, 0.0]
+                self._active_phases[:] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
                 self._active.play(self._next_chunk_on(self._active_phases))
                 self._active.queue(self._next_chunk_on(self._active_phases))
                 self._active.set_volume(self.volume)
@@ -557,8 +613,8 @@ class BinauralAudioEngine:
                 entrainment_mode = _cfg_str(cfg, "entrainment_mode", "")
                 if entrainment_mode in ("dual", "hybrid"):
                     new_btype = "both"
-                elif entrainment_mode == "isochronic":
-                    new_btype = "isochronic"
+                elif entrainment_mode in ("isochronic", "fm"):
+                    new_btype = entrainment_mode
                 elif entrainment_mode == "binaural":
                     new_btype = "binaural"
                 # else: use beat_type as before
@@ -577,6 +633,17 @@ class BinauralAudioEngine:
                     )
                     self._breath_depth = max(
                         0.0, min(0.5, _cfg_float(cfg, "breath_depth", 0.20))
+                    )
+                    self._fm_mod_depth = max(
+                        0.5, min(30.0, _cfg_float(cfg, "fm_mod_depth", 8.0))
+                    )
+                    self._bilateral_active = bool(cfg.get("bilateral_panning", False))
+                    self._bilateral_rate = max(
+                        0.1, min(20.0, _cfg_float(cfg, "bilateral_rate", 6.0))
+                    )
+                    self._bilateral_mode = _cfg_str(cfg, "bilateral_mode", "smooth")
+                    self._bilateral_depth = max(
+                        0.0, min(1.0, _cfg_float(cfg, "bilateral_depth", 1.0))
                     )
 
                 # ── GENUS rectangular pulse mode (genus_protocol.md §5.1) ─────────
@@ -699,7 +766,7 @@ class BinauralAudioEngine:
                     # and some Windows drivers fire a hardware state-change click.
                     # Queueing at volume 0 prevents the channel from ever going idle.
                     if not self._active.get_busy():
-                        self._active_phases[:] = [0.0, 0.0, 0.0, 0.0]
+                        self._active_phases[:] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
                         self._active.play(self._next_chunk_on(self._active_phases))
                         self._active.queue(self._next_chunk_on(self._active_phases))
                     elif not self._active.get_queue():
@@ -710,7 +777,7 @@ class BinauralAudioEngine:
                     # Binaural / GENUS channel: restart if stopped.
                     # When GENUS is active, use rectangular pulse chunks instead.
                     if not self._active.get_busy():
-                        self._active_phases[:] = [0.0, 0.0, 0.0, 0.0]
+                        self._active_phases[:] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
                         if self._genus_active and bool(
                             cfg.get("genus_audio_enabled", True)
                         ):
@@ -892,7 +959,7 @@ class BinauralAudioEngine:
                         self._standby = self._chan_b
                         self._active_phases = self._phases_a
                         self._standby_phases = self._phases_b
-                        self._active_phases[:] = [0.0, 0.0, 0.0, 0.0]
+                        self._active_phases[:] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
                         self._active.play(self._next_chunk_on(self._active_phases))
                         self._active.queue(self._next_chunk_on(self._active_phases))
                         self._active.set_volume(self.volume)

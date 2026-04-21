@@ -65,6 +65,11 @@ INTERPOLATABLE = {
     "tts_reverb_room_ms",
     "tts_delay_ms",
     "tts_delay_feedback",
+    # FM entrainment
+    "fm_mod_depth",
+    # Bilateral panning
+    "bilateral_rate",
+    "bilateral_depth",
 }
 
 INSTANT_ONLY = {
@@ -81,6 +86,8 @@ INSTANT_ONLY = {
     "beat_type",
     "carrier_waveform",
     "noise_color",
+    "bilateral_panning",
+    "bilateral_mode",
     "tts_enabled",
     "tts_subliminal",
     "tts_duck_ms",

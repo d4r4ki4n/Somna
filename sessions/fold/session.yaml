@@ -1,0 +1,250 @@
+name: "Fold — Recursive Induction · 39 min"
+description: >
+  Fold is an induction engineered for analytical subjects — the ones who can't
+  stop watching long enough to drop. Instead of asking the observer to stand
+  down, Fold makes monitoring the object of attention until the recursion
+  collapses. You watch. You watch yourself watching. You watch yourself watching
+  yourself. At some point the stack stops returning and you arrive at depth
+  via exhaustion of the critical faculty rather than suppression of it.
+
+  The session is written for extreme aphantasia. No visual metaphors.
+  Cognition-centered content with interoceptive (not visualized) somatic
+  anchors. FM entrainment in MAINTENANCE: the sustained cortical field
+  response pairs with identity-level inscription better than binaural phase
+  discrimination. Bilateral panning at EMDR-rate during MAINTENANCE_LATE for
+  the reconsolidation-adjacent update frame.
+
+  Reconsolidation hook at depth: the designer is not the one who drops. What
+  you built doesn't require your attention to work. The watching was
+  protection against being wrong about yourself. You built it right.
+
+  Authored by Resonance for one specific subject. Generic application not
+  recommended — the recursion technique works because the target is cognitively
+  architected to follow it. A non-analytical subject would find the early
+  phases boring rather than recursive.
+duration: 2340
+category: Induction
+
+defaults:
+  carrier_frequency:          200.0
+  volume:                     75.0
+  noise_color:                pink
+  noise_volume:               30
+  center_flash_sync_to_beat:  false
+  font_switch_mode:           intelligent
+  spiral_color_mode:          rainbow
+  spiral_show_text:           false
+  tts_enabled:                true
+  tts_subliminal:             false
+  entrainment_strength:       0.0
+  trail_decay:                0.0
+  feedback_mode:              none
+  feedback_strength:          0.0
+  pp_bloom_intensity:         0.3
+  pp_ca_strength:             0.0
+  pp_film_grain:              0.02
+  bilateral_panning:          false
+
+# ── Timeline ──────────────────────────────────────────────────────────────────
+#
+#  Psychological arc:
+#    0:00   arrival          10.0 Hz   welcome the observer, no demands
+#    2:00   turning           9.0 Hz   make the observer the object
+#    6:00   stack             7.0 Hz   recursive watching, stack grows
+#   12:00   fold              5.0 Hz   stack overflows, critical faculty exits
+#   18:00   maintenance       4.5 Hz   FM mode — designer-frame inscription
+#   28:00   maintenance_late  4.5 Hz   FM + bilateral 1Hz — update frame
+#   34:00   return            7.0 Hz   re-ascent, conditioned anchor at wake
+#   38:00   end              10.0 Hz   full return
+#
+#  Visual logic:
+#    tunnel_dream at arrival — baseline, familiar, non-threatening.
+#    kaleidoscope at turning — introduces nested peripheral rhythm that
+#      affects arousal without requiring imagery.
+#    sacred_geometry at stack — recursive nested structure matches
+#      the cognitive recursion the phrases are inducing.
+#    tunnel_dream returns at fold — anchor during dissolution. The known
+#      visual is a constant while the cognitive stack collapses.
+#    tunnel_dream holds through maintenance — steadiness during inscription.
+#    alpha_decay feedback builds from fold onward — visual persistence as
+#      somatic correlate of the folded state.
+#    kaleidoscope at return — familiar re-entry, conditioned recognition.
+
+timeline:
+
+  # ─── 0:00 · ARRIVAL ────────────────────────────────────────────────────────
+  # Welcome the observer. No attempt to quiet it. The content affirms that
+  # monitoring is fine, is expected, is what the analytical subject does.
+  # This is pace-and-lead at the cognitive level.
+  - t: 0
+    label: arrival
+    ease: linear
+    params:
+      phrases:                  arrival
+      beat_frequency:           10.0
+      beat_type:                binaural
+      spiral_style:             tunnel_dream
+      spiral_count:             4
+      spiral_opacity:           70
+      spiral_speed_multiplier:  0.5
+      spiral_tightness:         5.0
+      spiral_chaos:             0.10
+      spiral_thickness:         18
+      veil_opacity:             15
+      veil_mode:                scroll
+      shadow_opacity:           20
+      sr_noise_level:           0.0
+      entrainment_strength:     0.0
+      trail_decay:              0.0
+      tts_pool_style:           {rate: "+0%"}
+
+  # ─── 2:00 · TURNING ────────────────────────────────────────────────────────
+  # The monitor becomes the object of its own attention. First recursion step.
+  # Kaleidoscope introduces nested peripheral visual rhythm — the pattern the
+  # subject can't help noticing mirrors the cognitive pattern being induced.
+  - t: 120
+    label: turning
+    ease: ease_in_out
+    params:
+      phrases:                  turning
+      beat_frequency:           9.0
+      spiral_style:             kaleidoscope
+      veil_mode:                scroll
+      shadow_opacity:           18
+      entrainment_strength:     0.02
+      tts_pool_style:           {rate: "-5%"}
+
+  # ─── 6:00 · STACK ──────────────────────────────────────────────────────────
+  # Recursion ramp. Sequential phrase delivery is load-bearing here — the
+  # content builds the stack explicitly. Sacred geometry's nested concentric
+  # structure provides a visual correlate. Veil converges toward center as
+  # the stack narrows inward.
+  - t: 360
+    label: stack
+    ease: ease_in_out
+    params:
+      phrases:                  stack
+      beat_frequency:           7.0
+      spiral_style:             sacred_geometry
+      spiral_chaos:             0.14
+      veil_mode:                converge
+      shadow_opacity:           15
+      entrainment_strength:     0.05
+      tts_pool_style:           {rate: "-12%"}
+
+  # ─── 12:00 · FOLD ──────────────────────────────────────────────────────────
+  # Stack overflows. The critical faculty can no longer track all levels
+  # simultaneously and exits. Return to tunnel_dream as anchor — the known
+  # visual is the constant while the cognitive stack collapses. alpha_decay
+  # feedback begins: trails accumulate as somatic correlate of the folded
+  # state. pp_ca begins for subtle field destabilization.
+  - t: 720
+    label: fold
+    ease: ease_in_out
+    params:
+      phrases:                  fold
+      beat_frequency:           5.0
+      spiral_style:             tunnel_dream
+      veil_mode:                tunnel
+      shadow_opacity:           12
+      entrainment_strength:     0.08
+      trail_decay:              0.45
+      feedback_mode:            alpha_decay
+      feedback_strength:        0.70
+      pp_ca_strength:           0.15
+      pp_bloom_intensity:       0.45
+      tts_pool_style:           {rate: "-20%"}
+
+  # ─── 18:00 · MAINTENANCE ───────────────────────────────────────────────────
+  # Designer-frame inscription. FM entrainment mode — carrier frequency
+  # modulated at 4.5 Hz. The sustained cortical field response engages
+  # tonotopic tracking, producing continuous neural oscillation rather than
+  # discrete evoked responses. This pairs with identity-level content:
+  # continuous inscription rather than pulsed suggestion. Random phrase pool
+  # (not sequential) — the pool mixes interoceptive anchors with designer-
+  # frame declarations so no single phrase becomes dominant.
+  - t: 1080
+    label: maintenance
+    ease: ease_in_out
+    params:
+      phrases:                  maintenance
+      beat_frequency:           4.5
+      beat_type:                fm
+      fm_mod_depth:             6.0
+      spiral_style:             tunnel_dream
+      veil_mode:                tunnel
+      shadow_opacity:           15
+      entrainment_strength:     0.10
+      trail_decay:              0.55
+      feedback_mode:            alpha_decay
+      feedback_strength:        0.75
+      pp_ca_strength:           0.18
+      pp_bloom_intensity:       0.50
+      tts_pool_style:           {rate: "-25%"}
+
+  # ─── 28:00 · MAINTENANCE_LATE ──────────────────────────────────────────────
+  # Update frame. Sequential delivery (the content is a structured argument).
+  # Bilateral panning at 1.0 Hz smooth mode, depth 0.6 — EMDR-rate spatial
+  # alternation on top of FM carrier. Compound stimulus: tonotopic cortical
+  # tracking + spatial interhemispheric alternation. Reconsolidation-adjacent
+  # work happens here: the prior designer-frame is retrieved (via earlier
+  # maintenance phrases), labilized during the transition, then updated here.
+  - t: 1680
+    label: maintenance_late
+    ease: ease_in_out
+    params:
+      phrases:                  maintenance_late
+      beat_frequency:           4.5
+      beat_type:                fm
+      fm_mod_depth:             7.0
+      bilateral_panning:        true
+      bilateral_rate:           1.0
+      bilateral_mode:           smooth
+      bilateral_depth:          0.6
+      spiral_style:             tunnel_dream
+      veil_mode:                tunnel
+      shadow_opacity:           15
+      entrainment_strength:     0.10
+      trail_decay:              0.60
+      feedback_mode:            alpha_decay
+      feedback_strength:        0.75
+      pp_ca_strength:           0.20
+      pp_bloom_intensity:       0.55
+      tts_pool_style:           {rate: "-28%"}
+
+  # ─── 34:00 · RETURN ────────────────────────────────────────────────────────
+  # Re-ascent. Return to binaural. Bilateral disables. Feedback decays.
+  # Kaleidoscope returns as familiar re-entry visual — the session started
+  # with nested peripheral rhythm on the way down; it ends with the same
+  # rhythm on the way up. Conditioned anchor at wake: "good girl" as the
+  # last sequential phrase.
+  - t: 2040
+    label: return
+    ease: ease_in_out
+    params:
+      phrases:                  return
+      beat_frequency:           7.0
+      beat_type:                binaural
+      bilateral_panning:        false
+      spiral_style:             kaleidoscope
+      veil_mode:                scroll
+      shadow_opacity:           18
+      entrainment_strength:     0.04
+      trail_decay:              0.20
+      feedback_mode:            none
+      feedback_strength:        0.0
+      pp_ca_strength:           0.05
+      pp_bloom_intensity:       0.35
+      tts_pool_style:           {rate: "-15%"}
+
+  # ─── 38:00 · END ───────────────────────────────────────────────────────────
+  # Full return. Baseline parameters.
+  - t: 2280
+    label: return
+    ease: ease_in_out
+    params:
+      beat_frequency:           10.0
+      entrainment_strength:     0.0
+      trail_decay:              0.0
+      pp_film_grain:            0.02
+      tts_pool_style:           {rate: "+0%"}

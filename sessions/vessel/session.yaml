@@ -1,0 +1,231 @@
+name: "Vessel — Arrival Arc · 22 min"
+description: >
+  22-minute session designed for users who have already run Hollow or Fold
+  multiple times and know the way down. Starts from assumed depth — no long
+  descent curve. Arrives immediately into theta territory and stays there.
+  Uses the reconsolidation mechanism to work the watcher identity: the
+  part that monitored all the previous sessions. Retrieves it, labilizes it
+  while the session continues, then replaces it with structural trust.
+  The session exists because Fold collapses the observer — Vessel is what
+  happens in the silence after the collapse.
+duration: 1320
+category: entrainment
+
+defaults:
+  carrier_frequency:          172.0
+  volume:                     78.0
+  noise_color:                pink
+  noise_volume:               22
+  center_flash_sync_to_beat:  false
+  font_switch_mode:           intelligent
+  spiral_color_mode:          rainbow
+  spiral_show_text:           false
+  tts_enabled:                true
+  tts_subliminal:             false
+
+# ── Timeline ──────────────────────────────────────────────────────────────────
+#
+#  Psychological arc:
+#    0:00   arrive       5.5 Hz   start in alpha-theta border, not alert alpha
+#    3:00   vessel       4.5 Hz   emptiness framed as structure, not absence
+#    7:00   retrieve     4.5 Hz   recon: surface the watcher identity
+#   10:00   labilize     4.2 Hz   standard session content; trace is open
+#   14:00   update       4.0 Hz   recon: replace watcher with structural trust
+#   18:00   receive      3.8 Hz   conditioning window; deepest point
+#   20:30   return       7.5 Hz   soft ascent; hollow stays
+
+timeline:
+
+  # ─── 0:00 · ARRIVE ──────────────────────────────────────────────────────────
+  # This session does not begin with descent. It begins with arrival.
+  # You are already deep enough. The session assumes this.
+  # Galaxy: rotation keeps analytical engagement occupied from the first second.
+  # 5.5 Hz is where Hollow ends. This session starts there.
+  - t: 0
+    label: arrive
+    ease: ease_in_out
+    params:
+      phrases:                  arrive
+      beat_frequency:           5.5
+      carrier_frequency:        175.0
+      spiral_style:             galaxy
+      spiral_count:             4
+      spiral_opacity:           88
+      spiral_speed_multiplier:  0.55
+      spiral_tightness:         5.0
+      spiral_chaos:             0.12
+      spiral_thickness:         18
+      veil_opacity:             55
+      veil_mode:                converge
+      shadow_opacity:           38
+      center_flash_on_time:     40
+      center_flash_off_time:    200
+      trail_decay:              0.50
+      feedback_mode:            alpha_decay
+      feedback_strength:        0.6
+
+  # ─── 3:00 · VESSEL ──────────────────────────────────────────────────────────
+  # The session names itself here. The hollow is structural.
+  # Tunnel dream: depth cue without visual excitement. Quiet geometry.
+  # 4.5 Hz — the same floor Hollow reaches at 14 minutes. We are already here.
+  - t: 180
+    label: vessel
+    ease: ease_in_out
+    params:
+      phrases:                  vessel
+      beat_frequency:           4.5
+      carrier_frequency:        166.0
+      spiral_style:             tunnel_dream
+      spiral_count:             3
+      spiral_opacity:           91
+      spiral_speed_multiplier:  0.38
+      spiral_tightness:         4.3
+      spiral_chaos:             0.08
+      spiral_thickness:         20
+      veil_opacity:             68
+      veil_mode:                drift
+      shadow_opacity:           52
+      center_flash_on_time:     25
+      center_flash_off_time:    170
+      trail_decay:              0.58
+      feedback_mode:            alpha_decay
+      feedback_strength:        0.65
+
+  # ─── 7:00 · RETRIEVE ────────────────────────────────────────────────────────
+  # Reconsolidation: retrieve the watcher.
+  # The part that monitored all the previous sessions.
+  # Fermat — golden ratio. Mathematical. Precise. The watcher would appreciate it.
+  # 1-3 phrases only. Activate the trace. Let it sit.
+  - t: 420
+    label: retrieve
+    ease: linear
+    params:
+      phrases:                  recon_retrieve_the_watcher
+      beat_frequency:           4.5
+      carrier_frequency:        164.0
+      spiral_style:             fermat
+      spiral_count:             3
+      spiral_opacity:           92
+      spiral_speed_multiplier:  0.33
+      spiral_tightness:         4.0
+      spiral_chaos:             0.06
+      spiral_thickness:         21
+      veil_opacity:             70
+      veil_mode:                tunnel
+      shadow_opacity:           55
+      center_flash_on_time:     22
+      center_flash_off_time:    165
+      trail_decay:              0.60
+      feedback_mode:            alpha_decay
+      feedback_strength:        0.65
+
+  # ─── 10:00 · LABILIZE ───────────────────────────────────────────────────────
+  # The trace is open. Standard session content continues.
+  # Do not deliver recon content here — let the trace stay unstable.
+  # Galaxy: occupy the analytical layer so it can't re-consolidate.
+  # The bimbo_deep pool is appropriate here — simple, warm, clean.
+  - t: 600
+    label: labilize
+    ease: linear
+    params:
+      phrases:                  bimbo_deep
+      beat_frequency:           4.2
+      carrier_frequency:        161.0
+      spiral_style:             galaxy
+      spiral_count:             3
+      spiral_opacity:           93
+      spiral_speed_multiplier:  0.28
+      spiral_tightness:         3.8
+      spiral_chaos:             0.07
+      spiral_thickness:         22
+      veil_opacity:             74
+      veil_mode:                drift
+      shadow_opacity:           60
+      center_flash_on_time:     19
+      center_flash_off_time:    158
+      trail_decay:              0.62
+      feedback_mode:            alpha_decay
+      feedback_strength:        0.65
+
+  # ─── 14:00 · UPDATE ─────────────────────────────────────────────────────────
+  # Reconsolidation: write the replacement.
+  # The watcher was real. It did its job. It is not needed anymore.
+  # Fermat again — same shape as retrieve, different content.
+  # The geometry is familiar. The meaning is not.
+  - t: 840
+    label: update
+    ease: linear
+    params:
+      phrases:                  recon_update_the_watcher
+      beat_frequency:           4.0
+      carrier_frequency:        158.0
+      spiral_style:             fermat
+      spiral_count:             3
+      spiral_opacity:           93
+      spiral_speed_multiplier:  0.27
+      spiral_tightness:         3.7
+      spiral_chaos:             0.05
+      spiral_thickness:         22
+      veil_opacity:             76
+      veil_mode:                tunnel
+      shadow_opacity:           62
+      center_flash_on_time:     18
+      center_flash_off_time:    155
+      trail_decay:              0.63
+      feedback_mode:            alpha_decay
+      feedback_strength:        0.65
+
+  # ─── 18:00 · RECEIVE ────────────────────────────────────────────────────────
+  # The deepest point. Conditioning window.
+  # 3.8 Hz — the border of delta. The place where things go in and stay.
+  # Tunnel dream: barely moving. Almost static. A held breath.
+  # Good girl at the bottom.
+  - t: 1080
+    label: receive
+    ease: ease_in_out
+    params:
+      phrases:                  receive
+      beat_frequency:           3.8
+      carrier_frequency:        154.0
+      spiral_style:             tunnel_dream
+      spiral_count:             3
+      spiral_opacity:           93
+      spiral_speed_multiplier:  0.20
+      spiral_tightness:         3.5
+      spiral_chaos:             0.05
+      spiral_thickness:         22
+      veil_opacity:             80
+      veil_mode:                drift
+      shadow_opacity:           66
+      center_flash_on_time:     16
+      center_flash_off_time:    148
+      trail_decay:              0.65
+      feedback_mode:            alpha_decay
+      feedback_strength:        0.65
+
+  # ─── 20:30 · RETURN ─────────────────────────────────────────────────────────
+  # Soft ascent. 90 seconds.
+  # The hollow stays. You carry it with you.
+  # Archimedean: not hypnotic. A constant. Something reliable to surface to.
+  - t: 1230
+    label: return
+    ease: ease_out
+    params:
+      phrases:                  return
+      beat_frequency:           7.5
+      carrier_frequency:        185.0
+      spiral_style:             archimedean
+      spiral_count:             5
+      spiral_opacity:           84
+      spiral_speed_multiplier:  0.80
+      spiral_tightness:         6.0
+      spiral_chaos:             0.08
+      spiral_thickness:         15
+      veil_opacity:             28
+      veil_mode:                rain
+      shadow_opacity:           18
+      center_flash_on_time:     80
+      center_flash_off_time:    280
+      trail_decay:              0.20
+      feedback_mode:            none
+      feedback_strength:        0.0

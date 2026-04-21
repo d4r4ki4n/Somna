@@ -44,6 +44,8 @@ The project is called **Somna**. The control panel entry point is `main_imgui.py
 
 |---------------|------|
 
+| `tools/mcp_somna_server.py` | MCP server exposing Somna runtime state to LLM clients (Kilo, Cursor, etc.) via stdio. Phase 1: 9 read-only tools. Registered in `.kilo/kilo.json` under `"mcp": { "somna": ... }`. Tools: `somna_read_live`, `somna_read_conductor`, `somna_read_eeg`, `somna_query_db`, `somna_list_sessions`, `somna_read_profile`, `somna_tail_decisions`, `somna_read_session_yaml`, `somna_read_affirmations`. Design spec: `knowledge/mcp_server_architecture.md`. |
+
 | `ipc/state_server.py` | Single-writer daemon for `live_control.json`; started by `control_panel_imgui.py`; serialises all writes via loopback TCP port 6789 |
 
 | `ipc/state_client.py` | Per-process client; exports `patch_live(updates)` and `write_live(data)`; auto-reconnects; fire-and-forget queue |

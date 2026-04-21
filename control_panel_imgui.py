@@ -770,6 +770,7 @@ class ControlPanelImGui:
         self._vr_headset_proc = None
         self._vr_status = "inactive"
         self._vr_safety = ""
+        patch_live({"vr_headset_active": False})
 
     def _schedule_vr_poll(self) -> None:
         self._vr_headset_poll = threading.Timer(2.0, self._poll_vr_headset)

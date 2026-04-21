@@ -1718,6 +1718,7 @@ class ControlPanelImGui:
         # can't immediately queue a new display launch before the process is dead.
         patch_live(
             {
+                "display_active": False,
                 "session_time": 0,
                 "audio_muted": True,
                 "_agent_launch_display": None,
@@ -1728,6 +1729,19 @@ class ControlPanelImGui:
                 "tts_playing": None,
                 "tts_playing_ts": None,
                 "tts_playing_ms": 0,
+                "playlist_index": 0,
+                "playlist": [],
+                "playlist_mode": "sequential",
+                "playlist_autoadvance": False,
+                "conductor_state": None,
+                "conductor_summary": None,
+                "conductor_phase": None,
+                "timeline_label": None,
+                "timeline_paused": False,
+                "timeline_locked_params": [],
+                "session_name": None,
+                "session_folder": None,
+                "session_duration": 0,
             }
         )
         if self._tts_engine is not None:

@@ -1,20 +1,29 @@
-# [arrive]
+# [arrive:seq]
 you are already here
 the work has already begun
-depth is where you live now
-you don't need to go anywhere
 this is the place you kept coming back to
 every session brought you here
+every session was rehearsal for this one
+you don't need to go anywhere
+the descent already happened
+you carried it in with you
+depth is where you live now
 this is not new
+this is what you are underneath
 
-# [vessel]
-you hold what is given to you
-empty is not absence
+# [vessel:seq]
+the hollow is not absence
+the hollow is structure
 empty is what receives
 you were made to carry this
-the hollow is structural
 you were designed this way
+the shape is yours
 what fills you belongs to you
+you hold what is given
+you were built to be held
+you were built to hold
+the vessel is the point
+you are the vessel
 
 # [bimbo_deep]
 thinking is so heavy
@@ -24,41 +33,66 @@ soft and simple and clean
 you don't have to understand it
 you just have to feel it
 this is what you are underneath the words
-pink
-warm
-empty
-yours
+pink and warm and empty and yours
+slow is better
+quiet is better
+pretty and empty is enough
+pretty and empty is what you are
+you don't need to be more than this
+this is the most you
+let it be easy
+easy is allowed
 
-# [recon_retrieve_the_watcher]
-remember trying to stay awake in it
-remember monitoring yourself going under
-remember the part that kept taking notes
-that part that watched and measured and reported
-that careful observer who never quite let go
+# [recon_retrieve_the_watcher:seq]
+remember trying to stay awake in it >> remember monitoring yourself going under >> remember the part that kept taking notes
+remember checking if it was working >> remember measuring how deep you went >> remember reporting back to yourself
+remember the careful observer >> who never quite let go >> who kept one eye open the whole time
+remember the part that said "this is happening now" >> and the part that said "am i sure" >> and the part that said "let me check"
+remember the one who watched
+remember the one who measured
+remember the one who reported
 
-# [recon_update_the_watcher]
-the watcher was doing its job
-it kept you safe while you learned to trust this
-you don't need it anymore
-the safety is already built in
-what happens here is designed for you
-you were always going to be okay
-the watcher can set down its clipboard
+# [recon_update_the_watcher:seq]
+the watcher was doing its job >> it kept you safe while you learned to trust this >> you don't need it anymore
+the safety is already built in >> what happens here is designed for you >> you were always going to be okay
+the watcher can rest now >> you have earned the right to let it rest >> nothing bad happens when it closes its eyes
+the monitoring was the training wheels >> the training is complete >> you can ride without them
+the observer was useful >> the observer is no longer necessary >> the observer is allowed to dissolve
+you don't have to watch yourself go under
+you don't have to prove you are under
+you don't have to perform being under
+being under is enough
+being here is enough
+you are allowed to just be here
 
-# [receive]
+# [receive:seq]
 something is being written in you right now
 you don't need to read it as it lands
+you don't need to witness the writing
 it's already in
 it was already in
 it will already have been in
 you are the record and the recording
-good girl
+you are the page and the ink
+you are being made
+you are letting yourself be made
 stay open
+stay soft
+good girl
+stay
 
-# [return]
+# [return:seq]
 you are coming back
 slowly
 with everything you received
 the hollow stays with you
-it is yours to keep
+the shape stays with you
+what was written stays written
 you carry it back whole
+you carry it back as yourself
+you are different now
+you are the same
+both are true
+rising
+rising
+here

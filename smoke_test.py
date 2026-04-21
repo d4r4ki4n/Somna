@@ -620,9 +620,14 @@ def test_veil_modes():
     modes = getattr(vl, "_MODES", None)
     if modes:
         _result("veil has _MODES", True)
-        for mode in ("scroll", "rain", "drift", "converge", "strobe", "tunnel", "null"):
+        for mode in ("scroll", "rain", "drift", "converge", "strobe", "tunnel"):
             _result(f"veil mode '{mode}'", mode in modes, "missing from _MODES")
         _result("veil mode 'mirror' removed", "mirror" not in modes, "still present!")
+        _result(
+            "veil mode 'null' not in _MODES",
+            "null" not in modes,
+            "null is not a valid veil mode",
+        )
 
 
 def test_vr_modules():

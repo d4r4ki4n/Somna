@@ -135,8 +135,6 @@ class VeilLayer:
             self._init_converge(w, h)
         elif self._mode == "strobe":
             self._init_strobe()
-        elif self._mode == "mirror":
-            self._init_mirror()
         elif self._mode == "tunnel":
             self._init_tunnel(w, h)
 

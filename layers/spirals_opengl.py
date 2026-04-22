@@ -451,11 +451,6 @@ class SpiralsLayer:
         self.program["u_count"].value = min(8, max(1, int(cfg.get("spiral_count", 4))))
         self.program["u_chaos"].value = float(cfg.get("spiral_chaos", 0.12))
         self.program["u_style"].value = style_int
-        if not getattr(self, "_dbg_once", False):
-            self._dbg_once = True
-            print(
-                f"[Spiral] style={style_name} idx={style_int} opacity={cfg.get('spiral_opacity', 88)} w={w} h={h}"
-            )
         self.program["u_thickness"].value = float(thick_norm)
         self.program["u_beat_phase"].value = float(self._beat_accum)
         if "u_entrainment_phase" in self.program:

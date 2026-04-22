@@ -4566,11 +4566,26 @@ class SomnaAgent:
         ]
 
         try:
-            raw = self._llm.chat(messages)
-            data = _extract_json(raw)
-            question = data.get("next_prompt") if data else None
-            if isinstance(question, str):
-                question = question.strip() or None
+            if self._ext_client and self._ext_client.connected:
+                ext_result = self._ext_client.request(
+                    prompt=startup_msg,
+                    system_prompt=messages[0]["content"],
+                    max_tokens=512,
+                )
+                if ext_result and ext_result.get("type") == "response":
+                    raw = ext_result.get("text", "")
+                    data = _extract_json(raw)
+                    question = data.get("next_prompt") if data else None
+                    if isinstance(question, str):
+                        question = question.strip() or None
+                else:
+                    question = None
+            else:
+                raw = self._llm.chat(messages)
+                data = _extract_json(raw)
+                question = data.get("next_prompt") if data else None
+                if isinstance(question, str):
+                    question = question.strip() or None
         except Exception as e:
             print(f"[Agent] Startup LLM call failed: {e}")
             question = None

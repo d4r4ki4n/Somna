@@ -889,9 +889,6 @@ bridge = _PromptBridge()
 # ── Subclassed Server to capture session + start bridge ──────────────────────
 
 from mcp.server.lowlevel.server import Server as _LowLevelServer
-from mcp.server.lowlevel.server import LifespanResultT, RequestT
-from mcp.shared.session import RequestId
-from mcp.types import InitializationOptions
 import anyio
 from contextlib import AsyncExitStack
 import logging

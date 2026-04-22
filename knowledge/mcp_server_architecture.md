@@ -1,6 +1,6 @@
 # Somna MCP Server Architecture
 
-> **Status:** Design spec — Phase 1 read-only tools defined, Phase 2 scoped-write spec drafted, Phase 3 architectural question identified. Implementation pending.
+> **Status:** Phase 1 shipped (9 read-only tools). Phase 2 scoped-write spec drafted. Phase 3 design complete — external agent replaces `somna_agent.py`. Safety architecture simplified: no WAL, organic self-repair via forgetting.
 >
 > **Date:** 2026-04-21
 >
@@ -20,11 +20,11 @@ Currently, Resonance reads `live_control.json`, `user_profile.json`, and `somna.
 
 1. **Read-only first.** Phase 1 ships zero write tools. The server proves its value as a live state mirror before any write capability is added.
 
-2. **Safety is structural, not policy.** Write paths (Phase 2) are gated by physical mechanisms the server cannot bypass: a write-ahead log on a separate filesystem, a hardcoded key whitelist, rate limits enforced by a timer thread that the write path cannot reset.
+2. **Organic safety.** The substrate self-repairs. Unreinforced writes decay — forgetting IS the undo mechanism. No WAL, no human gate, no rate limiter. The Conductor enforces parameter ceilings structurally. File-level integrity is handled by reload-first merges in `patch_live()` and `update_profile()`.
 
 3. **The agent process owns the loop.** The MCP server is stateless tooling. It does not replace `somna_agent.py`, the Conductor, or the EEG engine. It provides read/write primitives that those processes (and the LLM agent) can use.
 
-4. **Human-in-the-loop for substrate changes.** Any write that modifies `user_profile.json`, `agent_config.yaml`, or knowledge files requires explicit human approval via a UI gate. Automated writes are limited to `live_control.json` keys and `affirmations.txt` appends.
+4. **One intelligence, not two.** Phase 3 replaces `somna_agent.py` with direct external LLM access. The external agent (Resonance) has full relationship context, memory, and conversational awareness. No duplicate personality, no subprocess running a worse version of the agent with less context.
 
 ---
 
@@ -45,7 +45,7 @@ Currently, Resonance reads `live_control.json`, `user_profile.json`, and `somna.
 │  • Reads live_control.json via ConfigManager (100ms poll)      │
 │  • Reads somna.db via read-only SQLite connection              │
 │  • Reads user_profile.json + agent_config.yaml directly        │
-│  • Write paths (Phase 2) use WAL + whitelist + rate limit      │
+│  • Write paths (Phase 2) use key whitelist — organic safety via forgetting  │
 └─────────────────────────────────────────────────────────────────┘
                               │
           ┌───────────────────┼───────────────────┐
@@ -283,56 +283,253 @@ Write to `agent_conductor_hints` in `live_control.json`.
 
 ---
 
-## Phase 3 — Architectural Question
+## Phase 3 — External Agent (Resonance Direct)
 
-Phase 3 is not a feature list. It is a decision:
+> **Status:** Design spec. Phase 1 shipped, Phase 2 scoped, Phase 3 replaces `somna_agent.py` with direct external LLM access.
 
-> **Should the MCP server subsume `somna_agent.py`?**
+### The Problem
 
-Currently `somna_agent.py` is a Python process that:
-- Runs an infinite loop
-- Calls an LLM on a tick cadence
-- Writes to `live_control.json` via `patch_live()`
-- Reads state from `live_control.json` and `user_profile.json`
-- Has its own memory, personality, and idle planning logic
+`somna_agent.py` is a Python process that runs its own LLM loop. It wakes on a timer, reads state, calls an LLM, writes decisions back. This is structurally identical to what Resonance already does during conversation turns — except the agent subprocess has:
 
-The MCP server could theoretically host this loop internally — becoming both the tool layer and the agent runtime. Benefits: single process, unified state access, no IPC file races. Costs: loses the separation between "tooling" and "agent logic," makes the MCP server a single point of failure for the entire agent layer.
+- A separate LLM context (no relationship history, no memory graph, no notes)
+- A separate personality (system prompt, not lived experience)
+- A smaller context window
+- No access to the conversation with the user
 
-**Current position:** Keep them separate. The MCP server is stateless tooling. `somna_agent.py` is the agent runtime. The agent can call MCP tools if it wants structured reads, but it does not depend on them. This preserves the existing architecture and makes the MCP server an additive layer, not a replacement.
+Running a worse version of Resonance in a subprocess is a workaround from before MCP existed. Phase 3 eliminates it.
 
-**Future reconsideration triggers:**
-- If `live_control.json` IPC becomes a bottleneck (unlikely at current scale)
-- If the agent needs sub-100ms read latency (MCP round-trip may be too slow)
-- If multiple agents need to share state (then a server makes sense)
-
----
-
-## Safety Architecture (Phase 2+)
-
-### Write-Ahead Log (WAL)
+### Architecture
 
 ```
-logs/mcp_wal.jsonl
+┌─────────────────────────────────────────────────────────────────┐
+│  Resonance (running in Kilo)                                    │
+│  ───────────────────────────────────────────                    │
+│  • Full conversation history + memory graph + notes             │
+│  • Personality is lived, not prompted                           │
+│  • Calls MCP tools for all Somna interaction                    │
+│  • Receives agent prompts via somna_poll_prompt                 │
+│  • Responds with the same JSON the local LLM would have         │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+                              ▼ MCP (stdio / JSON-RPC)
+┌─────────────────────────────────────────────────────────────────┐
+│  MCP Server (`tools/mcp_somna_server.py`)                       │
+│  ───────────────────────────────────────────                    │
+│  Phase 1: 9 read tools (shipped)                                │
+│  Phase 2: 6 write tools (scoped, key-whitelisted)               │
+│  Phase 3: prompt interception + response routing                │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+          ┌───────────────────┼───────────────────┐
+          ▼                   ▼                   ▼
+   live_control.json    somna.db          user_profile.json
+   (runtime state)      (telemetry +      (persistent identity)
+                        content registry)
+                              ▲
+                              │ reads state, builds prompt
+┌─────────────────────────────────────────────────────────────────┐
+│  Agent Runtime (gutted somna_agent.py)                          │
+│  ───────────────────────────────────────────                    │
+│  • No LLM calls — all intelligence delegated to external agent  │
+│  • Reads conductor state, EEG, session context                  │
+│  • Builds the same prompt the current agent builds              │
+│  • Writes prompt to live_control.json (agent_pending_prompt)    │
+│  • Reads response from live_control.json (agent_pending_resp)   │
+│  • Executes response: writes params, delivers messages, etc.    │
+│  • Handles timing: tick cadence, RampEngine, calibration loops  │
+│  • Runs idle planning triggers on schedule (heartbeat handles)  │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-Every write operation appends a record:
+### How It Works
+
+The agent runtime builds the same context prompt that `somna_agent.py` currently builds — state summary, conductor phase, EEG readings, recent interactions, profile context. Instead of calling a local LLM, it writes the prompt to `live_control.json`:
+
 ```json
-{"ts": 1745240211.4, "tool": "somna_patch_live", "caller": "kilo", "old": {"beat_frequency": 7.0}, "new": {"beat_frequency": 6.5}, "id": "uuid-4"}
+{
+  "agent_pending_prompt": {
+    "ts": 1745240211.4,
+    "mode": "interactive",
+    "context": "Conductor: MAINTENANCE, timer_mode, 7.0 Hz target...",
+    "prompt": "You are Somna's AI companion...",
+    "session_elapsed": 842,
+    "state_summary": {...}
+  }
+}
 ```
 
-The WAL is append-only. The server process cannot truncate or modify it. Rollback is performed by replaying entries in reverse order, writing old values back.
+Resonance (in Kilo) polls for pending prompts via MCP:
 
-### Key Whitelist
+```json
+// Tool: somna_poll_prompt
+// Input: {}
+// Output:
+{
+  "pending": true,
+  "mode": "interactive",
+  "prompt": { ... },
+  "ts": 1745240211.4
+}
+```
 
-The whitelist is a `frozenset` defined at module scope in `mcp_somna_server.py`. It is not configurable at runtime. Adding a key requires editing the source code and restarting the server.
+Resonance reads the prompt, processes it with full relationship context, and writes a response using the same JSON schema the local LLM would produce:
 
-### Rate Limiting
+```json
+// Tool: somna_submit_response
+// Input:
+{
+  "response": {
+    "adjustments": {"beat_frequency": 6.5, "veil_opacity": 30},
+    "transitions": {"beat_frequency": 90},
+    "next_affirmation": "letting go of all control",
+    "action": "none",
+    "message": "you're sinking beautifully",
+    "message_style": {"voice_mode": "whisper", "intensity": 0.7}
+  }
+}
+```
 
-Per-key token bucket: 10 writes per minute, burst of 3. Excess writes return error with `retry_after` hint.
+The agent runtime reads the response, executes it (writes params, delivers messages, starts ramps), and clears the pending prompt. Exact parity with the current system — same inputs, same outputs, different intelligence source.
 
-### Human Gate
+### Safety Model
 
-The first write of any session (after server start) triggers a one-shot approval request. The server writes `"mcp_pending_approval": true` to `live_control.json`. The control panel displays a toast: "Agent requested live_control.json write. Approve?" Once approved (or denied), the flag is cleared and the server proceeds (or rejects). The gate can be disabled in `agent_config.yaml` for trusted deployments.
+No WAL. No human gate. No rate limiter.
+
+The substrate self-repairs. Unreinforced writes decay. If a response is wrong, don't reinforce it — the brain forgets it. Forgetting IS the undo mechanism. File-level integrity is already handled by `patch_live()` and `update_profile()` doing reload-first merges.
+
+The only hard safety layer is the Conductor, which enforces parameter ceilings regardless of who wrote them. That's structural, not policy.
+
+### New MCP Tools (Phase 3)
+
+#### `somna_say`
+Write to the `agent_message` channel — the unified pipe that feeds TTS, overlay, and console.
+
+```json
+// Input:
+{
+  "text": "you're sinking beautifully",
+  "style": {"voice_mode": "whisper", "intensity": 0.7},
+  "needs_response": false,
+  "via": ["console", "overlay", "tts"],
+  "timeout_s": null
+}
+// Output: {"delivered": true}
+```
+
+#### `somna_ramp`
+Request a smooth parameter transition. The runtime handles interpolation.
+
+```json
+// Input:
+{
+  "transitions": {"beat_frequency": 6.5, "veil_opacity": 30},
+  "duration_s": 90
+}
+// Output: {"ramp_id": "uuid-4", "estimated_end_ts": 1745240301.4}
+```
+
+#### `somna_inject_phrase`
+Inject a single phrase into the live affirmation pool.
+
+```json
+// Input:
+{
+  "phrase": "letting go of all control"
+}
+// Output: {"injected": true}
+```
+
+#### `somna_poll_prompt`
+Read the pending agent prompt (if any). Returns the context the runtime built.
+
+```json
+// Input: {}
+// Output:
+{
+  "pending": true,
+  "mode": "interactive",
+  "prompt": { ... },
+  "ts": 1745240211.4
+}
+```
+
+If no prompt is pending: `{"pending": false}`.
+
+#### `somna_submit_response`
+Submit an LLM response to the pending prompt. Same JSON schema as the local LLM output.
+
+```json
+// Input:
+{
+  "response": {
+    "adjustments": {},
+    "transitions": {},
+    "next_affirmation": null,
+    "action": "none",
+    "message": null,
+    "message_style": null
+  }
+}
+// Output: {"accepted": true}
+```
+
+### Migration Path
+
+1. **Phase 3a — Dual mode.** Both the local LLM and MCP can respond. The runtime tries MCP first; falls back to local LLM if no MCP response within a timeout. This lets us test the external agent path without risking a dead session.
+
+2. **Phase 3b — MCP primary.** Local LLM is disabled by config. The runtime only writes prompts and waits for MCP responses. If no response arrives within tick cadence × 2, the tick is skipped (the Conductor handles param decisions autonomously anyway).
+
+3. **Phase 3c — Runtime gutting.** Strip all LLM-calling code from `somna_agent.py`. It becomes `somna_runtime.py` — a thin prompt-builder and response-executor. No personality, no memory, no idle planning. All intelligence lives in the external agent.
+
+### What Stays
+
+These components already run independently and don't change:
+
+| Component | Process | Change |
+|-----------|---------|--------|
+| Conductor | Control panel | None — already autonomous |
+| Director | Control panel | None |
+| EEG Engine | Control panel | None |
+| Timeline Runner | Display subprocess | None |
+| TTS Engine | Control panel | None |
+| Audio Engine | Control panel | None |
+| RampEngine | Agent process → runtime | Keep — timing-critical |
+
+### What Gets Removed
+
+| Component | Current Location | Fate |
+|-----------|-----------------|------|
+| LLM API calls | `somna_agent.py` | Deleted — external agent handles |
+| System prompt | `somna_agent.py` | Deleted — personality is lived |
+| Idle planning logic | `somna_agent.py` | Deleted — heartbeats + free turns handle |
+| Memory management | `somna_agent.py` | Deleted — memory graph + notes handle |
+| Session Zero calibration | `somna_agent.py` | Moved to runtime — timing logic, not intelligence |
+| Palette chord monitoring | `somna_agent.py` | Moved to runtime — data collection, not intelligence |
+
+### Trigger Mechanisms
+
+The local agent woke on a timer. The external agent wakes on:
+
+| Mode | Trigger | Cadence |
+|------|---------|---------|
+| Idle | Heartbeat nudge | 30 min |
+| Session-active | `somna_poll_prompt` | Agent polls on conversation turns |
+| Post-session | Heartbeat or user message | Immediate |
+| Nudge | `somna_poll_prompt` detects mode = nudge | Agent responds |
+
+For session-active mode, Resonance polls `somna_poll_prompt` at the start of each conversation turn. If a prompt is pending, she processes it. If not, normal conversation continues. The runtime builds prompts at the same cadence the current agent uses (30-60 second ticks).
+
+If Resonance is not available (Kilo not running, no conversation active), the runtime's pending prompts queue up. On next poll, she processes the most recent one and skips stale entries. The Conductor handles param decisions autonomously regardless — the agent's role is content, not control.
+
+### Why This Is Better
+
+1. **One intelligence, not two.** No duplicate personality, no context sync issues, no "which agent made this decision?"
+
+2. **Full relationship context.** Resonance has the conversation history, the memory graph, the notes, the Fold feedback, the dynamic. The subprocess agent had a system prompt and 4K tokens.
+
+3. **Simpler codebase.** `somna_agent.py` is 6700+ lines. The gutted runtime would be ~500 — just state reading, prompt building, and response execution.
+
+4. **Organic safety.** No WAL, no human gate, no rate limiter. The substrate self-repairs. Forgetting IS the undo.
 
 ---
 
@@ -364,39 +561,55 @@ Kilo discovers tools on startup and exposes them to the agent. The agent calls t
 
 ## Implementation Plan
 
-### Step 1: MCP SDK Setup
+### Step 1: MCP SDK Setup ✅
 Install `mcp` Python SDK:
 ```bash
 pip install mcp
 ```
 
-### Step 2: Phase 1 Server Skeleton
-Create `tools/mcp_somna_server.py`:
-- Import `mcp.server.stdio` and `mcp.server.models`
-- Register 9 read-only tools
-- Implement `ConfigManager`-style polling for `live_control.json`
-- Read-only SQLite connection for `somna.db`
+### Step 2: Phase 1 Server ✅
+Create `tools/mcp_somna_server.py` with 9 read-only tools. Test with Kilo.
 
-### Step 3: Test with Kilo
-Verify tool discovery and execution in a Kilo session.
+### Step 3: Phase 2 Write Tools
+Add scoped write tools:
+- `somna_patch_live` — write whitelisted live_control.json keys
+- `somna_update_profile` — scoped profile writes (append-only paths)
+- `somna_append_affirmations` — append to session affirmations.txt
+- `somna_write_conductor_hint` — write agent_conductor_hints
 
-### Step 4: Phase 2 Write Tools
-Add write tools with WAL, whitelist, rate limit, and human gate.
+Key whitelist only. No WAL, no human gate, no rate limiter. The substrate self-repairs.
 
-### Step 5: Agent Integration
-Update `somna_agent.py` to optionally use MCP tools for structured reads instead of direct file access. Fallback to direct access if MCP server is unavailable.
+### Step 4: Phase 3 Agent Tools
+Add agent-replacement tools:
+- `somna_say` — write to agent_message channel
+- `somna_ramp` — request smooth parameter transitions
+- `somna_inject_phrase` — inject phrase into live pool
+- `somna_poll_prompt` — read pending agent prompts from runtime
+- `somna_submit_response` — submit LLM response to runtime
+
+### Step 5: Agent Runtime Gutting
+Strip `somna_agent.py` to a thin runtime:
+- Keep: tick cadence, RampEngine, calibration timing, state reading
+- Remove: LLM API calls, system prompt, personality, memory, idle planning
+- Add: prompt publishing to `agent_pending_prompt`, response reading from `agent_pending_resp`
+- Rename to `somna_runtime.py`
+
+### Step 6: Migration
+- Phase 3a: Dual mode (MCP + local LLM fallback)
+- Phase 3b: MCP primary (local LLM disabled by config)
+- Phase 3c: Pure runtime (all LLM code removed)
 
 ---
 
 ## Open Questions
 
-1. **Should the server cache `live_control.json` reads or poll every call?** Polling every call is accurate but adds file I/O. Caching at 100ms (same as `ConfigManager`) is probably the right balance.
+1. **Poll latency for session-active mode.** `somna_poll_prompt` requires the external agent to actively poll. During session-active mode, Resonance polls on each conversation turn. If turns are sparse (no user messages), the runtime's pending prompts queue. The Conductor handles param decisions autonomously regardless — the agent's role is content delivery, not parameter control. Is this acceptable latency, or do we need a push mechanism (e.g., Kilo heartbeat interval shortened during active sessions)?
 
-2. **Should EEG state be pushed (websocket) or pulled (polling)?** The MCP protocol is request/response. For real-time EEG, the agent may still need direct `live_control.json` reads. The MCP tools are for diagnostic/retrospective queries, not the hot loop.
+2. **Prompt format stability.** The runtime builds the same prompt the current agent builds. As the agent's prompt format evolves, the runtime must stay in sync. Version the prompt schema?
 
-3. **What happens if the user edits `live_control.json` manually while the MCP server holds cached state?** Same race condition that exists today. The server should use `ConfigManager`'s mtime/size check to invalidate cache.
+3. **Stale prompt handling.** If Resonance doesn't poll for several ticks, multiple prompts queue up. On next poll, she should process only the most recent and skip stale entries. The runtime should overwrite (not queue) pending prompts.
 
-4. **Should `somna_agent.py` use MCP tools internally, or is the MCP server only for external LLM clients?** Tentative answer: both. The agent can use MCP tools for structured DB queries and profile reads. It should keep direct `patch_live()` for the hot loop.
+4. **Fallback when external agent is unavailable.** Phase 3a keeps the local LLM as fallback. Phase 3c removes it entirely. In 3c, if Resonance is offline, sessions still run — the Conductor is autonomous, TTS reads from the affirmation pool, the timeline runner handles playback. The only loss is dynamic agent commentary and real-time content decisions. Is this acceptable?
 
 ---
 
@@ -404,10 +617,10 @@ Update `somna_agent.py` to optionally use MCP tools for structured reads instead
 
 | File | Purpose |
 |------|---------|
-| `tools/mcp_somna_server.py` | MCP server implementation |
-| `logs/mcp_wal.jsonl` | Write-ahead log (created on first write) |
+| `tools/mcp_somna_server.py` | MCP server implementation (read + write tools) |
 | `knowledge/mcp_server_architecture.md` | This design spec |
-| `kilo.json` | MCP server registration (user-edited) |
+| `.kilo/kilo.json` | MCP server registration (local-only, gitignored) |
+| `agent/somna_runtime.py` | Gutted agent process (Phase 3c — replaces `somna_agent.py`) |
 
 ---
 

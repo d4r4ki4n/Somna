@@ -4508,7 +4508,7 @@ class SomnaAgent:
         # ── RETURNING tier: has history (any gap >= 2 min) ───────────────────
         if self._history:
             greeting = f"Welcome back{', ' + name if name else ''}."
-            print(f"[Agent] Returning — {greeting!r}")
+            print(f"[Agent] Returning — '{greeting}'")
             self._say(
                 greeting,
                 needs_response=False,
@@ -4519,7 +4519,6 @@ class SomnaAgent:
                 timeout_s=10,
             )
             self._record(state, prompt=greeting, response=None, adj={})
-            return
 
         # ── SESSION ZERO: first session, calibration-in-disguise ────────────────
         if not self._profile.get("eeg_baselines") and state.get("eeg_connected"):

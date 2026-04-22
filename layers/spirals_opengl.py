@@ -480,6 +480,8 @@ class SpiralsLayer:
             loom_scale = 1.0 + loom_depth * 0.25 * math.sin(math.tau * self._loom_accum)
         else:
             loom_scale = 1.0
-        self.program["u_loom_scale"].value = loom_scale
+        u_loom = self.program.get("u_loom_scale", None)
+        if u_loom is not None:
+            u_loom.value = loom_scale
 
         self.vao.render(moderngl.TRIANGLE_STRIP)

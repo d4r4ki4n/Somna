@@ -454,7 +454,7 @@ class SpiralsLayer:
         if not getattr(self, "_dbg_once", False):
             self._dbg_once = True
             print(
-                f"[Spiral] style={style_name} idx={style_int} opacity={cfg.get('spiral_opacity', 88)} w={w} h={h} uniforms={len(self.program)}"
+                f"[Spiral] style={style_name} idx={style_int} opacity={cfg.get('spiral_opacity', 88)} w={w} h={h}"
             )
         self.program["u_thickness"].value = float(thick_norm)
         self.program["u_beat_phase"].value = float(self._beat_accum)

@@ -772,35 +772,38 @@ class LLMClient:
             if not self._ext_client.connected:
                 self._ext_client.connect()
             if self._ext_client.connected:
-            system_content = ""
-            user_parts = []
-            for m in messages:
-                if m.get("role") == "system":
-                    system_content = m.get("content", "")
-                elif m.get("role") == "user":
-                    user_parts.append(m.get("content", ""))
-            user_msg = "\n".join(user_parts)
-            try:
-                ext_result = self._ext_client.request(
-                    prompt=user_msg,
-                    system_prompt=system_content,
-                    max_tokens=max_tokens or 4096,
-                )
-                if ext_result and ext_result.get("type") == "response":
-                    raw = ext_result.get("text", "")
-                    try:
-                        ack = json.loads(raw) if raw else {}
-                        if isinstance(ack, dict) and ack.get("status") == "delivered":
-                            print(
-                                "[LLM] External channel delivered — async effects via MCP tools"
-                            )
-                            return ""
-                    except (json.JSONDecodeError, ValueError):
-                        pass
-                    if raw:
-                        return raw
-            except Exception:
-                pass
+                system_content = ""
+                user_parts = []
+                for m in messages:
+                    if m.get("role") == "system":
+                        system_content = m.get("content", "")
+                    elif m.get("role") == "user":
+                        user_parts.append(m.get("content", ""))
+                user_msg = "\n".join(user_parts)
+                try:
+                    ext_result = self._ext_client.request(
+                        prompt=user_msg,
+                        system_prompt=system_content,
+                        max_tokens=max_tokens or 4096,
+                    )
+                    if ext_result and ext_result.get("type") == "response":
+                        raw = ext_result.get("text", "")
+                        try:
+                            ack = json.loads(raw) if raw else {}
+                            if (
+                                isinstance(ack, dict)
+                                and ack.get("status") == "delivered"
+                            ):
+                                print(
+                                    "[LLM] External channel delivered — async effects via MCP tools"
+                                )
+                                return ""
+                        except (json.JSONDecodeError, ValueError):
+                            pass
+                        if raw:
+                            return raw
+                except Exception:
+                    pass
 
         # When external_only is True, never fall through to local LLM.
         # This prevents ConnectionError crashes when no local model is running.

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Somna control panel widget configuration. Generated from Doc 51 \u00c2\u00a74 key inventory.",
+  "description": "Somna control panel widget configuration. Generated from Doc 51 Â§4 key inventory.",
   "widgets": [
     {
       "key": "volume",
@@ -15,11 +15,12 @@
         "SLEEP",
         "CUE_TEST"
       ],
-      "tooltip": "Master binaural + carrier output level (0\u2014100).",
+      "tooltip": "Master binaural + carrier output level (0—100).",
       "range": [
         0,
         100
-      ]
+      ],
+      "is_int": true
     },
     {
       "key": "noise_volume",
@@ -34,11 +35,12 @@
         "SLEEP",
         "CUE_TEST"
       ],
-      "tooltip": "Colored noise output level (0\u2014100). Color set via buttons.",
+      "tooltip": "Colored noise output level (0—100). Color set via buttons.",
       "range": [
         0,
         100
-      ]
+      ],
+      "is_int": true
     },
     {
       "key": "beat_frequency",
@@ -764,14 +766,14 @@
         "SLEEP",
         "CUE_TEST"
       ],
-      "tooltip": "True when Y-axis pitch shows sustained forward drop \u2013 behavioural N1 onset marker."
+      "tooltip": "True when Y-axis pitch shows sustained forward drop – behavioural N1 onset marker."
     },
     {
       "key": "eeg_visual_coupling_enabled",
       "widget": "Toggle",
       "classification": "USER_CONTROL",
       "layer": "Advanced",
-      "label": "EEG\u2192Visual Coupling",
+      "label": "EEG→Visual Coupling",
       "section": "EEG",
       "modes": [
         "TRANCE",
@@ -779,7 +781,7 @@
         "SLEEP",
         "CUE_TEST"
       ],
-      "tooltip": "Route live EEG band powers into visual parameters. Alpha\u2192spiral brightness, Theta\u2192speed, Delta\u2192veil depth, Beta\u2192chaos."
+      "tooltip": "Route live EEG band powers into visual parameters. Alpha→spiral brightness, Theta→speed, Delta→veil depth, Beta→chaos."
     },
     {
       "key": "eeg_visual_coupling_gain",
@@ -794,7 +796,7 @@
         "SLEEP",
         "CUE_TEST"
       ],
-      "tooltip": "Master gain for the EEG\u2192Visual coupling matrix. 0 = no effect, 2 = double sensitivity.",
+      "tooltip": "Master gain for the EEG→Visual coupling matrix. 0 = no effect, 2 = double sensitivity.",
       "range": [
         0.0,
         2.0
@@ -1434,11 +1436,12 @@
         "SLEEP",
         "CUE_TEST"
       ],
-      "tooltip": "Veil particle layer opacity (0\u2014100).",
+      "tooltip": "Veil particle layer opacity (0—100).",
       "range": [
         0,
         100
-      ]
+      ],
+      "is_int": true
     },
     {
       "key": "veil_density",
@@ -1453,11 +1456,12 @@
         "SLEEP",
         "CUE_TEST"
       ],
-      "tooltip": "Number of active veil particles (0\u2014100).",
+      "tooltip": "Number of active veil particles (0—100).",
       "range": [
         0,
         100
-      ]
+      ],
+      "is_int": true
     },
     {
       "key": "veil_speed",
@@ -1515,7 +1519,8 @@
       "range": [
         0,
         100
-      ]
+      ],
+      "is_int": true
     },
     {
       "key": "bg_ganzfeld_freq",
@@ -1627,11 +1632,12 @@
         "SLEEP",
         "CUE_TEST"
       ],
-      "tooltip": "Spiral layer opacity (0\u2014100).",
+      "tooltip": "Spiral layer opacity (0—100).",
       "range": [
         0,
         100
-      ]
+      ],
+      "is_int": true
     },
     {
       "key": "spiral_speed_multiplier",
@@ -1718,10 +1724,11 @@
         "SLEEP",
         "CUE_TEST"
       ],
-      "tooltip": "Number of spiral arms (1\u20138). Some styles use this differently.",
+      "tooltip": "Number of spiral arms (1–8). Some styles use this differently.",
       "min": 1,
       "max": 8,
-      "default": 4
+      "default": 4,
+      "is_int": true
     },
     {
       "key": "spiral_tightness",
@@ -1759,7 +1766,8 @@
       "range": [
         4,
         40
-      ]
+      ],
+      "is_int": true
     },
     {
       "key": "spiral_loom_enabled",
@@ -1789,7 +1797,7 @@
         "SLEEP",
         "CUE_TEST"
       ],
-      "tooltip": "How much the spiral zooms in and out (0 = subtle, 1 = dramatic \u00c2\u00b125% swing).",
+      "tooltip": "How much the spiral zooms in and out (0 = subtle, 1 = dramatic Â±25% swing).",
       "range": [
         0.0,
         1.0
@@ -1956,7 +1964,8 @@
       "range": [
         0,
         100
-      ]
+      ],
+      "is_int": true
     },
     {
       "key": "shadow_count",
@@ -1975,7 +1984,8 @@
       "range": [
         1,
         20
-      ]
+      ],
+      "is_int": true
     },
     {
       "key": "text_color",
@@ -2040,7 +2050,8 @@
       "range": [
         10,
         100
-      ]
+      ],
+      "is_int": true
     },
     {
       "key": "tts_enabled",
@@ -2086,11 +2097,12 @@
         "SLEEP",
         "CUE_TEST"
       ],
-      "tooltip": "TTS voice output level (0\u2014100).",
+      "tooltip": "TTS voice output level (0—100).",
       "range": [
         0,
         100
-      ]
+      ],
+      "is_int": true
     },
     {
       "key": "tts_subliminal_vol",
@@ -2109,7 +2121,8 @@
       "range": [
         0,
         100
-      ]
+      ],
+      "is_int": true
     },
     {
       "key": "tts_subliminal_hz",
@@ -2128,7 +2141,8 @@
       "range": [
         12000,
         22000
-      ]
+      ],
+      "is_int": true
     },
     {
       "key": "tts_backend",
@@ -2386,7 +2400,8 @@
       "range": [
         0,
         100
-      ]
+      ],
+      "is_int": true
     },
     {
       "key": "haptic_pattern",
@@ -2510,7 +2525,8 @@
       "range": [
         0,
         100
-      ]
+      ],
+      "is_int": true
     },
     {
       "key": "tavns_waveform",

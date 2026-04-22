@@ -115,6 +115,8 @@ The project is called **Somna**. The control panel entry point is `main_imgui.py
 
 | `session/edison_mode.py` | `EdisonModeManager`; state-driven N1-interception protocol; 6-state machine (PREPARATION→SEED_DELIVERY→MONITORING→N1_HOLD→CAPTURE→CYCLE_COMPLETE); alpha/theta ratio fast-path; captures persisted to `edison_captures` DB table (Bible Ch.7 §29) |
 
+| `session/ssild_engine.py` | `SSILDEngine`; TTS-guided Senses-Initiated Lucid Dreaming protocol; four sensory cycling phases (PRE_TECHNIQUE→QUICK_CYCLES→SLOW_CYCLES→POST_TECHNIQUE); REM monitoring with Targeted Lucidity Reactivation (TLR) subliminal cues; dream journal collection on wake; ticked by Conductor when session_type == "ssild" (Bible Ch.7 §§30-31) |
+
 | `content_tools/sleep_report.py` | `read_sleep_report(session_id)` — aggregates sleep_stage_log, tmr_cue_registry, tmr_replay_log, sleep_training_log into a planning report; returns recommended focus pool + under-reinforced phrases; callable as agent tool (Bible Ch.7) |
 
 | `eeg/ppg_engine.py` | `PPGEngine`; reads Muse 2 ANCILLARY_PRESET (~64 Hz PPG IR); R-peak detection; IBI → heart rate + RMSSD; RSA spectral method → `ppg_breath_rate` + `ppg_breath_phase`; feeds `RespiratoryTracker.update_ppg_phase()` (Bible Ch.2) |
@@ -1136,25 +1138,25 @@ The spiral renderer uses a modular shader system. The monolith `spiral.glsl` is 
 - `kaleidoscopic_fold` — mirrored symmetry persistence
 Live key: `feedback_mode` (str, one of the above or `none`). Live key: `feedback_strength` (float 0.0–1.0) — modulates effective trail decay; at 1.0 the full `trail_decay` value applies, at 0.0 the effective decay is reduced to 30%. Default 1.0. Works as a user/agent ceiling to prevent blowout — set to 0.5–0.7 for high-density spirals. The shader formula is `effective_decay = trail_decay * (0.3 + 0.7 * strength)`.
 
-**Phase 4 — Five new styles** (indices 18–22):
-- `cobwebs` (18) — irregular radial threads with structural variation
-- `strange_attractor` (19) — Lorenz-like swirling particle trails
-- `flow_field` (20) — organic curl-noise-driven streams
-- `sacred_geometry` (21) — concentric geometric forms (Flower of Life, Metatron)
-- `recursive_fractal` (22) — nested self-similar branching patterns
+**Phase 4 — Five new styles** (indices 14–18):
+- `cobwebs` (14) — irregular radial threads with structural variation
+- `strange_attractor` (15) — Lorenz-like swirling particle trails
+- `flow_field` (16) — organic curl-noise-driven streams
+- `sacred_geometry` (17) — concentric geometric forms (Flower of Life, Metatron)
+- `recursive_fractal` (18) — nested self-similar branching patterns
 
-**Phase 4b — Four additional styles** (indices 23–26):
-- `potter_tunnel` (23) — Potter-style tunnel with depth layers
-- `fractal_scale` (24) — fractal scaling pattern
-- `neuro_vortex` (25) — restored independent-oscillator vortex
-- `ojascki` (26) — Ojascki noise spiral (from Shadertoy evaluation)
+**Phase 4b — Four additional styles** (indices 19–22):
+- `potter_tunnel` (19) — Potter-style tunnel with depth layers
+- `fractal_scale` (20) — fractal scaling pattern
+- `neuro_vortex` (21) — restored independent-oscillator vortex
+- `ojascki` (22) — Ojascki noise spiral (from Shadertoy evaluation)
 
-**Phase 4c — Three Shadertoy-evaluated styles** (indices 27–29):
-- `tunnel_warp` (27) — time-bent radial interference
-- `ganzflicker` (28) — ganzfeld-compatible flicker pattern
-- `galaxy_morph` (29) — FBM-based morphing galaxy
+**Phase 4c — Three Shadertoy-evaluated styles** (indices 23–25):
+- `tunnel_warp` (23) — time-bent radial interference
+- `ganzflicker` (24) — ganzfeld-compatible flicker pattern
+- `galaxy_morph` (25) — FBM-based morphing galaxy
 
-**26 styles total** (vogel_spiral dropped). Index gaps at 5, 8, 15, 17.
+**26 styles total** (vogel_spiral dropped). Indices 0–25 contiguous (no gaps).
 
 **PP pipeline vertex shader** — PP passes use `_PP_VERT` (straight UV, no Y-flip). `copy_framebuffer` preserves GL orientation, so using `_BLIT_VERT` (which flips Y) caused a double-flip. `pp_composite.glsl` also passes scene alpha through instead of forcing 1.0, preserving desktop transparency.
 
@@ -1549,97 +1551,29 @@ Acquires EEG via BrainFlow, processes band powers, and writes results to `live_c
 | `eeg_entrainment_recommend_reason` | str or null | Human-readable explanation of modality recommendation |
 
 | `eeg_timestamp` | float | Wall time of last valid EEG update |
-
-
-| \`eeg_device_name\` | str | Discovered EEG device name |
-
-
-
-| \`eeg_signal_lost\` | bool | True when SQI confidence is none; False on recovery |
-
-
-
-| \`eeg_genus_ratio\` | float | Gamma (38-42 Hz) / broadband ratio for GENUS monitoring |
-
-
-
-| \`eeg_trance_score_v2\` | float | Three-axis composite depth (Bible Ch.2 x5x2.8): spectral slope + coherence + beta env corr |
-
-
-
-| \`eeg_slope_confidence\` | float | Spectral slope measurement confidence 0-1 |
-
-
-
-| \`eeg_coherence_frontal_alpha\` | float | AF7-AF8 alpha band coherence |
-
-
-
-| \`eeg_coherence_frontal_beta\` | float | AF7-AF8 beta band coherence |
-
-
-
-| \`eeg_coherence_temporal_theta\` | float | TP9-TP10 theta band coherence |
-
-
-
-| \`eeg_beta_env_corr\` | float | Beta envelope correlation (inter-hemispheric) |
-
-
-
-| \`eeg_coherence_depth\` | float | Weighted coherence depth indicator (EMA smoothed) |
-
-
-
-| \`eeg_faa\` | float | Smoothed frontal alpha asymmetry value |
-
-
-
-| \`eeg_faa_raw\` | float | Raw (unsmoothed) FAA |
-
-
-
-| \`eeg_faa_state\` | str | FAA receptivity state: alpha_suppressed / positive / insufficient_data |
-
-
-
-| \`eeg_faa_baseline_mean\` | float or null | FAA baseline mean (populated after first-10-session calibration) |
-
-
-
-| \`eeg_faa_baseline_std\` | float or null | FAA baseline std |
-
-
-
-| \`eeg_delta_phase\` | float | Delta wave phase 0-1 for SWE gating |
-
-
-
-| \`eeg_delta_in_gate\` | bool | Whether delta phase is in up-state gate window |
-
-
-
-| \`eeg_delta_amplitude\` | float | Delta wave amplitude |
-
-
-
-| \`eeg_sleep_stage\` | str | Sleep stage classification: WAKE / N1 / N2 / N3 / REM |
-
-
-
-| \`eeg_sleep_confidence\` | float | Sleep stage classification confidence 0-1 |
-
-
-
-| \`eeg_raw_af7_last_256\` | list[float] | Last 256 raw AF7 samples (for VR paroxysmal check) |
-
-
-
-| \`eeg_raw_af8_last_256\` | list[float] | Last 256 raw AF8 samples (for VR paroxysmal check) |
-
-
-
-| \`eeg_n2_n3_banked_s\` | float | Cumulative N2+N3 sleep seconds banked in current session |
+| `eeg_device_name` | str | Discovered EEG device name |
+| `eeg_signal_lost` | bool | True when SQI confidence is none; False on recovery |
+| `eeg_genus_ratio` | float | Gamma (38-42 Hz) / broadband ratio for GENUS monitoring |
+| `eeg_trance_score_v2` | float | Three-axis composite depth (Bible Ch.2 §2.8): spectral slope + coherence + beta env corr |
+| `eeg_slope_confidence` | float | Spectral slope measurement confidence 0-1 |
+| `eeg_coherence_frontal_alpha` | float | AF7-AF8 alpha band coherence |
+| `eeg_coherence_frontal_beta` | float | AF7-AF8 beta band coherence |
+| `eeg_coherence_temporal_theta` | float | TP9-TP10 theta band coherence |
+| `eeg_beta_env_corr` | float | Beta envelope correlation (inter-hemispheric) |
+| `eeg_coherence_depth` | float | Weighted coherence depth indicator (EMA smoothed) |
+| `eeg_faa` | float | Smoothed frontal alpha asymmetry value |
+| `eeg_faa_raw` | float | Raw (unsmoothed) FAA |
+| `eeg_faa_state` | str | FAA receptivity state: alpha_suppressed / positive / insufficient_data |
+| `eeg_faa_baseline_mean` | float or null | FAA baseline mean (populated after first-10-session calibration) |
+| `eeg_faa_baseline_std` | float or null | FAA baseline std |
+| `eeg_delta_phase` | float | Delta wave phase 0-1 for SWE gating |
+| `eeg_delta_in_gate` | bool | Whether delta phase is in up-state gate window |
+| `eeg_delta_amplitude` | float | Delta wave amplitude |
+| `eeg_sleep_stage` | str | Sleep stage classification: WAKE / N1 / N2 / N3 / REM |
+| `eeg_sleep_confidence` | float | Sleep stage classification confidence 0-1 |
+| `eeg_raw_af7_last_256` | list[float] | Last 256 raw AF7 samples (for VR paroxysmal check) |
+| `eeg_raw_af8_last_256` | list[float] | Last 256 raw AF8 samples (for VR paroxysmal check) |
+| `eeg_n2_n3_banked_s` | float | Cumulative N2+N3 sleep seconds banked in current session |
 
 
 **Calibration microfeedback keys** — written by `run_iaf_calibration()` every 5 s during calibration and cleared on completion:

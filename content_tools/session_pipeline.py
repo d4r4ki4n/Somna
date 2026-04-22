@@ -128,15 +128,8 @@ SPIRAL STYLES (canonical 26 — source: STYLE_MAP in layers/spirals_opengl.py):
   cobwebs, strange_attractor, flow_field, sacred_geometry, recursive_fractal,
   potter_tunnel, fractal_scale, neuro_vortex, ojascki, tunnel_warp, ganzflicker, galaxy_morph
 
-  Aliases: galaxy_arms → galaxy, bloom → rose
-
   NOT valid (silently fall back to tunnel_dream — do not use):
     fibonacci, electric, fractal_arms
-
-  (Legacy aliases still accepted by the renderer but do not use in new sessions:
-   zyntaks_hybrid/fan_blade → archimedean, star_polygon → kaleidoscope,
-   dense_web → interference, wide_vortex → vortex,
-   interlocked → dna, radiating_pulse → tunnel_dream)
 
 VEIL MODES: scroll, rain, drift, converge, strobe, tunnel, null (auto-rotate)
   (mirror was removed — do not reference)

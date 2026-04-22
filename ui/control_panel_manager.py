@@ -101,9 +101,13 @@ class WidgetDef:
     badge_colors: dict | None = None
     inline: bool = False  # render on same row as previous widget
     password: bool = False  # mask text input (for API keys)
+    is_int: bool = False  # use slider_int instead of slider_float
 
 
 def _parse_widget(raw: dict) -> WidgetDef:
+    rng = raw.get("range")
+    if rng is None and "min" in raw and "max" in raw:
+        rng = [float(raw["min"]), float(raw["max"])]
     return WidgetDef(
         key=raw["key"],
         widget=raw["widget"],
@@ -113,11 +117,12 @@ def _parse_widget(raw: dict) -> WidgetDef:
         section=raw["section"],
         modes=raw.get("modes", []),
         tooltip=raw.get("tooltip", ""),
-        range=raw.get("range"),
+        range=rng,
         enum=raw.get("enum"),
         badge_colors=raw.get("badge_colors"),
         inline=bool(raw.get("inline", False)),
         password=bool(raw.get("password", False)),
+        is_int=bool(raw.get("is_int", False)),
     )
 
 
@@ -1322,12 +1327,24 @@ class ControlPanelManager:
 
     def _w_slider(self, w: WidgetDef, value, read_only: bool) -> None:
         rng = w.range or [0.0, 1.0]
-        v = float(value) if value is not None else rng[0]
         if read_only:
-            imgui.text_colored(imgui.ImVec4(*token_rgba("text_muted")), f"{v:.2f}")
+            if w.is_int:
+                imgui.text_colored(
+                    imgui.ImVec4(*token_rgba("text_muted")), f"{int(value or rng[0])}"
+                )
+            else:
+                imgui.text_colored(
+                    imgui.ImVec4(*token_rgba("text_muted")),
+                    f"{float(value or rng[0]):.2f}",
+                )
             return
 
-        changed, new_v = imgui.slider_float(f"##{w.key}", v, rng[0], rng[1], "%.2f")
+        if w.is_int:
+            v = int(float(value)) if value is not None else int(rng[0])
+            changed, new_v = imgui.slider_int(f"##{w.key}", v, int(rng[0]), int(rng[1]))
+        else:
+            v = float(value) if value is not None else rng[0]
+            changed, new_v = imgui.slider_float(f"##{w.key}", v, rng[0], rng[1], "%.2f")
 
         # Filled-bar overlay: draw a tinted rect over the left portion of the trough
         if changed:

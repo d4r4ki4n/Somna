@@ -54,6 +54,13 @@ from pathlib import Path
 from typing import Any
 from ipc import patch_live
 
+try:
+    from tools.external_agent_client import ExternalAgentClient
+
+    _EXT_CHANNEL_AVAILABLE = True
+except ImportError:
+    _EXT_CHANNEL_AVAILABLE = False
+
 # Ensure the project root is on sys.path when run as a subprocess or directly.
 _PKG_ROOT = Path(__file__).parent.parent
 if str(_PKG_ROOT) not in sys.path:
@@ -415,6 +422,12 @@ class AgentConfig:
     nudge_max_session_minutes: float = (
         45.0  # hard cap on nudge session length; closes display if no response
     )
+
+    # ── External agent channel (Phase 3 MCP bridge) ──────────────────────────
+    # When True, the agent pushes prompts to the MCP prompt bridge on TCP :6790
+    # instead of calling the local LLM. Falls back to local LLM if the bridge
+    # is unavailable. Feature flag for release — ships enabled.
+    external_channel: bool = False
 
     def __post_init__(self):
         if self.praise_phrases is None:
@@ -1452,6 +1465,19 @@ class SomnaAgent:
 
         # ── Session scorer (Bible Ch.6 §6.3) ───────────────────────────────────────────
         self._session_scorer = SessionScorer() if _SCORER_AVAILABLE else None
+
+        # ── External agent channel (Phase 3 MCP bridge) ────────────────────────
+        self._ext_client = None
+        self._ext_enabled = getattr(cfg, "external_channel", False)
+        if self._ext_enabled and _EXT_CHANNEL_AVAILABLE:
+            self._ext_client = ExternalAgentClient()
+            if self._ext_client.connect():
+                print("[Agent] External channel connected to MCP prompt bridge :6790")
+            else:
+                print(
+                    "[Agent] External channel unavailable — falling back to local LLM"
+                )
+                self._ext_client = None
 
         # ── Conductor FSM (Bible Ch.6 §6.5) — instantiated per session in _startup_sequence
         self._conductor: "Conductor | None" = None
@@ -2911,6 +2937,39 @@ class SomnaAgent:
             {"role": "system", "content": _build_system_prompt(self._cfg)},
             {"role": "user", "content": user_msg},
         ]
+
+        # ── External agent channel (Phase 3 MCP bridge) ──────────────────────
+        if self._ext_client and self._ext_client.connected:
+            full_prompt = f"[SYSTEM]\n{messages[0]['content']}\n\n[USER]\n{user_msg}"
+            ext_result = self._ext_client.request(
+                prompt=full_prompt,
+                system_prompt=messages[0]["content"],
+                max_tokens=4096,
+            )
+            if ext_result and ext_result.get("type") == "response":
+                raw = ext_result.get("text", "")
+                print(f"[Agent] External channel response ({len(raw)} chars)")
+                parsed = _extract_json(raw)
+                if parsed:
+                    pu = parsed.get("profile_updates")
+                    if isinstance(pu, dict) and any(pu.values()):
+                        try:
+                            self._update_profile(pu)
+                        except Exception:
+                            pass
+                    return parsed
+                print(
+                    f"[Agent] External response not valid JSON, falling back to local LLM"
+                )
+            else:
+                if ext_result:
+                    print(
+                        f"[Agent] External channel error: {ext_result.get('error', 'unknown')}"
+                    )
+                print("[Agent] External channel failed, falling back to local LLM")
+                # Try reconnecting
+                if not self._ext_client.connect():
+                    self._ext_client = None
 
         raw = self._llm.chat(messages)
         parsed = _extract_json(raw)
@@ -6699,6 +6758,7 @@ def _parse_args() -> AgentConfig:
         min_p=args.min_p,
         repeat_penalty=args.repeat_penalty,
         max_tokens_response=args.max_tokens_response,
+        external_channel=yaml_cfg.get("external_channel", False),
     )
 
 

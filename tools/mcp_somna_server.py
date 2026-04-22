@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Somna MCP Server — Phase 1 (read-only) + Phase 2 (scoped write)
+Somna MCP Server — Phase 1 (read-only) + Phase 2 (scoped write) + Phase 3 (external agent channel)
 
 Exposes Somna runtime state to LLM clients via the Model Context Protocol.
 Run directly: python tools/mcp_somna_server.py
@@ -8,10 +8,14 @@ Or via Kilo kilo.json mcp config.
 
 Phase 1: 9 read-only tools.
 Phase 2: 4 scoped write tools (key-whitelisted, range-validated, organic safety).
+Phase 3: External agent channel — TCP :6790 receives prompts from somna_agent.py,
+          forwards them via MCP sampling/createMessage to the connected LLM client,
+          returns the response. True push, no polling.
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import sqlite3
@@ -732,12 +736,235 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     ]
 
 
+# ── Phase 3: External Agent Channel (TCP :6790 → MCP sampling bridge) ───────
+
+PROMPT_PORT = 6790
+
+
+class _PromptBridge:
+    """Singleton that holds the MCP ServerSession and the TCP server task.
+
+    The TCP listener accepts connections from somna_agent.py. Each prompt
+    received over TCP is forwarded to the MCP client via sampling/createMessage.
+    The LLM response is sent back over TCP.
+    """
+
+    def __init__(self) -> None:
+        self._session: Any = None  # mcp.server.session.ServerSession
+        self._tcp_server: Optional[asyncio.AbstractServer] = None
+        self._pending: dict[str, asyncio.Future[dict]] = {}
+        self._agent_writer: Optional[asyncio.StreamWriter] = None
+        self._connected = False
+
+    def set_session(self, session: Any) -> None:
+        self._session = session
+
+    @property
+    def session(self) -> Any:
+        return self._session
+
+    @property
+    def agent_connected(self) -> bool:
+        return self._connected and self._agent_writer is not None
+
+    async def start_tcp(self) -> None:
+        self._tcp_server = await asyncio.start_server(
+            self._handle_agent, "127.0.0.1", PROMPT_PORT
+        )
+        addr = self._tcp_server.sockets[0].getsockname()
+        print(f"[MCP] Prompt bridge listening on {addr[0]}:{addr[1]}")
+
+    async def stop_tcp(self) -> None:
+        if self._tcp_server:
+            self._tcp_server.close()
+            await self._tcp_server.wait_closed()
+        self._connected = False
+
+    async def _handle_agent(
+        self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
+        """Handle a single persistent connection from somna_agent.py."""
+        self._agent_writer = writer
+        self._connected = True
+        peer = writer.get_extra_info("peername")
+        print(f"[MCP] Agent connected from {peer}")
+        try:
+            while True:
+                line = await reader.readline()
+                if not line:
+                    break
+                try:
+                    msg = json.loads(line.decode("utf-8").strip())
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    continue
+                msg_type = msg.get("type")
+                if msg_type == "prompt":
+                    asyncio.create_task(self._forward_prompt(msg))
+                elif msg_type == "cancel":
+                    tick_id = msg.get("tick_id")
+                    if tick_id and tick_id in self._pending:
+                        self._pending[tick_id].cancel()
+        except (asyncio.CancelledError, ConnectionResetError, BrokenPipeError):
+            pass
+        finally:
+            self._connected = False
+            self._agent_writer = None
+            writer.close()
+            try:
+                await writer.wait_closed()
+            except Exception:
+                pass
+            print("[MCP] Agent disconnected")
+
+    async def _forward_prompt(self, msg: dict) -> None:
+        """Forward a prompt from the agent to the MCP client via sampling."""
+        tick_id = msg.get("tick_id", "")
+        system_prompt = msg.get("system_prompt", "")
+        user_text = msg.get("prompt", "")
+        max_tokens = msg.get("max_tokens", 4096)
+
+        if not self._session:
+            await self._send_response(tick_id, {"error": "no MCP session"})
+            return
+
+        messages = [
+            {
+                "role": "user",
+                "content": {"type": "text", "text": user_text},
+            }
+        ]
+
+        future: asyncio.Future[dict] = asyncio.get_event_loop().create_future()
+        self._pending[tick_id] = future
+
+        try:
+            from mcp.types import SamplingMessage
+
+            sampling_messages = [SamplingMessage(**m) for m in messages]
+            result = await self._session.create_message(
+                messages=sampling_messages,
+                max_tokens=max_tokens,
+                system_prompt=system_prompt or None,
+            )
+            content = result.content
+            if hasattr(content, "text"):
+                text = content.text
+            elif isinstance(content, list) and len(content) > 0:
+                text = (
+                    content[0].text if hasattr(content[0], "text") else str(content[0])
+                )
+            else:
+                text = str(content)
+
+            response = {
+                "tick_id": tick_id,
+                "type": "response",
+                "text": text,
+                "model": getattr(result, "model", ""),
+                "stop_reason": getattr(result, "stop_reason", None),
+            }
+        except asyncio.CancelledError:
+            response = {"tick_id": tick_id, "type": "cancelled"}
+        except Exception as e:
+            print(f"[MCP] Sampling error: {e}")
+            response = {"tick_id": tick_id, "type": "error", "error": str(e)}
+        finally:
+            self._pending.pop(tick_id, None)
+
+        await self._send_response(tick_id, response)
+
+    async def _send_response(self, tick_id: str, response: dict) -> None:
+        if self._agent_writer and not self._agent_writer.is_closing():
+            try:
+                data = json.dumps(response, ensure_ascii=False) + "\n"
+                self._agent_writer.write(data.encode("utf-8"))
+                await self._agent_writer.drain()
+            except (ConnectionResetError, BrokenPipeError):
+                pass
+
+
+bridge = _PromptBridge()
+
+
+# ── Subclassed Server to capture session + start bridge ──────────────────────
+
+from mcp.server.lowlevel.server import Server as _LowLevelServer
+from mcp.server.lowlevel.server import LifespanResultT, RequestT
+from mcp.shared.session import RequestId
+from mcp.types import InitializationOptions
+import anyio
+from contextlib import AsyncExitStack
+import logging
+
+logger = logging.getLogger("somna-mcp")
+
+
+class SomnaMCPServer(_LowLevelServer):
+    """Extends the low-level MCP Server to:
+    1. Capture the ServerSession reference for the prompt bridge.
+    2. Start the TCP prompt bridge as a background task.
+    """
+
+    async def run(
+        self,
+        read_stream,
+        write_stream,
+        initialization_options,
+        raise_exceptions=False,
+        stateless=False,
+    ):
+        async with AsyncExitStack() as stack:
+            lifespan_context = await stack.enter_async_context(self.lifespan(self))
+            session = await stack.enter_async_context(
+                self._make_session(
+                    read_stream, write_stream, initialization_options, stateless
+                )
+            )
+            bridge.set_session(session)
+
+            task_support = (
+                self._experimental_handlers.task_support
+                if self._experimental_handlers
+                else None
+            )
+            if task_support is not None:
+                task_support.configure_session(session)
+                await stack.enter_async_context(task_support.run())
+
+            async with anyio.create_task_group() as tg:
+                tg.start_soon(bridge.start_tcp)
+                async for message in session.incoming_messages:
+                    logger.debug("Received message: %s", message)
+                    tg.start_soon(
+                        self._handle_message,
+                        message,
+                        session,
+                        lifespan_context,
+                        raise_exceptions,
+                    )
+                tg.cancel_scope.cancel()
+
+    @staticmethod
+    def _make_session(read_stream, write_stream, init_options, stateless):
+        from mcp.server.session import ServerSession
+
+        return ServerSession(
+            read_stream, write_stream, init_options, stateless=stateless
+        )
+
+
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 
 async def main() -> None:
+    somna_app = SomnaMCPServer("somna-mcp")
+    somna_app.request_handlers = dict(app.request_handlers)
+    somna_app.notification_handlers = dict(app.notification_handlers)
+    somna_app._tool_cache = dict(app._tool_cache)
     async with stdio_server() as (read_stream, write_stream):
-        await app.run(read_stream, write_stream, app.create_initialization_options())
+        await somna_app.run(
+            read_stream, write_stream, somna_app.create_initialization_options()
+        )
 
 
 if __name__ == "__main__":

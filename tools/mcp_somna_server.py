@@ -626,6 +626,63 @@ async def list_tools() -> list[Tool]:
                 "required": ["hints"],
             },
         ),
+        Tool(
+            name="somna_write_agent_response",
+            description=(
+                "Write a structured LLM response for somna_agent.py to consume. "
+                "Used by the external agent (Resonance) to return the full JSON response "
+                "the agent would normally get from its local LLM. Keys: response (str), "
+                "adjustments (dict), transitions (dict), action (str), next_prompt (str), "
+                "prompt_style (dict), next_affirmation (str), reasoning (str). "
+                "The agent reads agent_ext_response after receiving a 'delivered' ack "
+                "from the external channel."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "response": {
+                        "type": "string",
+                        "description": "Text response to show the user (console/overlay)",
+                    },
+                    "adjustments": {
+                        "type": "object",
+                        "description": "Parameter adjustments (beat_frequency, volume, veil_opacity, etc.)",
+                    },
+                    "transitions": {
+                        "type": "object",
+                        "description": 'Param→duration_s for ramped changes (e.g. {"beat_frequency": 90})',
+                    },
+                    "action": {
+                        "type": "string",
+                        "description": "Agent action: 'none', 'fractionate', 'start_session', 'build_session'",
+                    },
+                    "next_prompt": {
+                        "type": "string",
+                        "description": "Prompt to show the user (triggers overlay/TTS/dialog)",
+                    },
+                    "prompt_style": {
+                        "type": "object",
+                        "description": "Style for message delivery (voice_mode, zoom_speed, intensity, needs_response)",
+                    },
+                    "next_affirmation": {
+                        "type": "string",
+                        "description": "Single phrase to inject into the affirmation pool",
+                    },
+                    "reasoning": {
+                        "type": "string",
+                        "description": "Internal reasoning for the agent log",
+                    },
+                    "session": {
+                        "type": "string",
+                        "description": "Session folder name (when action=start_session)",
+                    },
+                    "session_intent": {
+                        "type": "string",
+                        "description": "Plain-text description (when action=build_session)",
+                    },
+                },
+            },
+        ),
     ]
 
 
@@ -733,12 +790,25 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         result = _write_conductor_hint(hints)
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
+    if name == "somna_write_agent_response":
+        response_dict = {k: v for k, v in arguments.items() if v is not None}
+        if not response_dict:
+            return [
+                TextContent(
+                    type="text",
+                    text=json.dumps({"error": "No response fields provided"}),
+                )
+            ]
+        response_dict["_ts"] = time.time()
+        result = _patch_live({"agent_ext_response": response_dict})
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
     return [
         TextContent(type="text", text=json.dumps({"error": f"Unknown tool: {name}"}))
     ]
 
+    # ── Phase 3: External Agent Channel (TCP :6790 → MCP sampling bridge) ───────
 
-# ── Phase 3: External Agent Channel (TCP :6790 → MCP sampling bridge) ───────
 
 PROMPT_PORT = 6790
 

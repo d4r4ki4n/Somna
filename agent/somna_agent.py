@@ -782,6 +782,15 @@ class LLMClient:
                 )
                 if ext_result and ext_result.get("type") == "response":
                     raw = ext_result.get("text", "")
+                    try:
+                        ack = json.loads(raw) if raw else {}
+                        if isinstance(ack, dict) and ack.get("status") == "delivered":
+                            print(
+                                "[LLM] External channel delivered — async effects via MCP tools"
+                            )
+                            return ""
+                    except (json.JSONDecodeError, ValueError):
+                        pass
                     if raw:
                         return raw
             except Exception:
@@ -2975,6 +2984,15 @@ class SomnaAgent:
             )
             if ext_result and ext_result.get("type") == "response":
                 raw = ext_result.get("text", "")
+                try:
+                    ack = json.loads(raw) if raw else {}
+                    if isinstance(ack, dict) and ack.get("status") == "delivered":
+                        print(
+                            "[Agent] External channel delivered — async effects via MCP tools"
+                        )
+                        return {}
+                except (json.JSONDecodeError, ValueError):
+                    pass
                 print(f"[Agent] External channel response ({len(raw)} chars)")
                 parsed = _extract_json(raw)
                 if parsed:
@@ -4601,10 +4619,18 @@ class SomnaAgent:
                 )
                 if ext_result and ext_result.get("type") == "response":
                     raw = ext_result.get("text", "")
-                    data = _extract_json(raw)
-                    question = data.get("next_prompt") if data else None
-                    if isinstance(question, str):
-                        question = question.strip() or None
+                    try:
+                        ack = json.loads(raw) if raw else {}
+                        if isinstance(ack, dict) and ack.get("status") == "delivered":
+                            print(
+                                "[Agent] Startup: external channel delivered, using fallback prompt"
+                            )
+                            question = None
+                    except (json.JSONDecodeError, ValueError):
+                        data = _extract_json(raw)
+                        question = data.get("next_prompt") if data else None
+                        if isinstance(question, str):
+                            question = question.strip() or None
                 else:
                     question = None
             else:

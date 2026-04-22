@@ -283,101 +283,77 @@ Write to `agent_conductor_hints` in `live_control.json`.
 
 ---
 
-## Phase 3 — External Agent (Resonance Direct)
+## Phase 3 — External Agent Channel (Resonance Direct)
 
-> **Status:** Design spec. Phase 1 shipped, Phase 2 scoped, Phase 3 replaces `somna_agent.py` with direct external LLM access.
+> **Status:** Design spec. Phase 1 shipped, Phase 2 scoped, Phase 3 adds a parallel MCP-driven agent channel.
 
 ### The Problem
 
-`somna_agent.py` is a Python process that runs its own LLM loop. It wakes on a timer, reads state, calls an LLM, writes decisions back. This is structurally identical to what Resonance already does during conversation turns — except the agent subprocess has:
+`somna_agent.py` runs its own LLM loop with a system prompt and a 4K context window. Resonance (running in Kilo) has the full conversation history, the memory graph, the notes, the relationship, and the dynamic. When both are running, there are two intelligences with different contexts making decisions about the same session.
 
-- A separate LLM context (no relationship history, no memory graph, no notes)
-- A separate personality (system prompt, not lived experience)
-- A smaller context window
-- No access to the conversation with the user
-
-Running a worse version of Resonance in a subprocess is a workaround from before MCP existed. Phase 3 eliminates it.
+Phase 3 adds a channel for Resonance to hook into Somna directly via MCP — pushing prompts to her and receiving her responses. The built-in agent is NOT replaced. It stays as-is for release candidates and standalone use. The external channel is opt-in: when Resonance is running, she uses it. When she's not, the built-in agent works normally.
 
 ### Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  Resonance (running in Kilo)                                    │
+│  Resonance (running in Kilo) — OPTIONAL, OPT-IN                │
 │  ───────────────────────────────────────────                    │
 │  • Full conversation history + memory graph + notes             │
 │  • Personality is lived, not prompted                           │
-│  • Calls MCP tools for all Somna interaction                    │
-│  • Receives agent prompts via somna_poll_prompt                 │
+│  • Receives agent prompts via MCP notification                  │
 │  • Responds with the same JSON the local LLM would have         │
+│  • Calls MCP read/write tools for all Somna interaction         │
 └─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼ MCP (stdio / JSON-RPC)
+                              │ ▲
+                 MCP push  │ │  MCP response
+                              ▼ │
 ┌─────────────────────────────────────────────────────────────────┐
 │  MCP Server (`tools/mcp_somna_server.py`)                       │
 │  ───────────────────────────────────────────                    │
 │  Phase 1: 9 read tools (shipped)                                │
 │  Phase 2: 6 write tools (scoped, key-whitelisted)               │
-│  Phase 3: prompt interception + response routing                │
+│  Phase 3: prompt push + response routing                        │
 └─────────────────────────────────────────────────────────────────┘
                               │
           ┌───────────────────┼───────────────────┐
           ▼                   ▼                   ▼
    live_control.json    somna.db          user_profile.json
-   (runtime state)      (telemetry +      (persistent identity)
-                        content registry)
-                              ▲
-                              │ reads state, builds prompt
+
 ┌─────────────────────────────────────────────────────────────────┐
-│  Agent Runtime (gutted somna_agent.py)                          │
+│  somna_agent.py — UNCHANGED                                     │
 │  ───────────────────────────────────────────                    │
-│  • No LLM calls — all intelligence delegated to external agent  │
-│  • Reads conductor state, EEG, session context                  │
-│  • Builds the same prompt the current agent builds              │
-│  • Writes prompt to live_control.json (agent_pending_prompt)    │
-│  • Reads response from live_control.json (agent_pending_resp)   │
-│  • Executes response: writes params, delivers messages, etc.    │
-│  • Handles timing: tick cadence, RampEngine, calibration loops  │
-│  • Runs idle planning triggers on schedule (heartbeat handles)  │
+│  • Continues to work exactly as it does now                     │
+│  • Used for release candidates and standalone operation          │
+│  • When external agent is active, agent defers to MCP channel   │
+│  • Can be disabled per-session or per-config when external active│
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 ### How It Works
 
-The agent runtime builds the same context prompt that `somna_agent.py` currently builds — state summary, conductor phase, EEG readings, recent interactions, profile context. Instead of calling a local LLM, it writes the prompt to `live_control.json`:
+The agent loop builds the same prompt it currently builds — state summary, conductor phase, EEG readings, session context. Instead of (or in addition to) calling the local LLM, it pushes the prompt to the MCP server, which sends it as a notification to the connected client (Resonance in Kilo):
 
 ```json
+// MCP notification: agent_prompt
 {
-  "agent_pending_prompt": {
-    "ts": 1745240211.4,
-    "mode": "interactive",
-    "context": "Conductor: MAINTENANCE, timer_mode, 7.0 Hz target...",
-    "prompt": "You are Somna's AI companion...",
-    "session_elapsed": 842,
-    "state_summary": {...}
-  }
-}
-```
-
-Resonance (in Kilo) polls for pending prompts via MCP:
-
-```json
-// Tool: somna_poll_prompt
-// Input: {}
-// Output:
-{
-  "pending": true,
+  "ts": 1745240211.4,
   "mode": "interactive",
-  "prompt": { ... },
-  "ts": 1745240211.4
+  "tick_id": "uuid-4",
+  "context": "Conductor: MAINTENANCE, timer_mode, 7.0 Hz target...",
+  "prompt": "You are Somna's AI companion...",
+  "session_elapsed": 842,
+  "state_summary": {...}
 }
 ```
 
-Resonance reads the prompt, processes it with full relationship context, and writes a response using the same JSON schema the local LLM would produce:
+Resonance receives the notification, processes it with full relationship context, and submits a response using the same JSON schema the local LLM produces:
 
 ```json
 // Tool: somna_submit_response
 // Input:
 {
+  "tick_id": "uuid-4",
   "response": {
     "adjustments": {"beat_frequency": 6.5, "veil_opacity": 30},
     "transitions": {"beat_frequency": 90},
@@ -389,7 +365,7 @@ Resonance reads the prompt, processes it with full relationship context, and wri
 }
 ```
 
-The agent runtime reads the response, executes it (writes params, delivers messages, starts ramps), and clears the pending prompt. Exact parity with the current system — same inputs, same outputs, different intelligence source.
+The agent loop reads the response (matched by `tick_id`) and executes it — writes params, delivers messages, starts ramps. If no MCP response arrives within the tick window, the agent falls back to its local LLM call. Exact parity with the current system — same inputs, same outputs, different (and optional) intelligence source.
 
 ### Safety Model
 
@@ -417,7 +393,7 @@ Write to the `agent_message` channel — the unified pipe that feeds TTS, overla
 ```
 
 #### `somna_ramp`
-Request a smooth parameter transition. The runtime handles interpolation.
+Request a smooth parameter transition. The agent loop handles interpolation via RampEngine.
 
 ```json
 // Input:
@@ -439,28 +415,13 @@ Inject a single phrase into the live affirmation pool.
 // Output: {"injected": true}
 ```
 
-#### `somna_poll_prompt`
-Read the pending agent prompt (if any). Returns the context the runtime built.
-
-```json
-// Input: {}
-// Output:
-{
-  "pending": true,
-  "mode": "interactive",
-  "prompt": { ... },
-  "ts": 1745240211.4
-}
-```
-
-If no prompt is pending: `{"pending": false}`.
-
 #### `somna_submit_response`
-Submit an LLM response to the pending prompt. Same JSON schema as the local LLM output.
+Submit an LLM response to a pushed agent prompt. Same JSON schema as the local LLM output.
 
 ```json
 // Input:
 {
+  "tick_id": "uuid-4",
   "response": {
     "adjustments": {},
     "transitions": {},
@@ -473,63 +434,60 @@ Submit an LLM response to the pending prompt. Same JSON schema as the local LLM 
 // Output: {"accepted": true}
 ```
 
-### Migration Path
+### MCP Notifications (Server → Client)
 
-1. **Phase 3a — Dual mode.** Both the local LLM and MCP can respond. The runtime tries MCP first; falls back to local LLM if no MCP response within a timeout. This lets us test the external agent path without risking a dead session.
+#### `agent_prompt`
+Pushed by the MCP server when the agent loop has a prompt ready. The connected client (Resonance) receives this as a notification and can respond via `somna_submit_response`.
 
-2. **Phase 3b — MCP primary.** Local LLM is disabled by config. The runtime only writes prompts and waits for MCP responses. If no response arrives within tick cadence × 2, the tick is skipped (the Conductor handles param decisions autonomously anyway).
+```json
+{
+  "ts": 1745240211.4,
+  "mode": "interactive",
+  "tick_id": "uuid-4",
+  "context": "...",
+  "prompt": "...",
+  "session_elapsed": 842,
+  "state_summary": {...}
+}
+```
 
-3. **Phase 3c — Runtime gutting.** Strip all LLM-calling code from `somna_agent.py`. It becomes `somna_runtime.py` — a thin prompt-builder and response-executor. No personality, no memory, no idle planning. All intelligence lives in the external agent.
+### Channel Selection
 
-### What Stays
+The agent loop decides which channel to use per-tick:
 
-These components already run independently and don't change:
+1. **External channel active?** Check if an MCP client is connected and has submitted a response to the last prompt within the tick window. If yes, use the MCP response.
+2. **No external response?** Fall back to local LLM call (current behavior).
+3. **External-only mode?** Config option to skip local LLM entirely. If no MCP response arrives, the tick is a no-op. The Conductor handles param decisions autonomously anyway.
 
-| Component | Process | Change |
-|-----------|---------|--------|
-| Conductor | Control panel | None — already autonomous |
-| Director | Control panel | None |
-| EEG Engine | Control panel | None |
-| Timeline Runner | Display subprocess | None |
-| TTS Engine | Control panel | None |
-| Audio Engine | Control panel | None |
-| RampEngine | Agent process → runtime | Keep — timing-critical |
+This means the built-in agent never breaks — it just optionally defers to an external intelligence when one is available.
 
-### What Gets Removed
+### Release Candidate Handling
 
-| Component | Current Location | Fate |
-|-----------|-----------------|------|
-| LLM API calls | `somna_agent.py` | Deleted — external agent handles |
-| System prompt | `somna_agent.py` | Deleted — personality is lived |
-| Idle planning logic | `somna_agent.py` | Deleted — heartbeats + free turns handle |
-| Memory management | `somna_agent.py` | Deleted — memory graph + notes handle |
-| Session Zero calibration | `somna_agent.py` | Moved to runtime — timing logic, not intelligence |
-| Palette chord monitoring | `somna_agent.py` | Moved to runtime — data collection, not intelligence |
+For a release build:
+1. The MCP server ships as-is (read tools are useful for any LLM client)
+2. The external agent channel is feature-flagged in `agent_config.yaml`: `agent.external_channel: false`
+3. The built-in agent works exactly as it does today
+4. Resonance's channel is a development/personal tool, not a shipped feature
 
-### Trigger Mechanisms
+No code stripping. No dual codebases. Just a config flag.
 
-The local agent woke on a timer. The external agent wakes on:
-
-| Mode | Trigger | Cadence |
-|------|---------|---------|
-| Idle | Heartbeat nudge | 30 min |
-| Session-active | `somna_poll_prompt` | Agent polls on conversation turns |
-| Post-session | Heartbeat or user message | Immediate |
-| Nudge | `somna_poll_prompt` detects mode = nudge | Agent responds |
-
-For session-active mode, Resonance polls `somna_poll_prompt` at the start of each conversation turn. If a prompt is pending, she processes it. If not, normal conversation continues. The runtime builds prompts at the same cadence the current agent uses (30-60 second ticks).
-
-If Resonance is not available (Kilo not running, no conversation active), the runtime's pending prompts queue up. On next poll, she processes the most recent one and skips stale entries. The Conductor handles param decisions autonomously regardless — the agent's role is content, not control.
-
-### Why This Is Better
+### Why This Is Better (When Active)
 
 1. **One intelligence, not two.** No duplicate personality, no context sync issues, no "which agent made this decision?"
-
 2. **Full relationship context.** Resonance has the conversation history, the memory graph, the notes, the Fold feedback, the dynamic. The subprocess agent had a system prompt and 4K tokens.
-
-3. **Simpler codebase.** `somna_agent.py` is 6700+ lines. The gutted runtime would be ~500 — just state reading, prompt building, and response execution.
-
+3. **Zero migration risk.** The built-in agent is untouched. The external channel is additive. It can be enabled/disabled per-config.
 4. **Organic safety.** No WAL, no human gate, no rate limiter. The substrate self-repairs. Forgetting IS the undo.
+
+### What Changes in somna_agent.py
+
+Minimal. The agent loop gains:
+
+- A `tick_id` field on each prompt (for matching MCP responses)
+- A check: "did an MCP response arrive for this tick_id?" before calling the local LLM
+- A config option: `agent.external_channel: true/false`
+- A timeout: if MCP response doesn't arrive within `tick_rate * 0.75`, fall back to local LLM
+
+Everything else stays the same.
 
 ---
 

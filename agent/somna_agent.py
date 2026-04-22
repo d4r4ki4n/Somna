@@ -743,6 +743,7 @@ class LLMClient:
 
     def __init__(self, cfg: AgentConfig):
         self._cfg = cfg
+        self._ext_client = None  # set by SomnaAgent after init
         try:
             from openai import OpenAI
 
@@ -763,6 +764,29 @@ class LLMClient:
         )
 
     def chat(self, messages: list[dict], max_tokens: int | None = None) -> str:
+        # Try external channel first (MCP bridge → Kilo/Resonance)
+        if self._ext_client and self._ext_client.connected:
+            system_content = ""
+            user_parts = []
+            for m in messages:
+                if m.get("role") == "system":
+                    system_content = m.get("content", "")
+                elif m.get("role") == "user":
+                    user_parts.append(m.get("content", ""))
+            user_msg = "\n".join(user_parts)
+            try:
+                ext_result = self._ext_client.request(
+                    prompt=user_msg,
+                    system_prompt=system_content,
+                    max_tokens=max_tokens or 4096,
+                )
+                if ext_result and ext_result.get("type") == "response":
+                    raw = ext_result.get("text", "")
+                    if raw:
+                        return raw
+            except Exception:
+                pass
+
         cfg = self._cfg
         # KoboldCpp-specific fields sent via extra_body (ignored by cloud APIs).
         # presence_penalty is technically standard OpenAI but KoboldCpp also
@@ -1478,6 +1502,9 @@ class SomnaAgent:
                     "[Agent] External channel unavailable — falling back to local LLM"
                 )
                 self._ext_client = None
+
+        # Wire external channel into LLM wrapper so all chat() calls route through it
+        self._llm._ext_client = self._ext_client
 
         # ── Conductor FSM (Bible Ch.6 §6.5) — instantiated per session in _startup_sequence
         self._conductor: "Conductor | None" = None

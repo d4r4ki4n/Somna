@@ -4505,21 +4505,6 @@ class SomnaAgent:
             print("[Agent] Silent resume — no greeting (gap < 2 min).")
             return
 
-        # ── RETURNING tier: has history (any gap >= 2 min) ───────────────────
-        if self._history:
-            greeting = f"Welcome back{', ' + name if name else ''}."
-            print(f"[Agent] Returning — '{greeting}'")
-            self._say(
-                greeting,
-                needs_response=False,
-                overlay=True,
-                console=True,
-                tts=True,
-                style={"voice_mode": "tts", "zoom_speed": "slow"},
-                timeout_s=10,
-            )
-            self._record(state, prompt=greeting, response=None, adj={})
-
         # ── SESSION ZERO: first session, calibration-in-disguise ────────────────
         if not self._profile.get("eeg_baselines") and state.get("eeg_connected"):
             self._sz_active = True

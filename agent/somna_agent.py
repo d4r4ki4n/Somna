@@ -744,6 +744,9 @@ class LLMClient:
     def __init__(self, cfg: AgentConfig):
         self._cfg = cfg
         self._ext_client = None  # set by SomnaAgent after init
+        self._external_only = (
+            False  # True when external_channel is enabled; skips local LLM
+        )
         try:
             from openai import OpenAI
 
@@ -795,6 +798,12 @@ class LLMClient:
                         return raw
             except Exception:
                 pass
+
+        # When external_only is True, never fall through to local LLM.
+        # This prevents ConnectionError crashes when no local model is running.
+        if self._external_only:
+            print("[LLM] External channel unavailable — skipping tick (no local LLM)")
+            return ""
 
         cfg = self._cfg
         # KoboldCpp-specific fields sent via extra_body (ignored by cloud APIs).
@@ -1514,6 +1523,8 @@ class SomnaAgent:
 
         # Wire external channel into LLM wrapper so all chat() calls route through it
         self._llm._ext_client = self._ext_client
+        if self._ext_enabled:
+            self._llm._external_only = True
 
         # ── Conductor FSM (Bible Ch.6 §6.5) — instantiated per session in _startup_sequence
         self._conductor: "Conductor | None" = None
@@ -2974,49 +2985,11 @@ class SomnaAgent:
             {"role": "user", "content": user_msg},
         ]
 
-        # ── External agent channel (Phase 3 MCP bridge) ──────────────────────
-        if self._ext_client and self._ext_client.connected:
-            full_prompt = f"[SYSTEM]\n{messages[0]['content']}\n\n[USER]\n{user_msg}"
-            ext_result = self._ext_client.request(
-                prompt=full_prompt,
-                system_prompt=messages[0]["content"],
-                max_tokens=4096,
-            )
-            if ext_result and ext_result.get("type") == "response":
-                raw = ext_result.get("text", "")
-                try:
-                    ack = json.loads(raw) if raw else {}
-                    if isinstance(ack, dict) and ack.get("status") == "delivered":
-                        print(
-                            "[Agent] External channel delivered — async effects via MCP tools"
-                        )
-                        return {}
-                except (json.JSONDecodeError, ValueError):
-                    pass
-                print(f"[Agent] External channel response ({len(raw)} chars)")
-                parsed = _extract_json(raw)
-                if parsed:
-                    pu = parsed.get("profile_updates")
-                    if isinstance(pu, dict) and any(pu.values()):
-                        try:
-                            self._update_profile(pu)
-                        except Exception:
-                            pass
-                    return parsed
-                print(
-                    f"[Agent] External response not valid JSON, falling back to local LLM"
-                )
-            else:
-                if ext_result:
-                    print(
-                        f"[Agent] External channel error: {ext_result.get('error', 'unknown')}"
-                    )
-                print("[Agent] External channel failed, falling back to local LLM")
-                # Try reconnecting
-                if not self._ext_client.connect():
-                    self._ext_client = None
-
         raw = self._llm.chat(messages)
+
+        # Empty string = external channel delivered (async effects via MCP tools)
+        if not raw:
+            return {}
         parsed = _extract_json(raw)
         if not parsed:
             print(f"[Agent] LLM returned non-JSON: {raw[:200]}")
@@ -4611,34 +4584,14 @@ class SomnaAgent:
         ]
 
         try:
-            if self._ext_client and self._ext_client.connected:
-                ext_result = self._ext_client.request(
-                    prompt=startup_msg,
-                    system_prompt=messages[0]["content"],
-                    max_tokens=512,
-                )
-                if ext_result and ext_result.get("type") == "response":
-                    raw = ext_result.get("text", "")
-                    try:
-                        ack = json.loads(raw) if raw else {}
-                        if isinstance(ack, dict) and ack.get("status") == "delivered":
-                            print(
-                                "[Agent] Startup: external channel delivered, using fallback prompt"
-                            )
-                            question = None
-                    except (json.JSONDecodeError, ValueError):
-                        data = _extract_json(raw)
-                        question = data.get("next_prompt") if data else None
-                        if isinstance(question, str):
-                            question = question.strip() or None
-                else:
-                    question = None
-            else:
-                raw = self._llm.chat(messages)
+            raw = self._llm.chat(messages, max_tokens=512)
+            if raw:
                 data = _extract_json(raw)
                 question = data.get("next_prompt") if data else None
                 if isinstance(question, str):
                     question = question.strip() or None
+            else:
+                question = None
         except Exception as e:
             print(f"[Agent] Startup LLM call failed: {e}")
             question = None

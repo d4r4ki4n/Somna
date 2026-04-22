@@ -151,7 +151,7 @@ class SpiralsLayer:
             "\n// ── Main dispatch ──────────────────────────────────────────────────",
             "void main() {",
             "    ec4 result;",
-            "    vec2 p = v_uv - 0.5;",
+            "    vec2 p = centred(uv);",
             "    if      (u_style == 0)  result = style_tunnel(p);",
             "    else if (u_style == 1)  result = style_galaxy(p);",
             "    else if (u_style == 2)  result = style_archimedean(p);",

@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Somna MCP Server — Phase 1 (read-only tools)
+Somna MCP Server — Phase 1 (read-only) + Phase 2 (scoped write)
 
 Exposes Somna runtime state to LLM clients via the Model Context Protocol.
 Run directly: python tools/mcp_somna_server.py
-Or via Kilo kilo.json mcpServers config.
+Or via Kilo kilo.json mcp config.
 
 Phase 1: 9 read-only tools.
-Phase 2: Scoped write tools with WAL + whitelist + rate limit.
+Phase 2: 4 scoped write tools (key-whitelisted, range-validated, organic safety).
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ import sqlite3
 import sys
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 # ── Paths ────────────────────────────────────────────────────────────────────
 
@@ -142,6 +142,261 @@ def _read_session_file(session_name: str, filename: str) -> str:
         return path.read_text(encoding="utf-8")
     except FileNotFoundError:
         return f"ERROR: {filename} not found for session '{session_name}'"
+
+
+# ── Phase 2: Write infrastructure ────────────────────────────────────────────
+
+VALID_SPIRAL_STYLES = frozenset(
+    {
+        "tunnel_dream",
+        "galaxy",
+        "archimedean",
+        "kaleidoscope",
+        "interference",
+        "vortex",
+        "dna",
+        "rose",
+        "moire",
+        "spirograph",
+        "fermat",
+        "superformula",
+        "liminal",
+        "nebula",
+        "cobwebs",
+        "strange_attractor",
+        "flow_field",
+        "sacred_geometry",
+        "recursive_fractal",
+        "potter_tunnel",
+        "fractal_scale",
+        "neuro_vortex",
+        "ojascki",
+        "tunnel_warp",
+        "ganzflicker",
+        "galaxy_morph",
+    }
+)
+
+VALID_NOISE_COLORS = frozenset(
+    {"white", "pink", "brown", "blue", "violet", "grey", "off"}
+)
+VALID_VEIL_MODES = frozenset(
+    {"scroll", "rain", "drift", "converge", "strobe", "tunnel"}
+)
+VALID_BEAT_TYPES = frozenset({"binaural", "isochronic", "both", "fm"})
+VALID_BG_MODES = frozenset({"slideshow", "none"})
+VALID_FEEDBACK_MODES = frozenset(
+    {
+        "alpha_decay",
+        "radial_zoom",
+        "rotational_smear",
+        "directional_blur",
+        "reaction_diffusion",
+        "kaleidoscopic_fold",
+        "none",
+    }
+)
+VALID_BILATERAL_MODES = frozenset({"smooth", "hard"})
+
+ALLOWED_PATCH_KEYS: dict[str, dict[str, Any]] = {
+    "beat_frequency": {"type": "float", "min": 0.5, "max": 40.0},
+    "carrier_frequency": {"type": "float", "min": 20.0, "max": 500.0},
+    "volume": {"type": "float", "min": 0.0, "max": 100.0},
+    "veil_opacity": {"type": "float", "min": 0.0, "max": 100.0},
+    "spiral_style": {"type": "enum", "values": VALID_SPIRAL_STYLES},
+    "spiral_speed_multiplier": {"type": "float", "min": 0.1, "max": 10.0},
+    "spiral_chaos": {"type": "float", "min": 0.0, "max": 100.0},
+    "spiral_opacity": {"type": "float", "min": 0.0, "max": 100.0},
+    "shadow_opacity": {"type": "float", "min": 0.0, "max": 100.0},
+    "noise_volume": {"type": "float", "min": 0.0, "max": 100.0},
+    "noise_color": {"type": "enum", "values": VALID_NOISE_COLORS},
+    "bg_opacity": {"type": "float", "min": 0.0, "max": 100.0},
+    "bg_mode": {"type": "enum", "values": VALID_BG_MODES},
+    "breath_mod_enabled": {"type": "bool"},
+    "breath_rate_bpm": {"type": "float", "min": 4.0, "max": 12.0},
+    "breath_depth": {"type": "float", "min": 0.0, "max": 1.0},
+    "beat_type": {"type": "enum", "values": VALID_BEAT_TYPES},
+    "fm_mod_depth": {"type": "float", "min": 0.5, "max": 30.0},
+    "bilateral_panning": {"type": "bool"},
+    "bilateral_rate": {"type": "float", "min": 0.1, "max": 20.0},
+    "bilateral_mode": {"type": "enum", "values": VALID_BILATERAL_MODES},
+    "bilateral_depth": {"type": "float", "min": 0.0, "max": 1.0},
+    "entrainment_strength": {"type": "float", "min": 0.0, "max": 0.10},
+    "trail_decay": {"type": "float", "min": 0.0, "max": 0.80},
+    "feedback_mode": {"type": "enum", "values": VALID_FEEDBACK_MODES},
+    "feedback_strength": {"type": "float", "min": 0.0, "max": 1.0},
+    "agent_conductor_hints": {"type": "dict"},
+    "agent_message": {"type": "dict"},
+}
+
+ALLOWED_CONDUCTOR_HINT_KEYS = frozenset(
+    {
+        "depth_patience",
+        "request_fractionation",
+        "target_floor_hz",
+        "note",
+    }
+)
+
+ALLOWED_PROFILE_APPEND_PATHS: dict[str, str] = {
+    "notes": "list",
+    "responsive_themes": "list",
+    "effective_moments": "list",
+}
+
+ALLOWED_PROFILE_SET_PATHS: dict[str, str] = {
+    "preferences.session_interval_target_days": "int",
+    "preferences.preferred_time_of_day": "str",
+}
+
+
+def _validate_patch_value(key: str, value: Any) -> Optional[str]:
+    """Validate a single patch value against the schema. Returns error or None."""
+    spec = ALLOWED_PATCH_KEYS.get(key)
+    if spec is None:
+        return f"Key '{key}' is not in the allowed whitelist."
+    vtype = spec["type"]
+    if vtype == "float":
+        if not isinstance(value, (int, float)):
+            return f"Key '{key}' expects a number, got {type(value).__name__}."
+        if "min" in spec and value < spec["min"]:
+            return f"Key '{key}' value {value} below minimum {spec['min']}."
+        if "max" in spec and value > spec["max"]:
+            return f"Key '{key}' value {value} above maximum {spec['max']}."
+    elif vtype == "bool":
+        if not isinstance(value, bool):
+            return f"Key '{key}' expects a boolean, got {type(value).__name__}."
+    elif vtype == "enum":
+        if value not in spec["values"]:
+            return f"Key '{key}' value '{value}' not in allowed set: {sorted(spec['values'])}."
+    elif vtype == "dict":
+        if not isinstance(value, dict):
+            return f"Key '{key}' expects a dict, got {type(value).__name__}."
+    return None
+
+
+def _write_live_direct(updates: dict[str, Any]) -> dict[str, Any]:
+    """Reload-first merge write to live_control.json. Fallback when StateServer unavailable."""
+    try:
+        data = json.loads(LIVE_CONTROL_PATH.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        data = {}
+    for k, v in updates.items():
+        if v is None:
+            data.pop(k, None)
+        else:
+            data[k] = v
+    tmp = LIVE_CONTROL_PATH.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(LIVE_CONTROL_PATH)
+    global _lc_data, _lc_mtime, _lc_size
+    _lc_data = data
+    st = LIVE_CONTROL_PATH.stat()
+    _lc_mtime = st.st_mtime
+    _lc_size = st.st_size
+    return {"written": list(updates.keys())}
+
+
+def _try_patch_via_server(updates: dict[str, Any]) -> bool:
+    """Attempt to write via StateServer TCP. Returns True if sent."""
+    try:
+        import socket
+        from ipc.state_server import PORT
+
+        msg = json.dumps({"op": "patch", "data": updates}, separators=(",", ":"))
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(1.0)
+        s.connect(("127.0.0.1", PORT))
+        s.sendall((msg + "\n").encode("utf-8"))
+        s.close()
+        return True
+    except Exception:
+        return False
+
+
+def _patch_live(updates: dict[str, Any]) -> dict[str, Any]:
+    """Write to live_control.json via StateServer if available, else direct write."""
+    if _try_patch_via_server(updates):
+        return {"written": list(updates.keys()), "via": "state_server"}
+    return _write_live_direct(updates)
+
+
+def _append_profile(path: str, value: Any) -> dict[str, Any]:
+    """Append to a user_profile.json list field with reload-first merge."""
+    if path not in ALLOWED_PROFILE_APPEND_PATHS:
+        return {"error": f"Path '{path}' is not an appendable profile field."}
+    try:
+        data = json.loads(PROFILE_PATH.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {"error": "user_profile.json not found or unreadable."}
+    parts = path.split(".")
+    target = data
+    for part in parts[:-1]:
+        target = target.get(part, {})
+    last_key = parts[-1]
+    if last_key not in target or not isinstance(target[last_key], list):
+        return {"error": f"Profile path '{path}' is not a list."}
+    if isinstance(value, list):
+        target[last_key].extend(value)
+    else:
+        target[last_key].append(value)
+    if path == "effective_moments":
+        target[last_key] = target[last_key][-30:]
+    tmp = PROFILE_PATH.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(PROFILE_PATH)
+    global _profile_cache
+    st = PROFILE_PATH.stat()
+    _profile_cache = (st.st_mtime, data)
+    return {"appended": path, "new_length": len(target[last_key])}
+
+
+def _set_profile(path: str, value: Any) -> dict[str, Any]:
+    """Set a user_profile.json scalar field with reload-first merge."""
+    if path not in ALLOWED_PROFILE_SET_PATHS:
+        return {"error": f"Path '{path}' is not a settable profile field."}
+    try:
+        data = json.loads(PROFILE_PATH.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {"error": "user_profile.json not found or unreadable."}
+    parts = path.split(".")
+    target = data
+    for part in parts[:-1]:
+        target = target.setdefault(part, {})
+    last_key = parts[-1]
+    target[last_key] = value
+    tmp = PROFILE_PATH.with_suffix(".tmp")
+    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(PROFILE_PATH)
+    global _profile_cache
+    st = PROFILE_PATH.stat()
+    _profile_cache = (st.st_mtime, data)
+    return {"set": path, "value": value}
+
+
+def _append_affirmations(session_name: str, lines: list[str]) -> dict[str, Any]:
+    """Append lines to a session's affirmations.txt."""
+    aff_path = SESSIONS_DIR / session_name / "affirmations.txt"
+    if not aff_path.parent.is_dir():
+        return {"error": f"Session '{session_name}' not found."}
+    existing = ""
+    if aff_path.exists():
+        existing = aff_path.read_text(encoding="utf-8")
+        if not existing.endswith("\n"):
+            existing += "\n"
+    appended = "\n".join(lines) + "\n"
+    aff_path.write_text(existing + appended, encoding="utf-8")
+    return {"appended": len(lines), "session": session_name}
+
+
+def _write_conductor_hint(hints: dict[str, Any]) -> dict[str, Any]:
+    """Write agent_conductor_hints to live_control.json with sub-key validation."""
+    for k in hints:
+        if k not in ALLOWED_CONDUCTOR_HINT_KEYS:
+            return {
+                "error": f"Hint key '{k}' not allowed. Allowed: {sorted(ALLOWED_CONDUCTOR_HINT_KEYS)}."
+            }
+    return _patch_live({"agent_conductor_hints": hints})
 
 
 # ── Structured state builders ────────────────────────────────────────────────
@@ -296,6 +551,75 @@ async def list_tools() -> list[Tool]:
                 "required": ["session_name"],
             },
         ),
+        Tool(
+            name="somna_patch_live",
+            description="Write whitelisted keys to live_control.json. Keys are range-validated.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "patches": {
+                        "type": "object",
+                        "description": "Dict of key-value pairs to write. Only whitelisted keys accepted.",
+                    }
+                },
+                "required": ["patches"],
+            },
+        ),
+        Tool(
+            name="somna_update_profile",
+            description="Scoped updates to user_profile.json (append or set allowed paths).",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Dot-notation profile path (e.g. 'notes', 'preferences.session_interval_target_days')",
+                    },
+                    "action": {
+                        "type": "string",
+                        "enum": ["append", "set"],
+                        "description": "'append' for list fields, 'set' for scalar fields",
+                    },
+                    "value": {
+                        "description": "Value to set or append (string, number, list, or object)",
+                    },
+                },
+                "required": ["path", "action", "value"],
+            },
+        ),
+        Tool(
+            name="somna_append_affirmations",
+            description="Append lines to a session's affirmations.txt.",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "session_name": {
+                        "type": "string",
+                        "description": "Name of session folder",
+                    },
+                    "lines": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Lines to append",
+                    },
+                },
+                "required": ["session_name", "lines"],
+            },
+        ),
+        Tool(
+            name="somna_write_conductor_hint",
+            description="Write agent_conductor_hints to live_control.json (depth_patience, request_fractionation, target_floor_hz, note).",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "hints": {
+                        "type": "object",
+                        "description": "Dict of hint key-value pairs",
+                    }
+                },
+                "required": ["hints"],
+            },
+        ),
     ]
 
 
@@ -344,6 +668,64 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     if name == "somna_read_affirmations":
         text = _read_session_file(arguments["session_name"], "affirmations.txt")
         return [TextContent(type="text", text=text)]
+
+    # ── Phase 2: Write tools ────────────────────────────────────────────────
+
+    if name == "somna_patch_live":
+        patches = arguments.get("patches", {})
+        if not isinstance(patches, dict):
+            return [
+                TextContent(
+                    type="text", text=json.dumps({"error": "patches must be a dict"})
+                )
+            ]
+        errors = []
+        for k, v in patches.items():
+            err = _validate_patch_value(k, v)
+            if err:
+                errors.append(err)
+        if errors:
+            return [TextContent(type="text", text=json.dumps({"errors": errors}))]
+        result = _patch_live(patches)
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+    if name == "somna_update_profile":
+        path = arguments.get("path", "")
+        action = arguments.get("action", "")
+        value = arguments.get("value")
+        if action == "append":
+            result = _append_profile(path, value)
+        elif action == "set":
+            result = _set_profile(path, value)
+        else:
+            result = {
+                "error": f"Action '{action}' not supported. Use 'append' or 'set'."
+            }
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+    if name == "somna_append_affirmations":
+        session_name = arguments.get("session_name", "")
+        lines = arguments.get("lines", [])
+        if not isinstance(lines, list):
+            return [
+                TextContent(
+                    type="text",
+                    text=json.dumps({"error": "lines must be a list of strings"}),
+                )
+            ]
+        result = _append_affirmations(session_name, lines)
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+    if name == "somna_write_conductor_hint":
+        hints = arguments.get("hints", {})
+        if not isinstance(hints, dict):
+            return [
+                TextContent(
+                    type="text", text=json.dumps({"error": "hints must be a dict"})
+                )
+            ]
+        result = _write_conductor_hint(hints)
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
     return [
         TextContent(type="text", text=json.dumps({"error": f"Unknown tool: {name}"}))

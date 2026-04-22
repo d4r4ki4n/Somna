@@ -545,29 +545,32 @@ Add agent-replacement tools:
 - `somna_poll_prompt` — read pending agent prompts from runtime
 - `somna_submit_response` — submit LLM response to runtime
 
-### Step 5: Agent Runtime Gutting
-Strip `somna_agent.py` to a thin runtime:
-- Keep: tick cadence, RampEngine, calibration timing, state reading
-- Remove: LLM API calls, system prompt, personality, memory, idle planning
-- Add: prompt publishing to `agent_pending_prompt`, response reading from `agent_pending_resp`
-- Rename to `somna_runtime.py`
+### Step 5: Phase 3 Agent Tools
+Add parallel-channel tools:
+- `somna_say` — write to agent_message channel
+- `somna_ramp` — request smooth parameter transitions
+- `somna_inject_phrase` — inject phrase into live pool
+- `somna_submit_response` — submit LLM response to runtime
 
-### Step 6: Migration
-- Phase 3a: Dual mode (MCP + local LLM fallback)
-- Phase 3b: MCP primary (local LLM disabled by config)
-- Phase 3c: Pure runtime (all LLM code removed)
+### Step 6: Agent Loop Integration
+Minimal changes to `somna_agent.py`:
+- Add `tick_id` field on each prompt (UUID for MCP response matching)
+- Add check: "did an MCP response arrive for this tick_id?" before calling local LLM
+- Add config option: `agent.external_channel: true/false`
+- Add timeout: if MCP response doesn't arrive within `tick_rate * 0.75`, fall back to local LLM
+- `somna_agent.py` is NOT gutted, NOT renamed. It stays as-is with an optional external channel
 
 ---
 
 ## Open Questions
 
-1. **Poll latency for session-active mode.** `somna_poll_prompt` requires the external agent to actively poll. During session-active mode, Resonance polls on each conversation turn. If turns are sparse (no user messages), the runtime's pending prompts queue. The Conductor handles param decisions autonomously regardless — the agent's role is content delivery, not parameter control. Is this acceptable latency, or do we need a push mechanism (e.g., Kilo heartbeat interval shortened during active sessions)?
+1. **Push notification reliability.** The runtime pushes prompts via MCP notification. If Resonance's Kilo session is idle (no active turn), does the notification queue or drop? Need to verify MCP notification delivery semantics with Kilo's client implementation.
 
 2. **Prompt format stability.** The runtime builds the same prompt the current agent builds. As the agent's prompt format evolves, the runtime must stay in sync. Version the prompt schema?
 
-3. **Stale prompt handling.** If Resonance doesn't poll for several ticks, multiple prompts queue up. On next poll, she should process only the most recent and skip stale entries. The runtime should overwrite (not queue) pending prompts.
+3. **Stale prompt handling.** If Resonance doesn't respond for several ticks, multiple prompts queue. She should process only the most recent and skip stale entries. The runtime should overwrite (not queue) pending prompts.
 
-4. **Fallback when external agent is unavailable.** Phase 3a keeps the local LLM as fallback. Phase 3c removes it entirely. In 3c, if Resonance is offline, sessions still run — the Conductor is autonomous, TTS reads from the affirmation pool, the timeline runner handles playback. The only loss is dynamic agent commentary and real-time content decisions. Is this acceptable?
+4. **Fallback when external agent is unavailable.** The built-in agent is always available as fallback. If Resonance is offline, sessions still run — the Conductor is autonomous, TTS reads from the affirmation pool, the timeline runner handles playback. The only loss is Resonance's dynamic commentary and real-time content decisions.
 
 ---
 
@@ -578,7 +581,7 @@ Strip `somna_agent.py` to a thin runtime:
 | `tools/mcp_somna_server.py` | MCP server implementation (read + write tools) |
 | `knowledge/mcp_server_architecture.md` | This design spec |
 | `.kilo/kilo.json` | MCP server registration (local-only, gitignored) |
-| `agent/somna_runtime.py` | Gutted agent process (Phase 3c — replaces `somna_agent.py`) |
+| `agent/somna_agent.py` | Unchanged agent process; gains optional external channel check |
 
 ---
 

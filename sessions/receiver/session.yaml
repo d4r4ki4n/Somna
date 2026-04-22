@@ -1,0 +1,205 @@
+name: "Receiver — Surrender Training · 25 min"
+description: >
+  25-minute somatic education session disguised as induction. Teaches the
+  body one skill: letting it happen. Five escalating tension/release/notice
+  cycles move from gross motor (whole body) through regional (jaw, shoulders,
+  hands) to internal (breath, pelvic floor) to cognitive (holding a thought)
+  and finally to identity (holding "I am in control"). Each cycle is a single
+  tense command, a single release command, and silence. The body learns the
+  surrender pathway through repetition, not through suggestion. Designed for
+  aphantasic brains — all somatic, no visualization. Minimal visual complexity
+  throughout: slow ordered spirals, low veil, no entrainment flicker. The
+  agent drives pace via TTS; the session structure is the skeleton.
+duration: 1500
+category: induction
+
+defaults:
+  carrier_frequency:          200.0
+  volume:                     72.0
+  noise_color:                brown
+  noise_volume:               15
+  center_flash_sync_to_beat:  false
+  font_switch_mode:           intelligent
+  spiral_color_mode:          rainbow
+  spiral_show_text:           false
+  spiral_style:               fermat
+  spiral_count:               5
+  spiral_tightness:           6.0
+  spiral_speed_multiplier:    0.6
+  spiral_opacity:             60
+  veil_mode:                  drift
+  veil_opacity:               8
+  shadow_opacity_target:      0
+  tts_enabled:                true
+  tts_subliminal:             false
+  entrainment_strength:       0.0
+  trail_decay:                0.0
+  feedback_mode:              none
+  feedback_strength:          0.0
+  pp_bloom_intensity:         0.0
+  pp_ca_strength:             0.0
+  pp_film_grain:              0.0
+
+# ── Timeline ──────────────────────────────────────────────────────────────────
+#
+#  Arc structure:
+#    0:00   settle        8.5 Hz   quiet arrival, nothing asked yet
+#    2:00   cycle_1       8.0 Hz   gross motor — whole body tense/release
+#    6:00   cycle_2       7.5 Hz   regional — jaw, shoulders, hands
+#    10:00  cycle_3       7.0 Hz   internal — breath hold, pelvic floor
+#    14:00  cycle_4       7.0 Hz   cognitive — hold a thought, let it go
+#    18:00  cycle_5       6.5 Hz   identity — hold control, release control
+#    21:00  integration   6.5 Hz   single extended release, no new tension
+#    23:00  surface       8.0 Hz   gentle return
+#    24:30  wake          9.5 Hz   soft landing
+#
+#  Visual logic:
+#    Minimal throughout. Slow fermat spiral, barely-there veil, no flicker,
+#    no bloom, no trails. The visual field should be quiet — the body is
+#    the focus, not the screen. Spiral opacity and speed decrease further
+#    as depth increases. Veil stays low and diffuse.
+
+timeline:
+
+  # ─── 0:00 · SETTLE ────────────────────────────────────────────────────────
+  # Quiet arrival. The body is still, the mind is alert. Nothing is asked.
+  # Brown noise at low volume — warm, non-distracting. Fermat spiral at
+  # moderate opacity. The user just watches and settles.
+  - t: 0
+    label: settle
+    ease: linear
+    params:
+      phrases:                  settle
+      beat_frequency:           8.5
+      spiral_style:             fermat
+      spiral_count:             5
+      spiral_tightness:         6.0
+      spiral_speed_multiplier:  0.6
+      spiral_opacity:           55
+      spiral_chaos:             0.05
+      veil_mode:                drift
+      veil_opacity:             8
+
+  # ─── 2:00 · CYCLE 1: GROSS MOTOR ──────────────────────────────────────────
+  # Whole body tension/release. The first lesson. Tense everything, let it
+  # all go, feel the difference. The body learns the basic pattern.
+  - t: 120
+    label: cycle_1
+    ease: ease_out
+    params:
+      phrases:                  cycle_1
+      beat_frequency:           8.0
+      affirmations_mode:        sequential
+      spiral_chaos:             0.04
+      veil_opacity:             6
+
+  # ─── 6:00 · CYCLE 2: REGIONAL ─────────────────────────────────────────────
+  # Jaw, shoulders, hands. Specific body parts, one at a time. The body
+  # learns to release regionally instead of all at once.
+  - t: 360
+    label: cycle_2
+    ease: ease_out
+    params:
+      phrases:                  cycle_2
+      beat_frequency:           7.5
+      spiral_opacity:           50
+      spiral_speed_multiplier:  0.5
+      spiral_chaos:             0.03
+      veil_opacity:             5
+
+  # ─── 10:00 · CYCLE 3: INTERNAL ────────────────────────────────────────────
+  # Breath hold, pelvic floor, eye muscles. Deeper internal awareness.
+  # The body is learning to release things it didn't know it was holding.
+  - t: 600
+    label: cycle_3
+    ease: ease_out
+    params:
+      phrases:                  cycle_3
+      beat_frequency:           7.0
+      breath_mod_enabled:       true
+      breath_rate_bpm:          6.0
+      breath_depth:             0.4
+      spiral_opacity:           45
+      spiral_speed_multiplier:  0.4
+      spiral_chaos:             0.02
+      veil_opacity:             4
+
+  # ─── 14:00 · CYCLE 4: COGNITIVE ───────────────────────────────────────────
+  # Hold a thought. Let it go. The mind practices the same pattern the body
+  # just learned. This is where the shift from somatic to cognitive begins.
+  - t: 840
+    label: cycle_4
+    ease: ease_out
+    params:
+      phrases:                  cycle_4
+      beat_frequency:           7.0
+      breath_mod_enabled:       true
+      breath_rate_bpm:          5.5
+      breath_depth:             0.5
+      spiral_opacity:           40
+      spiral_speed_multiplier:  0.3
+      spiral_chaos:             0.02
+      veil_opacity:             3
+
+  # ─── 18:00 · CYCLE 5: IDENTITY ────────────────────────────────────────────
+  # Hold "I am in control." Let it go. The deepest cycle. The body and mind
+  # both release the thing they were holding all along.
+  - t: 1080
+    label: cycle_5
+    ease: ease_out
+    params:
+      phrases:                  cycle_5
+      beat_frequency:           6.5
+      breath_mod_enabled:       true
+      breath_rate_bpm:          5.0
+      breath_depth:             0.5
+      spiral_opacity:           35
+      spiral_speed_multiplier:  0.25
+      spiral_chaos:             0.01
+      veil_opacity:             2
+
+  # ─── 21:00 · INTEGRATION ──────────────────────────────────────────────────
+  # No new tension. The body knows the pathway now. Single extended release.
+  # The agent simply lets it run.
+  - t: 1260
+    label: integration
+    ease: ease_out
+    params:
+      phrases:                  integration
+      beat_frequency:           6.5
+      breath_mod_enabled:       true
+      breath_rate_bpm:          5.0
+      breath_depth:             0.6
+      spiral_opacity:           30
+      spiral_speed_multiplier:  0.2
+      spiral_chaos:             0.01
+      veil_opacity:             2
+
+  # ─── 23:00 · SURFACE ──────────────────────────────────────────────────────
+  # Gentle return. The body is different now. It knows something it didn't
+  # before. The spiral brightens, the veil lifts, the breath returns to
+  # natural rhythm.
+  - t: 1380
+    label: surface
+    ease: ease_in
+    params:
+      phrases:                  surface
+      beat_frequency:           8.0
+      breath_mod_enabled:       false
+      spiral_opacity:           55
+      spiral_speed_multiplier:  0.5
+      spiral_chaos:             0.04
+      veil_opacity:             8
+
+  # ─── 24:30 · WAKE ─────────────────────────────────────────────────────────
+  # Soft landing. Eyes open, body present. The pathway is installed.
+  - t: 1470
+    label: wake
+    ease: ease_in
+    params:
+      phrases:                  surface
+      beat_frequency:           9.5
+      spiral_opacity:           60
+      spiral_speed_multiplier:  0.6
+      spiral_chaos:             0.05
+      veil_opacity:             10

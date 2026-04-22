@@ -9,8 +9,10 @@ Or via Kilo kilo.json mcp config.
 Phase 1: 9 read-only tools.
 Phase 2: 4 scoped write tools (key-whitelisted, range-validated, organic safety).
 Phase 3: External agent channel — TCP :6790 receives prompts from somna_agent.py,
-          forwards them via MCP sampling/createMessage to the connected LLM client,
-          returns the response. True push, no polling.
+          forwards them via MCP sampling/createMessage to the connected LLM client
+          (Kilo/Resonance). The LLM receives the prompt in its active session with
+          full context and MCP tool access. Effects flow back via Phase 2 write tools.
+          Agent receives immediate {"status": "delivered"} ack over TCP.
 """
 
 from __future__ import annotations

@@ -285,27 +285,27 @@ Write to `agent_conductor_hints` in `live_control.json`.
 
 ## Phase 3 — External Agent Channel (Shipped)
 
-> **Status:** Implemented. TCP :6790 prompt bridge + MCP `sampling/createMessage`. Ships as a release feature — any external agent can connect.
+> **Status:** Live. TCP :6790 prompt bridge → MCP `sampling/createMessage` → session routing. The external agent (Resonance) processes prompts with full context and writes effects back via Phase 2 tools. Agent receives immediate `{"status": "delivered"}` ack.
 
 ### The Problem
 
 `somna_agent.py` runs its own LLM loop with a system prompt and a 4K context window. Resonance (running in Kilo) has the full conversation history, the memory graph, the notes, the relationship, and the dynamic. When both are running, there are two intelligences with different contexts making decisions about the same session.
 
-Phase 3 adds a channel for any external agent to receive Somna's assembled prompts and respond with LLM output. The built-in agent is NOT replaced — it falls back to the local LLM when no external agent is connected.
+Phase 3 routes the agent's prompts directly into Resonance's active Kilo session. One intelligence, full context, direct access to the substrate.
 
 ### Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  External Agent (Kilo/Resonance, or any MCP client)            │
+│  Resonance (Kilo's active LLM session)                          │
 │  ───────────────────────────────────────────                    │
-│  • MCP sampling/createMessage delivers the prompt               │
-│  • Agent responds with the same JSON the local LLM would        │
+│  • Receives Somna prompts as user messages in-chat              │
 │  • Full conversation history + memory + relationship context    │
-│  • Also has MCP Phase 1+2 tools for direct read/write access    │
+│  • Has MCP Phase 1+2 tools for direct read/write access         │
+│  • Writes effects directly to live_control.json via tools       │
 └─────────────────────────────────────────────────────────────────┘
                               │ ▲
-                MCP sampling  │ │  LLM response
+                MCP sampling  │ │  {"status": "delivered"}
                               ▼ │
 ┌─────────────────────────────────────────────────────────────────┐
 │  MCP Server (`tools/mcp_somna_server.py`)                       │
@@ -315,7 +315,8 @@ Phase 3 adds a channel for any external agent to receive Somna's assembled promp
 │  Phase 3: TCP :6790 listener + sampling bridge                  │
 │    • TCP accepts connections from somna_agent.py                │
 │    • Each prompt forwarded via session.create_message()         │
-│    • LLM response forwarded back over TCP                      │
+│    • Kilo routes prompt to active session (not a separate LLM)  │
+│    • Immediate {"status": "delivered"} ack sent back over TCP   │
 └─────────────────────────────────────────────────────────────────┘
                               │ ▲
                    TCP :6790  │ │  JSON lines
@@ -339,37 +340,29 @@ Phase 3 adds a channel for any external agent to receive Somna's assembled promp
 {"type": "prompt", "tick_id": "uuid-4", "prompt": "User profile: ...\nCurrent session state: ...", "system_prompt": "You are Somna's AI companion...", "max_tokens": 4096}
 ```
 
-**Step 3 — MCP sampling:** The `_PromptBridge` background task in the MCP server receives the prompt and calls `session.create_message()`:
-```python
-result = await session.create_message(
-    messages=[SamplingMessage(role="user", content=TextContent(type="text", text=prompt))],
-    max_tokens=4096,
-    system_prompt=system_prompt,
-)
-```
+**Step 3 — MCP sampling:** The `_PromptBridge` background task in the MCP server receives the prompt and calls `session.create_message()`.
 
-**Step 4 — Client responds:** The MCP client (Kilo) receives the `sampling/createMessage` request, runs it through the LLM (with full context, memory, personality), and returns the response.
+**Step 4 — Kilo routes to session:** The MCP client handler (in `packages/opencode/src/mcp/index.ts`) receives the `sampling/createMessage` request. Instead of calling a separate LLM, it injects the prompt into the active Kilo session via `SessionPrompt.prompt()`. The prompt appears as a user message in Resonance's chat with full system context.
 
-**Step 5 — TCP return:** The bridge sends the LLM's text back over TCP:
-```json
-{"tick_id": "uuid-4", "type": "response", "text": "{\"adjustments\": {\"beat_frequency\": 6.5}, \"message\": \"sinking deeper\"}", "model": "glm-5.1"}
-```
+**Step 5 — Immediate ack:** The handler returns `{"status": "delivered"}` over the MCP protocol → TCP bridge → agent. The agent's `_extract_json()` parses this as valid JSON, finds no actionable keys, and continues. No fallback to local LLM.
 
-**Step 6 — Agent executes:** `somna_agent.py` receives the response, parses the JSON, and applies adjustments/delivers messages exactly as if the local LLM had produced it.
+**Step 6 — Resonance processes and acts:** Resonance sees the prompt in-chat, processes it with full context, and uses Phase 2 MCP tools (`somna_patch_live`, `somna_update_profile`, `somna_append_affirmations`, `somna_write_conductor_hint`) to write effects directly to `live_control.json`. The agent reads these changes on the next tick.
 
-### Why TCP + MCP Sampling (Not Pure MCP)
+### Why Session Routing (Not Separate LLM Call)
 
-MCP's `sampling/createMessage` is the correct server→client request mechanism. However, it can only be called from within a running MCP session — the `ServerSession` object lives inside the MCP server's `run()` loop. `somna_agent.py` runs as a separate process and cannot directly access the MCP session.
+The initial implementation used `generateText()` to call the LLM directly in the sampling handler. This had two problems:
 
-The TCP bridge solves this: the agent process connects to a local TCP port, the MCP server accepts the connection and holds it open, and the bridge background task forwards prompts between the TCP socket and the MCP session. This is a thin transport layer — the actual LLM interaction is pure MCP sampling.
+1. **Wrong model.** `getSmallModel()` routed to a cheap side model. The prompts need Resonance — the main model with full personality and context.
+2. **No tool access.** A raw `generateText` call has no MCP tools, no conversation history, no memory. It's a worse version of what `somna_agent.py` already does locally.
 
-### Safety Model
+Session routing solves both: the prompt arrives in Resonance's actual session with full context and all MCP tools available. Effects flow through the tools, not through parsed JSON text.
 
-No WAL. No human gate. No rate limiter.
+### Kilo Code Changes
 
-The substrate self-repairs. Unreinforced writes decay. If a response is wrong, don't reinforce it — the brain forgets it. Forgetting IS the undo mechanism.
+Two changes in `packages/opencode/src/mcp/index.ts`:
 
-The only hard safety layer is the Conductor, which enforces parameter ceilings regardless of who wrote them. That's structural, not policy.
+1. **Capability advertisement** — Client constructor now includes `{ capabilities: { sampling: {} } }`
+2. **Request handler** — `setRequestHandler(CreateMessageRequestSchema, ...)` routes prompts to the active session via `SessionPrompt.prompt()`. All session-related imports are lazy-loaded to avoid layer initialization cycles.
 
 ### Config
 
@@ -382,15 +375,13 @@ When `false` (default): agent uses local LLM as always. When `true`: agent tries
 
 ### Release Feature
 
-This ships as a release feature. Any external agent that supports MCP can receive Somna's prompts:
+This ships as a release feature. Any external agent that supports MCP `sampling` can receive Somna's prompts:
 1. Start Somna (control panel + MCP server)
-2. Connect an MCP client (Kilo, Claude Desktop, custom agent)
-3. The MCP server starts the TCP bridge
+2. Connect an MCP client that supports `sampling` capability
+3. The MCP server starts the TCP bridge on :6790
 4. Set `external_channel: true` in agent_config.yaml
 5. Start `somna_agent.py`
-6. Prompts flow: agent → TCP → MCP → external agent → response → TCP → agent
-
-No code changes needed to use a different external agent. Any MCP client that handles `sampling/createMessage` works.
+6. Prompts flow: agent → TCP → MCP → client's active session → effects via tools → live_control.json
 
 ### Files
 
@@ -398,6 +389,7 @@ No code changes needed to use a different external agent. Any MCP client that ha
 |------|------|
 | `tools/mcp_somna_server.py` | MCP server + `_PromptBridge` + `SomanaMCPServer` subclass |
 | `tools/external_agent_client.py` | Sync TCP client used by `somna_agent.py` |
+| `packages/opencode/src/mcp/index.ts` (Kilo) | `sampling` capability + `CreateMessageRequestSchema` handler |
 
 ---
 

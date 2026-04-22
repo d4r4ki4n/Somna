@@ -768,7 +768,10 @@ class LLMClient:
 
     def chat(self, messages: list[dict], max_tokens: int | None = None) -> str:
         # Try external channel first (MCP bridge → Kilo/Resonance)
-        if self._ext_client and self._ext_client.connected:
+        if self._ext_client:
+            if not self._ext_client.connected:
+                self._ext_client.connect()
+            if self._ext_client.connected:
             system_content = ""
             user_parts = []
             for m in messages:
@@ -1517,9 +1520,8 @@ class SomnaAgent:
                 print("[Agent] External channel connected to MCP prompt bridge :6790")
             else:
                 print(
-                    "[Agent] External channel unavailable — falling back to local LLM"
+                    "[Agent] External channel not yet available — will retry each tick"
                 )
-                self._ext_client = None
 
         # Wire external channel into LLM wrapper so all chat() calls route through it
         self._llm._ext_client = self._ext_client

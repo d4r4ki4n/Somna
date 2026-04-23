@@ -286,18 +286,24 @@ def wait_for_response(
     start_wall = time.time()
     time.sleep(0.5)
     print(f"[wait_for_response] start_wall={start_wall:.3f} timeout={timeout_s}s")
-    while time.monotonic() < deadline:
-        state = read_state()
-        ts = state.get("response_timestamp")
-        if ts is not None:
-            print(
-                f"[wait_for_response] saw ts={ts:.3f} (delta={ts - start_wall:+.3f}s) {'ACCEPT' if ts >= start_wall else 'STALE'}"
-            )
-        if ts is not None and ts >= start_wall:
-            response = state.get("user_response")
-            patch_live({"user_response": None, "response_timestamp": None})
-            return response
-        time.sleep(poll_interval)
+    poll_count = 0
+    try:
+        while time.monotonic() < deadline:
+            poll_count += 1
+            state = read_state()
+            ts = state.get("response_timestamp")
+            if ts is not None:
+                print(
+                    f"[wait_for_response] poll#{poll_count} ts={ts:.3f} (delta={ts - start_wall:+.3f}s) {'ACCEPT' if ts >= start_wall else 'STALE'}"
+                )
+            if ts is not None and ts >= start_wall:
+                response = state.get("user_response")
+                patch_live({"user_response": None, "response_timestamp": None})
+                return response
+            time.sleep(poll_interval)
+        print(f"[wait_for_response] TIMED OUT after {poll_count} polls")
+    except Exception as e:
+        print(f"[wait_for_response] EXCEPTION: {e}")
     return None
 
 

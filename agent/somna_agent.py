@@ -1454,7 +1454,6 @@ class SomnaAgent:
         self._skip_streak = 0  # times user was offered a prompt and didn't respond
         self._silent_turns = 0  # times the LLM chose NOT to prompt (not user skips)
         self._fresh_start = True  # set False when history exists and gap < 30 min
-        )
         self._startup_gap_min = (
             999.0  # minutes since last exchange; set at session commit
         )

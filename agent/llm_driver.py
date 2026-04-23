@@ -28,7 +28,7 @@ from pathlib import Path
 from typing import Any
 from ipc import patch_live
 
-_LIVE = Path(__file__).parent / "live_control.json"
+_LIVE = Path(__file__).resolve().parent.parent / "live_control.json"
 
 # ── Parameter reference ───────────────────────────────────────────────────────
 

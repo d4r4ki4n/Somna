@@ -130,14 +130,16 @@ class StateServer:
             self._atomic_write(data)
 
     def _atomic_write(self, data: dict) -> None:
-        """Write directly to the live file. The lock in _apply_patch / _apply_write
-        already serialises all writes, so no temp-file rename is needed.
-        os.replace() is unreliable on Windows (file-in-use errors) and was the
-        root cause of writes silently failing and checkboxes appearing to skip."""
-        try:
-            self._live.write_text(json.dumps(data, indent=2), encoding="utf-8")
-        except Exception:
-            pass
+        """Write directly to the live file. Retries on transient lock failures."""
+        payload = json.dumps(data, indent=2)
+        for attempt in range(5):
+            try:
+                self._live.write_text(payload, encoding="utf-8")
+                return
+            except Exception:
+                import time
+
+                time.sleep(0.02 * (attempt + 1))
 
 
 # ── Standalone entry point (for debugging) ───────────────────────────────────

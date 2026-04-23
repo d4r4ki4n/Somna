@@ -14,7 +14,7 @@ from layers.eeg_visual_coupler import apply as _eeg_visual_apply
 from layers.shadows import ShadowsLayer
 from layers.spirals_opengl import SpiralsLayer
 from layers.veil import VeilLayer
-from layers.agent_prompt import AgentPromptLayer
+
 
 _LIVE = Path(__file__).parent / "live_control.json"
 
@@ -527,7 +527,6 @@ class VisualDisplay:
         # CenterTextLayer syncs phrase display via tts_playing in live_control.json.
         self.center = CenterTextLayer(cfg, tts_engine=None)
         self.shadows = ShadowsLayer(cfg)
-        self.agent_prompt = AgentPromptLayer()
 
     def _make_textures(self):
         self.bg_surf = pygame.Surface((self.W, self.H))
@@ -976,10 +975,6 @@ class VisualDisplay:
                 cs,
                 ((self.W - cs.get_width()) // 2, (self.H - cs.get_height()) // 2),
             )
-
-            # Layer 6 — agent prompt (renders above everything when active)
-            self.agent_prompt.update(dt, cfg)
-            self.agent_prompt.draw(self.overlay_surf)
 
             # Layer 3-6 overlay blit — with optional SR noise on text alpha
             self.overlay_tex.write(

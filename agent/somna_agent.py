@@ -1961,7 +1961,6 @@ class SomnaAgent:
                 phrase = r.retrieve_phrases[idx]
                 self._say(
                     phrase,
-                    overlay=True,
                     tts=True,
                     console=False,
                     style={
@@ -2004,7 +2003,6 @@ class SomnaAgent:
                 phrase = r.update_phrases[idx]
                 self._say(
                     phrase,
-                    overlay=True,
                     tts=True,
                     console=False,
                     style={
@@ -2696,7 +2694,6 @@ class SomnaAgent:
                 print(f"[Agent] Post-session summary: {msg!r}")
                 self._say(
                     msg,
-                    overlay=False,
                     console=True,
                     tts=True,
                     style={"voice_mode": "tts"},
@@ -3160,16 +3157,21 @@ class SomnaAgent:
         response_text = ext.get("response")
         if response_text:
             style = ext.get("prompt_style") or {}
-            voice_mode = style.get("voice_mode", "tts")
-            speak = voice_mode in ("tts", "subliminal", "both")
+            channels = style.get("channels")
+            if channels:
+                speak = "tts" in channels
+                log = "console" in channels
+            else:
+                voice_mode = style.get("voice_mode", "tts")
+                speak = voice_mode in ("tts", "subliminal", "both")
+                log = True
             needs_response = style.get("needs_response", False)
             timeout_s = style.get("timeout_s") or ext.get("timeout_s")
 
             user_reply = self._say(
                 response_text,
                 needs_response=needs_response,
-                overlay=True,
-                console=True,
+                console=log,
                 tts=speak,
                 style=style,
                 timeout_s=timeout_s,
@@ -3425,7 +3427,6 @@ class SomnaAgent:
             self._say(
                 msg,
                 needs_response=False,
-                overlay=True,
                 console=True,
                 tts=speak,
                 style=style,
@@ -3649,7 +3650,6 @@ class SomnaAgent:
                     response = self._say(
                         question,
                         needs_response=True,
-                        overlay=True,
                         console=True,
                         tts=speak,
                         style=style,
@@ -3686,7 +3686,6 @@ class SomnaAgent:
                     self._say(
                         question,
                         needs_response=False,
-                        overlay=True,
                         console=True,
                         tts=speak,
                         style=style,
@@ -3741,7 +3740,6 @@ class SomnaAgent:
             self._say(
                 msg,
                 needs_response=False,
-                overlay=True,
                 console=True,
                 tts=True,
                 style={"voice_mode": "tts", "needs_response": False},
@@ -3770,7 +3768,6 @@ class SomnaAgent:
                 response = self._say(
                     question,
                     needs_response=True,
-                    overlay=True,
                     console=True,
                     tts=speak,
                     style=style,
@@ -3789,7 +3786,6 @@ class SomnaAgent:
                 self._say(
                     question,
                     needs_response=False,
-                    overlay=True,
                     console=True,
                     tts=speak,
                     style=style,
@@ -3958,7 +3954,6 @@ class SomnaAgent:
                     if n > 0:
                         self._say(
                             f"Added {n} new phrases to the session.",
-                            overlay=False,
                             console=True,
                             tts=False,
                         )
@@ -4134,7 +4129,6 @@ class SomnaAgent:
         name_response = self._say(
             intro_msg,
             needs_response=True,
-            overlay=False,
             console=True,
             tts=True,
             style={"zoom_speed": "slow", "intensity": "soft", "voice_mode": "tts"},
@@ -4178,7 +4172,6 @@ class SomnaAgent:
         goals_response = self._say(
             goals_msg,
             needs_response=True,
-            overlay=False,
             console=True,
             tts=True,
             style={"zoom_speed": "slow", "intensity": "soft", "voice_mode": "tts"},
@@ -4231,7 +4224,6 @@ class SomnaAgent:
         prefs_response = self._say(
             prefs_msg,
             needs_response=True,
-            overlay=False,
             console=True,
             tts=True,
             style={"zoom_speed": "slow", "intensity": "soft", "voice_mode": "tts"},
@@ -4285,7 +4277,6 @@ class SomnaAgent:
         self._say(
             close_msg,
             needs_response=False,
-            overlay=False,
             console=True,
             tts=True,
             style={"zoom_speed": "slow", "intensity": "soft", "voice_mode": "tts"},
@@ -4347,7 +4338,6 @@ class SomnaAgent:
         response = self._say(
             question,
             needs_response=True,
-            overlay=False,
             console=True,
             tts=False,
             timeout_s=timeout,
@@ -4611,7 +4601,6 @@ class SomnaAgent:
             self._say(
                 sz_greeting,
                 needs_response=False,
-                overlay=True,
                 console=True,
                 tts=True,
                 style={"zoom_speed": "slow", "intensity": "soft", "voice_mode": "tts"},
@@ -4681,7 +4670,6 @@ class SomnaAgent:
             self._say(
                 question,
                 needs_response=False,
-                overlay=True,
                 console=True,
                 tts=True,
                 style={"zoom_speed": "slow", "intensity": "soft", "voice_mode": "tts"},
@@ -4699,7 +4687,6 @@ class SomnaAgent:
         response = self._say(
             question,
             needs_response=True,
-            overlay=True,
             console=True,
             tts=True,
             style={},
@@ -4815,7 +4802,6 @@ class SomnaAgent:
                 "Good. Just keep looking at the screen — soft focus, nothing special. "
                 "I'm watching. You're doing fine.",
                 needs_response=False,
-                overlay=True,
                 console=True,
                 tts=True,
                 style={"zoom_speed": "slow", "intensity": "soft", "voice_mode": "tts"},
@@ -4831,7 +4817,6 @@ class SomnaAgent:
                 "Now let your eyes close. Gently. Just let them fall shut and feel "
                 "what that's like. I'm still here.",
                 needs_response=False,
-                overlay=True,
                 console=True,
                 tts=True,
                 style={"zoom_speed": "slow", "intensity": "soft", "voice_mode": "tts"},
@@ -4847,7 +4832,6 @@ class SomnaAgent:
                 "Good. Now let's breathe together. In for four… and out for six. "
                 "Just follow my voice. In… and out. That's it.",
                 needs_response=False,
-                overlay=True,
                 console=True,
                 tts=True,
                 style={"zoom_speed": "slow", "intensity": "soft", "voice_mode": "tts"},
@@ -4942,7 +4926,6 @@ class SomnaAgent:
         self._say(
             "Good. I have what I need. Let's continue.",
             needs_response=False,
-            overlay=True,
             console=True,
             tts=True,
             style={"zoom_speed": "slow", "intensity": "soft", "voice_mode": "tts"},
@@ -5497,7 +5480,6 @@ class SomnaAgent:
             invite = self._generate_nudge_invitation(nudge.get("reason", ""))
             self._say(
                 invite,
-                overlay=True,
                 console=True,
                 tts=True,
                 needs_response=False,
@@ -5614,7 +5596,6 @@ class SomnaAgent:
                     self._say(
                         "I wanted to create a session but wasn't sure what to make. "
                         "Tell me what you need.",
-                        overlay=False,
                         console=True,
                         tts=False,
                     )
@@ -5786,20 +5767,15 @@ class SomnaAgent:
             if not is_active:
                 self._say(
                     "No session is running — start a session first.",
-                    overlay=False,
                     console=True,
                     tts=False,
                 )
                 return
             if state.get("fractionation_active"):
-                self._say(
-                    "Already fractionating.", overlay=False, console=True, tts=False
-                )
+                self._say("Already fractionating.", console=True, tts=False)
                 return
             self._write_live({"_timeline_cmd": "fractionate"})
-            self._say(
-                "Beginning fractionation…", overlay=False, console=True, tts=False
-            )
+            self._say("Beginning fractionation…", console=True, tts=False)
             return
 
         profile_ctx = self._profile_context()
@@ -5901,7 +5877,6 @@ class SomnaAgent:
             print(f"[Agent] Console LLM error: {e}")
             self._say(
                 "Sorry, something went wrong on my end.",
-                overlay=False,
                 console=True,
                 tts=True,
             )
@@ -5924,7 +5899,6 @@ class SomnaAgent:
             # Session is running: response goes to console AND the in-display overlay
             self._say(
                 response_text,
-                overlay=True,
                 tts=False,
                 console=True,
                 style={
@@ -5955,7 +5929,7 @@ class SomnaAgent:
                 self._maybe_request_fractionation()
         else:
             # No session: console-only (no overlay to show it on)
-            self._say(response_text, overlay=False, tts=False)
+            self._say(response_text, tts=False)
 
         # Apply any parameter adjustments
         adj = result.get("adjustments") or {}
@@ -5987,7 +5961,6 @@ class SomnaAgent:
                 )
                 self._say(
                     response_text,
-                    overlay=True,
                     console=False,
                     tts=False,
                     style={
@@ -6054,7 +6027,6 @@ class SomnaAgent:
             self._frac_emerge_idx += 1
             self._say(
                 prompt,
-                overlay=False,
                 console=False,
                 tts=True,
                 style={"voice_mode": "tts", "needs_response": False},
@@ -6065,7 +6037,6 @@ class SomnaAgent:
             prompt = self._REINDUCE_PROMPTS[self._frac_reinduce_idx]
             self._say(
                 prompt,
-                overlay=False,
                 console=False,
                 tts=True,
                 style={"voice_mode": "tts", "needs_response": False},
@@ -6082,7 +6053,6 @@ class SomnaAgent:
             self._frac_emerge_idx = 0
             self._say(
                 "Good…",
-                overlay=False,
                 console=False,
                 tts=True,
                 style={"voice_mode": "tts", "needs_response": False},
@@ -6097,13 +6067,12 @@ class SomnaAgent:
         text: str,
         *,
         needs_response: bool = False,
-        overlay: bool = True,
         console: bool = True,
         tts: bool = True,
         style: dict | None = None,
         timeout_s: float | None = 20.0,
     ) -> str | None:
-        """Send a message to the user through all requested channels.
+        """Send a message to the user through requested channels.
 
         Writes ``agent_message`` to live_control.json and optionally blocks
         for a user response.
@@ -6114,11 +6083,10 @@ class SomnaAgent:
         needs_response: If True, the control panel opens an input dialog and
                         this call blocks until the user submits or times out,
                         returning the response string (or None if skipped).
-        overlay       : Show text in the in-display zoom overlay.
         console       : Append to the control-panel console log.
         tts           : Speak the text via TTS.
-        style         : llm_prompt_style overrides (zoom_speed, intensity, etc.)
-        timeout_s     : Dialog countdown / overlay dwell (None = no timeout).
+        style         : prompt_style overrides (zoom_speed, intensity, etc.)
+        timeout_s     : Dialog countdown (None = no timeout).
         """
         resolved_style = dict(style or {})
         resolved_style["needs_response"] = needs_response
@@ -6128,8 +6096,6 @@ class SomnaAgent:
         via: list[str] = []
         if console:
             via.append("console")
-        if overlay:
-            via.append("overlay")
         if tts:
             via.append("tts")
 
@@ -6187,7 +6153,6 @@ class SomnaAgent:
         if self._session_build_active:
             self._say(
                 "Already building a session — hang on, it takes a few minutes.",
-                overlay=False,
                 tts=False,
             )
             return

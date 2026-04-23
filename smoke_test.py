@@ -604,7 +604,6 @@ def test_visual_layers():
         ("layers.spirals_opengl", "SpiralsLayer"),
         ("layers.shadows", "ShadowsLayer"),
         ("layers.phrase_pool", "PhrasePool"),
-        ("layers.agent_prompt", "AgentPromptLayer"),
         ("layers.font_manager", "FontManager"),
     ]:
         m, e = _import(mod)

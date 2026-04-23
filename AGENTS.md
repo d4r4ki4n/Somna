@@ -290,11 +290,11 @@ When the user moves a slider, the touched param is added to `timeline_locked_par
 
 - `needs_response` — bool; if True, control panel opens input dialog
 
-- `via` — list of active channels: `["console", "overlay", "tts"]` (any subset)
+- `via` — list of active channels: `["console", "tts"]` (any subset)
 
 - `style` — dict with keys: `colors`, `font`, `zoom_speed`, `intensity`, `voice_mode`, `needs_response`
 
-- `timeout_s` — float or null; dialog countdown / overlay dwell
+- `timeout_s` — float or null; dialog countdown
 
 - `user_response` — control panel writes answer here after user submits
 
@@ -965,7 +965,7 @@ The LLM may return multiple actions in a single response via the `"actions"` lis
 
 Session-time files (`veil_and_spirals.md`, `gateway_process.md`, `eeg_entrainment.md`, etc.) are **not** injected at idle time — they consume context window without adding planning value.
 
-**Ghost nudge**: when the scheduled cycle decides `action="nudge"` and `days_since_last >= nudge_after_days`, `_nudge_start()` launches the display at 5% opacity / volume 3 / noise 0, then `RampEngine` smoothly ramps all three toward 60% opacity / volume 45 / noise 20 over `nudge_fade_minutes` minutes (default 20). At ramp end an LLM-generated invitation is delivered via overlay + TTS. The nudge session is capped at `nudge_max_session_minutes` (default 45); on timeout `_agent_stop_display: True` is written; on response the display transitions to full opacity over 90 s and the agent resumes a normal session.
+**Ghost nudge**: when the scheduled cycle decides `action="nudge"` and `days_since_last >= nudge_after_days`, `_nudge_start()` launches the display at 5% opacity / volume 3 / noise 0, then `RampEngine` smoothly ramps all three toward 60% opacity / volume 45 / noise 20 over `nudge_fade_minutes` minutes (default 20). At ramp end an LLM-generated invitation is delivered via TTS. The nudge session is capped at `nudge_max_session_minutes` (default 45); on timeout `_agent_stop_display: True` is written; on response the display transitions to full opacity over 90 s and the agent resumes a normal session.
 
 **Display-active staleness detection**: `session_time` is compared tick-to-tick with a 60 s wall-clock guard. If `session_time` hasn't advanced and the timeline is not paused, the display is declared closed. This prevents stale `live_control.json` values from a crashed display from keeping the agent in active mode indefinitely.
 
@@ -1202,7 +1202,7 @@ Lives entirely in `agent/somna_agent.py`. All recon logic is agent-driven — no
 - `recon_trace_lockouts` — dict: `{trace: unlock_walltime}`; written on lockout entry
 - `recon_locked_phrases` — list of retrieve phrase strings; Conductor checks this to skip TMR delivery of old-trace phrases during the lockout window
 
-**Timing** — retrieve window ≤5 min, labilize 12 min, update ≤8 min, lockout 45 min. One sequence per session maximum. The process is invisible to the user (no dedicated overlay state, phrases delivered via standard TTS+overlay path).
+**Timing** — retrieve window ≤5 min, labilize 12 min, update ≤8 min, lockout 45 min. One sequence per session maximum. The process is invisible to the user (no dedicated overlay state, phrases delivered via standard TTS+console path).
 
 **DB** — events logged to `recon_events` table in `somna.db` via `content_tools.somna_db.log_recon_event()`. Query with `read_recon_events()`.
 

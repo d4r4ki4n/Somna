@@ -4737,23 +4737,9 @@ class SomnaAgent:
                 "Set next_prompt to this greeting+question. Under 40 words."
             )
 
-        profile_ctx = self._profile_context()
-        history_note = (
-            f"Exchange history (newest last):\n{self._history_summary()}"
-            if self._history
-            else "This is the first session — no prior history."
-        )
-
-        msg = (
-            f"[Startup event: {event_type}] gap={gap_min:.1f}min "
-            f"session={session!r}\n"
-            f"User profile:\n{profile_ctx}\n"
-            f"Current state: {self._state_summary(state)}\n"
-            f"{history_note}\n\n"
-        )
+        msg = f"[Startup event: {event_type}] gap={gap_min:.1f}min session={session!r}\n{instruction}"
         if console_ctx:
-            msg += f"Console context:\n{console_ctx}\n\n"
-        msg += instruction
+            msg += f"\nConsole context:\n{console_ctx}"
 
         messages_ext = [{"role": "user", "content": msg}]
         try:

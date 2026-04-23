@@ -12,10 +12,15 @@ from ipc import patch_live
 
 # ── Ganzfeld helpers ─────────────────────────────────────────────────────────
 
+
 def _cct_to_rgb(cct_k: float) -> tuple:
     """Tanner Helland (2012) CCT → sRGB. Accurate to ~5% for 1000–40 000 K."""
     t = max(1000.0, min(40000.0, float(cct_k))) / 100.0
-    r = 255 if t <= 66 else max(0, min(255, int(329.698727446 * ((t - 60) ** -0.1332047592))))
+    r = (
+        255
+        if t <= 66
+        else max(0, min(255, int(329.698727446 * ((t - 60) ** -0.1332047592))))
+    )
     if t <= 66:
         g = max(0, min(255, int(99.4708025861 * math.log(t) - 161.1195681661)))
     else:
@@ -44,21 +49,30 @@ def _make_vignette_surf(w: int, h: int) -> pygame.Surface:
     surf.fill((0, 0, 0, MAX_ALPHA))
     steps = 64
     for i in range(steps):
-        frac  = 1.0 - i / steps                       # 1.0 = full-screen, 0 = tiny centre
-        alpha = int(MAX_ALPHA * (frac ** 2.2))         # quadratic: max at edge, 0 at centre
-        ew    = max(1, int(w * frac))
-        eh    = max(1, int(h * frac))
-        x     = (w - ew) // 2
-        y     = (h - eh) // 2
+        frac = 1.0 - i / steps  # 1.0 = full-screen, 0 = tiny centre
+        alpha = int(MAX_ALPHA * (frac**2.2))  # quadratic: max at edge, 0 at centre
+        ew = max(1, int(w * frac))
+        eh = max(1, int(h * frac))
+        x = (w - ew) // 2
+        y = (h - eh) // 2
         pygame.draw.ellipse(surf, (0, 0, 0, alpha), (x, y, ew, eh))
     return surf
 
+
 # Supported format extensions — no mp4 (too heavy; use WebM/VP9 instead).
 # avif / apng rely on Pillow 9.1+ (avif) and 8.4+ (apng) — both are common.
-_STATIC_EXTS    = ("*.png", "*.jpg", "*.jpeg", "*.webp", "*.avif", "*.apng")
-_ANIMATED_EXTS  = ("*.gif", "*.webp", "*.webm", "*.apng")
-_ALL_EXTS       = ("*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp",
-                   "*.webm", "*.avif", "*.apng")
+_STATIC_EXTS = ("*.png", "*.jpg", "*.jpeg", "*.webp", "*.avif", "*.apng")
+_ANIMATED_EXTS = ("*.gif", "*.webp", "*.webm", "*.apng")
+_ALL_EXTS = (
+    "*.png",
+    "*.jpg",
+    "*.jpeg",
+    "*.gif",
+    "*.webp",
+    "*.webm",
+    "*.avif",
+    "*.apng",
+)
 
 # Hard cap on WebM frames to prevent multi-GB allocations from long videos.
 # 120 frames ≈ 4 s at 30 fps — plenty for a looping ambient clip.
@@ -67,9 +81,9 @@ _WEBM_MAX_FRAMES = 120
 # Maximum surfaces to hold in memory at once.  For large libraries only a
 # random sample is loaded; after _RESAMPLE_AFTER switches a fresh random batch
 # is drawn from the full directory so variety compounds over a long session.
-_MAX_IMAGES      = 200
-_RESAMPLE_AFTER  = 100   # switch calls before drawing a new random sample
-                         # e.g. 100 × 3 s slideshow_interval ≈ 5 min per batch
+_MAX_IMAGES = 200
+_RESAMPLE_AFTER = 100  # switch calls before drawing a new random sample
+# e.g. 100 × 3 s slideshow_interval ≈ 5 min per batch
 
 
 class BackgroundLayer:
@@ -91,31 +105,31 @@ class BackgroundLayer:
     """
 
     def __init__(self, config: dict):
-        self.config          = config
+        self.config = config
         self._session_folder = config.get("session_folder", "")
         # Full path list for the session — just Path objects, nothing loaded yet.
         # _scan_image_paths fills this; _resample() draws a new random batch from it.
-        self._all_paths    = []
-        self._switch_count = 0   # increments on every switch(); triggers resample
+        self._all_paths = []
+        self._switch_count = 0  # increments on every switch(); triggers resample
 
-        # Tag metadata loaded from images/tags.json.
+        # Tag metadata loaded from somna.db (via content_tools.somna_db).
         # _tag_map: filename -> {"tags": [...], "quality": "keep"|"cull", ...}
         # _culled: set of filenames flagged quality="cull" (excluded from pool)
         self._tag_map: dict = {}
-        self._culled:  set  = set()
+        self._culled: set = set()
 
         # path -> {'frames': [surfs], 'durations': [ms], 'index': int,
         #          'last_frame': int, 'is_animated': bool}
-        self.image_cache  = {}
-        self._cache_lock  = threading.Lock()
-        self._loading     = set()   # paths currently being loaded
+        self.image_cache = {}
+        self._cache_lock = threading.Lock()
+        self._loading = set()  # paths currently being loaded
 
         self.current_path = None
         self.current_surf = None
-        self.image_width  = 0
+        self.image_width = 0
         self.image_height = 0
-        self.last_switch  = pygame.time.get_ticks()
-        self.interval     = int(config.get("slideshow_interval", 0.007) * 1000)
+        self.last_switch = pygame.time.get_ticks()
+        self.interval = int(config.get("slideshow_interval", 0.007) * 1000)
 
         self._load_tag_metadata(self._session_folder)
         self.images = self._scan_image_paths(self._session_folder)
@@ -142,16 +156,17 @@ class BackgroundLayer:
     def _load_tag_metadata(self, session: str) -> None:
         """Load image metadata from somna.db into _tag_map and _culled."""
         self._tag_map = {}
-        self._culled  = set()
+        self._culled = set()
         try:
             raw = _db_load_tags(session)
             self._tag_map = raw
-            self._culled  = {
-                fname for fname, meta in raw.items()
-                if meta.get("quality") == "cull"
+            self._culled = {
+                fname for fname, meta in raw.items() if meta.get("quality") == "cull"
             }
-            print(f"[Background] Loaded tags for {len(raw)} images "
-                  f"({len(self._culled)} culled) from '{session}'")
+            print(
+                f"[Background] Loaded tags for {len(raw)} images "
+                f"({len(self._culled)} culled) from '{session}'"
+            )
         except Exception as e:
             print(f"[Background] Could not load image metadata: {e}")
 
@@ -186,7 +201,7 @@ class BackgroundLayer:
         override = self.config.get("image_filter_override")
         if override and isinstance(override, dict):
             expires = override.get("expires_at", 0)
-            tag     = (override.get("tag") or "").strip()
+            tag = (override.get("tag") or "").strip()
             if tag and expires > _time.time():
                 override_pool = [p for p in unculled if _tag_matches(p, tag)]
                 if len(override_pool) >= 3:
@@ -223,9 +238,12 @@ class BackgroundLayer:
         if image_tags and isinstance(image_tags, list):
             try:
                 from content_tools.somna_db import get_images_by_tags
+
                 rows = get_images_by_tags(image_tags)
                 for row in rows:
-                    candidate = root / "sessions" / row["session"] / "images" / row["filename"]
+                    candidate = (
+                        root / "sessions" / row["session"] / "images" / row["filename"]
+                    )
                     if candidate.exists():
                         cross_paths.append(candidate)
             except Exception as e:
@@ -241,8 +259,10 @@ class BackgroundLayer:
         # Use cross-session results if they're rich enough; otherwise local
         if len(cross_paths) >= 5:
             all_imgs = cross_paths
-            print(f"[Background] cross-session pool: {len(all_imgs)} images "
-                  f"(tags={image_tags})")
+            print(
+                f"[Background] cross-session pool: {len(all_imgs)} images "
+                f"(tags={image_tags})"
+            )
         else:
             all_imgs = local_paths
 
@@ -250,14 +270,19 @@ class BackgroundLayer:
         total = len(all_imgs)
 
         # Apply tag/cull filtering for the initial batch
-        label     = self.config.get("timeline_label", "")
+        label = self.config.get("timeline_label", "")
         candidate = self._filtered_paths(all_imgs, label)
-        batch     = (candidate if len(candidate) <= _MAX_IMAGES
-                     else random.sample(candidate, _MAX_IMAGES))
+        batch = (
+            candidate
+            if len(candidate) <= _MAX_IMAGES
+            else random.sample(candidate, _MAX_IMAGES)
+        )
         self._switch_count = 0
-        print(f"[Background] session={session!r}: {total} files found, "
-              f"loading first batch of {len(batch)} "
-              f"(filtered by label={label!r} → {len(candidate)} candidates)")
+        print(
+            f"[Background] session={session!r}: {total} files found, "
+            f"loading first batch of {len(batch)} "
+            f"(filtered by label={label!r} → {len(candidate)} candidates)"
+        )
         return list(batch)
 
     def _resample(self) -> None:
@@ -270,7 +295,7 @@ class BackgroundLayer:
         Tag filtering is re-evaluated here so label changes mid-session
         gradually shift the image pool toward the new phase.
         """
-        label     = self.config.get("timeline_label", "")
+        label = self.config.get("timeline_label", "")
         candidate = self._filtered_paths(self._all_paths, label)
 
         if len(candidate) <= _MAX_IMAGES:
@@ -282,8 +307,8 @@ class BackgroundLayer:
         else:
             new_batch = random.sample(candidate, _MAX_IMAGES)
 
-        new_set  = set(new_batch)
-        old_set  = set(self.images)
+        new_set = set(new_batch)
+        old_set = set(self.images)
         to_evict = old_set - new_set
 
         with self._cache_lock:
@@ -291,14 +316,16 @@ class BackgroundLayer:
                 self.image_cache.pop(p, None)
                 self._loading.discard(p)
 
-        self.images        = new_batch
+        self.images = new_batch
         self._switch_count = 0
-        kept    = len(old_set & new_set)
+        kept = len(old_set & new_set)
         evicted = len(to_evict)
-        new_in  = len(new_set - old_set)
-        print(f"[Background] Resample: kept {kept}, evicted {evicted}, "
-              f"queued {new_in} new images "
-              f"(label={label!r} → {len(candidate)} candidates)")
+        new_in = len(new_set - old_set)
+        print(
+            f"[Background] Resample: kept {kept}, evicted {evicted}, "
+            f"queued {new_in} new images "
+            f"(label={label!r} → {len(candidate)} candidates)"
+        )
         for p in new_set - old_set:
             self._load_image_async(p)
 
@@ -323,7 +350,7 @@ class BackgroundLayer:
         with self._cache_lock:
             self.image_cache.clear()
             self._loading.clear()
-        self.images       = self._scan_image_paths(new_session)
+        self.images = self._scan_image_paths(new_session)
         self.current_path = None
         self.current_surf = None
         self._pending_switch = True
@@ -338,24 +365,28 @@ class BackgroundLayer:
         """Decode a single image/animation into Pygame surfaces.
         Runs on a background thread — never call directly from the render loop.
         """
-        ext         = str(path).lower()
-        frames      = []
-        durations   = []
-        is_animated = ext.endswith(('.gif', '.webp', '.webm', '.apng'))
+        ext = str(path).lower()
+        frames = []
+        durations = []
+        is_animated = ext.endswith((".gif", ".webp", ".webm", ".apng"))
 
         try:
-            if ext.endswith('.webm'):
+            if ext.endswith(".webm"):
                 try:
                     import cv2
                 except ImportError:
-                    print(f"[Background] OpenCV not installed — skipping WebM '{path.name}'. "
-                          f"Install with: pip install opencv-python-headless")
+                    print(
+                        f"[Background] OpenCV not installed — skipping WebM '{path.name}'. "
+                        f"Install with: pip install opencv-python-headless"
+                    )
                     return
                 cap = cv2.VideoCapture(str(path))
                 if not cap.isOpened():
-                    print(f"[Background] OpenCV could not open '{path.name}' — "
-                          f"codec may be unsupported. Convert with: "
-                          f"ffmpeg -i \"{path.name}\" -c:v libvpx-vp9 out.webm")
+                    print(
+                        f"[Background] OpenCV could not open '{path.name}' — "
+                        f"codec may be unsupported. Convert with: "
+                        f'ffmpeg -i "{path.name}" -c:v libvpx-vp9 out.webm'
+                    )
                     cap.release()
                 else:
                     fps = cap.get(cv2.CAP_PROP_FPS) or 30
@@ -366,47 +397,55 @@ class BackgroundLayer:
                         if not ret:
                             break
                         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                        surf  = pygame.surfarray.make_surface(frame.swapaxes(0, 1))
+                        surf = pygame.surfarray.make_surface(frame.swapaxes(0, 1))
                         frames.append(surf)
                         durations.append(frame_duration)
                         count += 1
                     cap.release()
                     if count == 0:
-                        print(f"[Background] '{path.name}' opened but yielded 0 frames.")
+                        print(
+                            f"[Background] '{path.name}' opened but yielded 0 frames."
+                        )
                     elif count == _WEBM_MAX_FRAMES:
-                        print(f"[Background] WebM capped at {_WEBM_MAX_FRAMES} frames: {path.name}")
+                        print(
+                            f"[Background] WebM capped at {_WEBM_MAX_FRAMES} frames: {path.name}"
+                        )
                     else:
                         print(f"[Background] WebM loaded: {path.name} ({count} frames)")
             else:
                 pil_im = Image.open(path)
                 for frame in ImageSequence.Iterator(pil_im):
-                    if frame.mode != 'RGB':
-                        frame = frame.convert('RGB')
-                    surf = pygame.image.fromstring(frame.tobytes(), frame.size, frame.mode)
+                    if frame.mode != "RGB":
+                        frame = frame.convert("RGB")
+                    surf = pygame.image.fromstring(
+                        frame.tobytes(), frame.size, frame.mode
+                    )
                     frames.append(surf)
-                    durations.append(pil_im.info.get('duration', 100))
-                label = path.suffix.upper().lstrip('.')
-                print(f"[Background] {label} loaded: {path.name} ({len(frames)} frames)")
+                    durations.append(pil_im.info.get("duration", 100))
+                label = path.suffix.upper().lstrip(".")
+                print(
+                    f"[Background] {label} loaded: {path.name} ({len(frames)} frames)"
+                )
         except Exception as e:
             print(f"[Background] Load failed for {path.name}: {e}")
             is_animated = False
 
         if not frames:
             try:
-                surf   = pygame.image.load(str(path))
+                surf = pygame.image.load(str(path))
                 frames = [surf]
             except Exception as e:
                 print(f"[Background] Static fallback also failed for {path.name}: {e}")
                 return
-            durations  = [999999]
+            durations = [999999]
             is_animated = False
 
         entry = {
-            'frames':      frames,
-            'durations':   durations,
-            'index':       0,
-            'last_frame':  pygame.time.get_ticks(),
-            'is_animated': is_animated and len(frames) > 1,
+            "frames": frames,
+            "durations": durations,
+            "index": 0,
+            "last_frame": pygame.time.get_ticks(),
+            "is_animated": is_animated and len(frames) > 1,
         }
         with self._cache_lock:
             self.image_cache[path] = entry
@@ -423,7 +462,9 @@ class BackgroundLayer:
             with self._cache_lock:
                 self._loading.discard(path)
 
-        threading.Thread(target=worker, daemon=True, name=f"ImgLoad-{path.name}").start()
+        threading.Thread(
+            target=worker, daemon=True, name=f"ImgLoad-{path.name}"
+        ).start()
 
     # ------------------------------------------------------------------
     def _cover_scale(self, orig: pygame.Surface) -> pygame.Surface:
@@ -432,14 +473,14 @@ class BackgroundLayer:
         Uses min(scale_h, scale_w) so the entire image is always visible.
         Any remaining margins are filled by sharp tiled copies in draw().
         """
-        disp   = pygame.display.get_surface()
+        disp = pygame.display.get_surface()
         sw, sh = disp.get_width(), disp.get_height()
         ow, oh = orig.get_width(), orig.get_height()
         if ow == 0 or oh == 0:
             return orig
-        scale  = min(sh / oh, sw / ow)
-        new_w  = max(1, int(ow * scale))
-        new_h  = max(1, int(oh * scale))
+        scale = min(sh / oh, sw / ow)
+        new_w = max(1, int(ow * scale))
+        new_h = max(1, int(oh * scale))
         return pygame.transform.smoothscale(orig, (new_w, new_h))
 
     # ------------------------------------------------------------------
@@ -471,8 +512,8 @@ class BackgroundLayer:
         image are left untouched, so the session carries on without a flicker.
         """
         new_paths = self._scan_image_paths(self._session_folder)
-        existing  = set(self._all_paths)
-        added     = [p for p in new_paths if p not in existing]
+        existing = set(self._all_paths)
+        added = [p for p in new_paths if p not in existing]
         if added:
             self._all_paths.extend(added)
             self.images.extend(added)
@@ -498,13 +539,14 @@ class BackgroundLayer:
         # When the agent changes image_filter_override, immediately resample so
         # the pool shifts to the conditioned tag without waiting for a switch cycle.
         override = current_config.get("image_filter_override") or {}
-        cur_tag  = override.get("tag", "") if isinstance(override, dict) else ""
+        cur_tag = override.get("tag", "") if isinstance(override, dict) else ""
         if cur_tag != getattr(self, "_last_override_tag", ""):
             self._last_override_tag = cur_tag
             self._resample()
 
         # Check every 10 s whether new images have been dropped into the folder
         import time as _time
+
         now = _time.monotonic()
         if now - self._img_dir_check_at >= 10.0:
             self._img_dir_check_at = now
@@ -525,14 +567,16 @@ class BackgroundLayer:
         with self._cache_lock:
             cache = self.image_cache[self.current_path]
 
-        orig = cache['frames'][cache['index']]
+        orig = cache["frames"][cache["index"]]
         scaled = self._cover_scale(orig)
-        self.current_surf  = scaled
-        self.image_width   = scaled.get_width()
-        self.image_height  = scaled.get_height()
+        self.current_surf = scaled
+        self.image_width = scaled.get_width()
+        self.image_height = scaled.get_height()
 
-        print(f"[Background] Switched -> {self.current_path.name} "
-              f"({'animated' if cache['is_animated'] else 'static'})")
+        print(
+            f"[Background] Switched -> {self.current_path.name} "
+            f"({'animated' if cache['is_animated'] else 'static'})"
+        )
 
         # Periodically rotate the sample to keep variety over long sessions
         self._switch_count += 1
@@ -549,13 +593,13 @@ class BackgroundLayer:
           bg_ganzfeld_cct_k     float        colour temperature in Kelvin (default 3200)
           bg_ganzfeld_breath_hz float        looming oscillation Hz (default 0.05)
         """
-        gain    = max(0.0, min(1.0, float(cfg.get("bg_ganzfeld_gain",      0.55) or 0.55)))
-        cct_k   = float(cfg.get("bg_ganzfeld_cct_k",   3200.0) or 3200.0)
-        breath  = max(0.005, float(cfg.get("bg_ganzfeld_breath_hz", 0.05) or 0.05))
+        gain = max(0.0, min(1.0, float(cfg.get("bg_ganzfeld_gain", 0.55) or 0.55)))
+        cct_k = float(cfg.get("bg_ganzfeld_cct_k", 3200.0) or 3200.0)
+        breath = max(0.005, float(cfg.get("bg_ganzfeld_breath_hz", 0.05) or 0.05))
 
         # Looming: amplitude is 8 % of gain so the field breathes subtly
-        phase      = _time.monotonic() * breath * 2.0 * math.pi
-        loom_gain  = max(0.0, min(1.0, gain + 0.08 * gain * math.sin(phase)))
+        phase = _time.monotonic() * breath * 2.0 * math.pi
+        loom_gain = max(0.0, min(1.0, gain + 0.08 * gain * math.sin(phase)))
 
         base_r, base_g, base_b = _cct_to_rgb(cct_k)
         r = max(0, min(255, int(base_r * loom_gain)))
@@ -600,21 +644,21 @@ class BackgroundLayer:
         # Advance animation frame for the currently displayed image
         with self._cache_lock:
             cache = self.image_cache.get(self.current_path)
-        if cache and cache['is_animated']:
+        if cache and cache["is_animated"]:
             now = pygame.time.get_ticks()
-            if now - cache['last_frame'] > cache['durations'][cache['index']]:
-                cache['index']      = (cache['index'] + 1) % len(cache['frames'])
-                cache['last_frame'] = now
-                orig = cache['frames'][cache['index']]
+            if now - cache["last_frame"] > cache["durations"][cache["index"]]:
+                cache["index"] = (cache["index"] + 1) % len(cache["frames"])
+                cache["last_frame"] = now
+                orig = cache["frames"][cache["index"]]
                 scaled = self._cover_scale(orig)
                 self.current_surf = scaled
-                self.image_width  = scaled.get_width()
+                self.image_width = scaled.get_width()
                 self.image_height = scaled.get_height()
 
         # Centre the scaled image; negative offset = crop, positive = margin
         w, h = surface.get_size()
-        x    = (w - self.image_width)  // 2
-        y    = (h - self.image_height) // 2
+        x = (w - self.image_width) // 2
+        y = (h - self.image_height) // 2
 
         surface.blit(self.current_surf, (x, y))
 

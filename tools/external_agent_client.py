@@ -48,6 +48,7 @@ class ExternalAgentClient:
 
     def connect(self) -> bool:
         """Try to connect to the MCP prompt bridge. Returns True on success."""
+        self.disconnect()
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(CONNECT_TIMEOUT)
@@ -59,8 +60,18 @@ class ExternalAgentClient:
                 target=self._recv_loop, name="ExtAgentClient", daemon=True
             )
             self._reader_thread.start()
+            print("[ExtChannel] Connected to MCP prompt bridge :6790")
             return True
-        except (ConnectionRefusedError, OSError, TimeoutError):
+        except ConnectionRefusedError:
+            print("[ExtChannel] Connection refused on :6790 — bridge not ready")
+            self._connected = False
+            return False
+        except OSError as e:
+            print(f"[ExtChannel] Connection error: {e}")
+            self._connected = False
+            return False
+        except TimeoutError:
+            print("[ExtChannel] Connection timed out on :6790")
             self._connected = False
             return False
 

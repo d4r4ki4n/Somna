@@ -447,7 +447,10 @@ class SpiralsLayer:
 
         self.program["u_time"].value = self.time
         self.program["u_tightness"].value = float(cfg.get("spiral_tightness", 6.0))
-        self.program["u_opacity"].value = float(cfg.get("spiral_opacity", 88)) / 100.0
+        raw = float(cfg.get("spiral_opacity", 88)) / 100.0
+        self.program["u_opacity"].value = (
+            raw * raw
+        )  # gamma 2.0 — expands usable visible range
         self.program["u_count"].value = min(8, max(1, int(cfg.get("spiral_count", 4))))
         self.program["u_chaos"].value = float(cfg.get("spiral_chaos", 0.12))
         self.program["u_style"].value = style_int

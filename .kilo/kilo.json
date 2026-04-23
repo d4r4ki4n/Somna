@@ -22,14 +22,6 @@
         "GITHUB_PERSONAL_ACCESS_TOKEN": "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"
       }
     },
-    "memory": {
-      "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "@modelcontextprotocol/server-memory"
-      ]
-    },
     "sequentialthinking": {
       "type": "local",
       "command": [
@@ -80,6 +72,30 @@
       "environment": {
         "SOMNA_ROOT": "F:\\Somna"
       }
+    },
+    "fetch": {
+      "type": "local",
+      "command": [
+        "python",
+        "-m",
+        "mcp_server_fetch"
+      ],
+      "environment": {
+        "PYTHONIOENCODING": "utf-8"
+      }
+    },
+    "codebase-memory-mcp": {
+      "type": "local",
+      "command": [
+        "C:/Users/Idiot/AppData/Local/Programs/codebase-memory-mcp/codebase-memory-mcp.exe"
+      ]
+    },
+    "slm": {
+      "type": "local",
+      "command": [
+        "slm",
+        "mcp"
+      ]
     }
   },
   "agent": {

@@ -28,13 +28,13 @@ from typing import Optional
 from ipc.state_server import PORT
 
 _RECONNECT_DELAY_S = 0.25
-_QUEUE_MAXSIZE     = 4096    # stop accumulating if the server is gone too long
+_QUEUE_MAXSIZE = 4096  # stop accumulating if the server is gone too long
 
 
 class StateClient:
     def __init__(self, host: str = "127.0.0.1", port: int = PORT) -> None:
-        self._host  = host
-        self._port  = port
+        self._host = host
+        self._port = port
         self._q: queue.Queue[bytes] = queue.Queue(maxsize=_QUEUE_MAXSIZE)
         self._sock: Optional[socket.socket] = None
         self._thread = threading.Thread(
@@ -68,7 +68,7 @@ class StateClient:
 
     def _drain_loop(self) -> None:
         while True:
-            msg = self._q.get()          # block until there is something to send
+            msg = self._q.get()  # block until there is something to send
             while True:
                 try:
                     if self._sock is None:

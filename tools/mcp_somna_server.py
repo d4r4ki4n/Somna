@@ -43,20 +43,20 @@ _lc_data: dict[str, Any] = {}
 
 
 def _read_live(keys: list[str] | None = None) -> dict[str, Any]:
-    """Read live_control.json with mtime-based cache invalidation."""
-    global _lc_mtime, _lc_size, _lc_data
+    """Read live_control.json — always fresh, no caching.
+
+    The mtime cache was causing stale reads when the file was being
+    written rapidly by multiple processes. For an MCP tool called at
+    human interaction speed, fresh reads are negligible cost.
+    """
     try:
-        st = LIVE_CONTROL_PATH.stat()
-        if st.st_mtime != _lc_mtime or st.st_size != _lc_size:
-            _lc_data = json.loads(LIVE_CONTROL_PATH.read_text(encoding="utf-8"))
-            _lc_mtime = st.st_mtime
-            _lc_size = st.st_size
+        data = json.loads(LIVE_CONTROL_PATH.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError):
         return {}
 
     if keys:
-        return {k: _lc_data.get(k) for k in keys if k in _lc_data}
-    return dict(_lc_data)
+        return {k: data.get(k) for k in keys}
+    return data
 
 
 # ── DB helpers (read-only) ───────────────────────────────────────────────────
@@ -231,6 +231,29 @@ ALLOWED_PATCH_KEYS: dict[str, dict[str, Any]] = {
     "trail_decay": {"type": "float", "min": 0.0, "max": 0.80},
     "feedback_mode": {"type": "enum", "values": VALID_FEEDBACK_MODES},
     "feedback_strength": {"type": "float", "min": 0.0, "max": 1.0},
+    "veil_mode": {"type": "enum", "values": VALID_VEIL_MODES},
+    "sr_noise_level": {"type": "float", "min": 0.0, "max": 2.0},
+    "pp_ca_strength": {"type": "float", "min": 0.0, "max": 1.0},
+    "pp_bloom_intensity": {"type": "float", "min": 0.0, "max": 1.0},
+    "pp_film_grain": {"type": "float", "min": 0.0, "max": 0.15},
+    "haptic_intensity": {"type": "float", "min": 0.0, "max": 100.0},
+    "haptic_frequency_hz": {"type": "float", "min": 1.0, "max": 200.0},
+    "haptic_pattern": {
+        "type": "enum",
+        "values": frozenset(
+            {
+                "continuous",
+                "pulse",
+                "wave",
+                "ramp",
+                "fractionation",
+                "tmr_cue",
+                "conditioned_anchor",
+            }
+        ),
+    },
+    "haptic_pattern_speed": {"type": "float", "min": 0.1, "max": 10.0},
+    "tavns_intensity": {"type": "float", "min": 0.0, "max": 100.0},
     "agent_conductor_hints": {"type": "dict"},
     "agent_message": {"type": "dict"},
 }
@@ -283,24 +306,30 @@ def _validate_patch_value(key: str, value: Any) -> Optional[str]:
 
 def _write_live_direct(updates: dict[str, Any]) -> dict[str, Any]:
     """Reload-first merge write to live_control.json. Fallback when StateServer unavailable."""
-    try:
-        data = json.loads(LIVE_CONTROL_PATH.read_text(encoding="utf-8"))
-    except (FileNotFoundError, json.JSONDecodeError):
-        data = {}
-    for k, v in updates.items():
-        if v is None:
-            data.pop(k, None)
-        else:
-            data[k] = v
-    tmp = LIVE_CONTROL_PATH.with_suffix(".tmp")
-    tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
-    tmp.replace(LIVE_CONTROL_PATH)
-    global _lc_data, _lc_mtime, _lc_size
-    _lc_data = data
-    st = LIVE_CONTROL_PATH.stat()
-    _lc_mtime = st.st_mtime
-    _lc_size = st.st_size
-    return {"written": list(updates.keys())}
+    for attempt in range(10):
+        try:
+            data = json.loads(LIVE_CONTROL_PATH.read_text(encoding="utf-8"))
+        except (FileNotFoundError, json.JSONDecodeError):
+            data = {}
+        for k, v in updates.items():
+            if v is None:
+                data.pop(k, None)
+            else:
+                data[k] = v
+        try:
+            with open(LIVE_CONTROL_PATH, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            global _lc_data, _lc_mtime, _lc_size
+            _lc_data = data
+            st = LIVE_CONTROL_PATH.stat()
+            _lc_mtime = st.st_mtime
+            _lc_size = st.st_size
+            return {"written": list(updates.keys())}
+        except PermissionError:
+            import time
+
+            time.sleep(0.15)
+    return {"error": "Permission denied after 10 retries"}
 
 
 def _try_patch_via_server(updates: dict[str, Any]) -> bool:

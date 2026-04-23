@@ -1454,6 +1454,7 @@ class SomnaAgent:
         self._skip_streak = 0  # times user was offered a prompt and didn't respond
         self._silent_turns = 0  # times the LLM chose NOT to prompt (not user skips)
         self._fresh_start = True  # set False when history exists and gap < 30 min
+        )
         self._startup_gap_min = (
             999.0  # minutes since last exchange; set at session commit
         )
@@ -3158,7 +3159,10 @@ class SomnaAgent:
         # re-read it on the next prompt cycle.
         self._write_live({"last_user_reply": None})
 
-        response_text = ext.get("response")
+        response_text = ext.get("response") or ext.get("next_prompt")
+        _needs_response = False
+        _user_reply = None
+
         if response_text:
             style = ext.get("prompt_style") or {}
             channels = style.get("channels")
@@ -3169,24 +3173,22 @@ class SomnaAgent:
                 voice_mode = style.get("voice_mode", "tts")
                 speak = voice_mode in ("tts", "subliminal", "both")
                 log = True
-            needs_response = style.get("needs_response", False)
+            _needs_response = style.get("needs_response", False)
             timeout_s = style.get("timeout_s") or ext.get("timeout_s")
 
-            user_reply = self._say(
+            _user_reply = self._say(
                 response_text,
-                needs_response=needs_response,
+                needs_response=_needs_response,
                 console=log,
                 tts=speak,
                 style=style,
                 timeout_s=timeout_s,
             )
-            if needs_response:
-                # Push the user's reply back to Resonance via the external channel
-                # so she doesn't have to poll live_control.json.
-                if user_reply and self._ext_enabled:
+            if _needs_response:
+                if _user_reply and self._ext_enabled:
                     reply_msg = (
                         f"[User reply] session={state.get('session_folder', 'live')!r}\n"
-                        f"User said: {user_reply}"
+                        f"User said: {_user_reply}"
                     )
                     try:
                         self._llm.chat(
@@ -3195,9 +3197,9 @@ class SomnaAgent:
                         )
                     except Exception as e:
                         print(f"[Agent] Reply forward failed: {e}")
-                self._write_live({"last_user_reply": user_reply})
+                self._write_live({"last_user_reply": _user_reply})
                 print(
-                    f"[Agent] Ext response applied (reply={user_reply!r}): {response_text[:80]}"
+                    f"[Agent] Ext response applied (reply={_user_reply!r}): {response_text[:80]}"
                 )
             else:
                 dwell = max(3.0, len(response_text) * 0.070)
@@ -3220,7 +3222,7 @@ class SomnaAgent:
         self._record(
             state,
             prompt=response_text,
-            response=user_reply if needs_response else None,
+            response=_user_reply if _needs_response else None,
             adj=adj,
             affirmation=aff,
         )
@@ -6567,7 +6569,7 @@ class SomnaAgent:
                         gap_min = (time.time() - self._history[-1].timestamp) / 60.0
                     self._fresh_start = (not self._history) or (gap_min > 30.0)
                     self._startup_gap_min = gap_min
-                    if not first_tick:
+                    if not first_tick and not self._external_only:
                         first_tick = True
                     print(
                         f"[Agent] Session: {session!r}  "

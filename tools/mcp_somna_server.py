@@ -316,8 +316,7 @@ def _try_patch_via_server(updates: dict[str, Any]) -> bool:
         s.sendall((msg + "\n").encode("utf-8"))
         s.close()
         return True
-    except Exception as e:
-        print(f"[MCP] StateServer patch failed: {e}")
+    except Exception:
         return False
 
 

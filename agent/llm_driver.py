@@ -278,14 +278,20 @@ def wait_for_response(
     """Block until the user submits a response or ``timeout_s`` elapses.
 
     Returns the response string, or ``None`` if the user skipped / timed out.
+    Ignores stale response_timestamp values that predate this call.
     """
     import time
 
     deadline = time.monotonic() + timeout_s
+    start_wall = time.time()
+    time.sleep(0.5)
     while time.monotonic() < deadline:
-        result = read_response(clear=True)
-        if result is not _UNANSWERED:
-            return result
+        state = read_state()
+        ts = state.get("response_timestamp")
+        if ts is not None and ts >= start_wall:
+            response = state.get("user_response")
+            patch_live({"user_response": None, "response_timestamp": None})
+            return response
         time.sleep(poll_interval)
     return None
 

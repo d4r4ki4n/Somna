@@ -113,6 +113,9 @@ class ExternalAgentClient:
 
         try:
             data = json.dumps(msg, ensure_ascii=False) + "\n"
+            print(
+                f"[ExtChannel] Sending prompt tick={tick_id[:8]}... {len(data)} bytes"
+            )
             self._sock.sendall(data.encode("utf-8"))
         except (ConnectionResetError, BrokenPipeError, OSError):
             self.disconnect()

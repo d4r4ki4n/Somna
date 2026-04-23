@@ -772,18 +772,25 @@ class LLMClient:
             if not self._ext_client.connected:
                 self._ext_client.connect()
             if self._ext_client.connected:
-                system_content = ""
+                # Build a compact tick notification instead of sending the
+                # full 102KB prompt.  Resonance reads context via MCP tools
+                # (somna_read_live, somna_read_conductor, etc.) and writes
+                # effects back via somna_write_agent_response.
                 user_parts = []
                 for m in messages:
-                    if m.get("role") == "system":
-                        system_content = m.get("content", "")
-                    elif m.get("role") == "user":
+                    if m.get("role") == "user":
                         user_parts.append(m.get("content", ""))
                 user_msg = "\n".join(user_parts)
+                # Truncate to 4 KB to avoid MCP transport hang on large payloads
+                if len(user_msg) > 4096:
+                    user_msg = (
+                        user_msg[:4096]
+                        + "\n[...truncated — use MCP read tools for full context]"
+                    )
                 try:
                     ext_result = self._ext_client.request(
                         prompt=user_msg,
-                        system_prompt=system_content,
+                        system_prompt="",
                         max_tokens=max_tokens or 4096,
                     )
                     if ext_result and ext_result.get("type") == "response":
@@ -1455,6 +1462,7 @@ class SomnaAgent:
         self._pending_restore: dict | None = None  # deferred affirmation pool restore
         self._image_library_summary: str = ""  # cached from _check_content_needs
         self._last_affirmation: str = ""  # last phrase injected this session
+        self._last_ext_response_ts: float = 0  # dedup for agent_ext_response
         # Reconsolidation sequence state — reset per session in _startup_sequence
         self._recon: "_ReconState | None" = None
         self._recon_last_tick: float = 0.0
@@ -1530,6 +1538,8 @@ class SomnaAgent:
         self._llm._ext_client = self._ext_client
         if self._ext_enabled:
             self._llm._external_only = True
+
+        self._external_only = bool(self._ext_enabled)
 
         # ── Conductor FSM (Bible Ch.6 §6.5) — instantiated per session in _startup_sequence
         self._conductor: "Conductor | None" = None
@@ -3140,6 +3150,52 @@ class SomnaAgent:
 
         return safe
 
+    def _apply_ext_response(self, ext: dict, state: dict) -> None:
+        """Apply a response written by the external agent (Resonance) via MCP.
+
+        The ext dict matches ``somna_write_agent_response`` fields:
+        response, adjustments, transitions, action, next_prompt,
+        prompt_style, next_affirmation, reasoning, session, session_intent.
+        """
+        response_text = ext.get("response")
+        if response_text:
+            style = ext.get("prompt_style") or {}
+            voice_mode = style.get("voice_mode", "tts")
+            speak = voice_mode in ("tts", "subliminal", "both")
+            needs_response = style.get("needs_response", False)
+            timeout_s = style.get("timeout_s") or ext.get("timeout_s")
+
+            self._say(
+                response_text,
+                needs_response=needs_response,
+                overlay=True,
+                console=True,
+                tts=speak,
+                style=style,
+                timeout_s=timeout_s,
+            )
+            if not needs_response:
+                dwell = max(3.0, len(response_text) * 0.070)
+                time.sleep(dwell)
+                self._clear_message()
+            print(f"[Agent] Ext response applied: {response_text[:80]}")
+
+        # Apply adjustments + transitions the same way _apply does
+        result_for_apply = {
+            "adjustments": ext.get("adjustments"),
+            "transitions": ext.get("transitions"),
+            "action": ext.get("action"),
+        }
+        adj = self._apply(result_for_apply)
+
+        aff = ext.get("next_affirmation")
+        if aff:
+            self._inject_affirmation(aff, state)
+
+        self._record(
+            state, prompt=None, response=response_text, adj=adj, affirmation=aff
+        )
+
     # ── Affirmation injection ─────────────────────────────────────────────────
 
     def _inject_affirmation(self, phrase: str, state: dict) -> None:
@@ -3375,6 +3431,15 @@ class SomnaAgent:
         self._record(state, prompt=msg, response=None, adj=adj, affirmation=aff)
 
     def _interactive_tick(self, state: dict) -> None:
+        # ── Consume external agent response (Resonance via MCP) ────────────────
+        ext = state.get("agent_ext_response")
+        if ext and isinstance(ext, dict):
+            ts = ext.get("_ts", 0)
+            if ts != getattr(self, "_last_ext_response_ts", 0):
+                self._last_ext_response_ts = ts
+                self._apply_ext_response(ext, state)
+                self._write_live({"agent_ext_response": None})
+
         # ── Session Zero calibration-in-disguise ──────────────────────────────────
         if self._sz_active:
             self._session_zero_tick(state)
@@ -3541,94 +3606,102 @@ class SomnaAgent:
             self._deep_window_tick(state, cycle_n)
             return
 
-        # First call LLM with no response yet to decide if it wants to ask
-        probe = self._call_llm(state, prompt=None, response=None)
-        question = probe.get("next_prompt")
-        # Normalize: treat the literal string "None" / "none" / empty as absent.
-        if isinstance(question, str):
-            question = question.strip()
-            if not question or question.lower() == "none":
-                question = None
-        style = probe.get("prompt_style") or {}
+        # When external-only mode is active, the external agent (Resonance)
+        # drives the experiential layer via MCP tools at its own cadence.
+        # Skip the local LLM probe — it returns empty anyway (delivered ack).
+        # Resonance writes agent_ext_response which is consumed at the top of
+        # this method.  The startup sequence still sends one initial tick.
+        if not self._external_only:
+            # First call LLM with no response yet to decide if it wants to ask
+            probe = self._call_llm(state, prompt=None, response=None)
+            question = probe.get("next_prompt")
+            # Normalize: treat the literal string "None" / "none" / empty as absent.
+            if isinstance(question, str):
+                question = question.strip()
+                if not question or question.lower() == "none":
+                    question = None
+            style = probe.get("prompt_style") or {}
 
-        if question:
-            # Always apply adjustments + transitions from the probe
-            if probe.get("adjustments"):
-                self._apply(probe)
+            if question:
+                # Always apply adjustments + transitions from the probe
+                if probe.get("adjustments"):
+                    self._apply(probe)
 
-            needs_response = style.get("needs_response", True)
+                needs_response = style.get("needs_response", True)
 
-            voice_mode = style.get("voice_mode", "tts")
-            speak = voice_mode in ("tts", "subliminal", "both")
+                voice_mode = style.get("voice_mode", "tts")
+                speak = voice_mode in ("tts", "subliminal", "both")
 
-            if needs_response:
-                # ── Standard interactive path ────────────────────────────────
-                print(f"[Agent] Prompting user: {question!r}")
-                self._prompt_sent_at = time.time()
-                self._silent_turns = 0
-                # _say with needs_response=True writes agent_message,
-                # clears user_response, and blocks until the user replies / times out.
-                response = self._say(
-                    question,
-                    needs_response=True,
-                    overlay=True,
-                    console=True,
-                    tts=speak,
-                    style=style,
-                    timeout_s=float(self._cfg.prompt_timeout),
-                )
-                print(f"[Agent] Response: {response!r}")
-                self._clear_message()
-
-                if response is None:
-                    self._skip_streak += 1
-                else:
-                    self._skip_streak = 0
-
-                result = self._call_llm(state, prompt=question, response=response)
-                adj = self._apply(result)
-                self._record(state, prompt=question, response=response, adj=adj)
-
-            else:
-                # ── Display-only path (no dialog, no response waited on) ─────
-                print(f"[Agent] Display message (no response): {question!r}")
-
-                if speak:
-                    # Tie the overlay lifetime to estimated TTS playback (~70 ms/char)
-                    tts_dur = max(3.0, len(question) * 0.070)
-                    timeout_s = tts_dur
-                    dwell = tts_dur + 1.0
-                else:
-                    # Visual-only: user needs time to read
-                    timeout_s = None
-                    dwell = self._DISPLAY_DWELL.get(
-                        style.get("zoom_speed", "normal"), 15.0
+                if needs_response:
+                    # ── Standard interactive path ────────────────────────────────
+                    print(f"[Agent] Prompting user: {question!r}")
+                    self._prompt_sent_at = time.time()
+                    self._silent_turns = 0
+                    # _say with needs_response=True writes agent_message,
+                    # clears user_response, and blocks until the user replies / times out.
+                    response = self._say(
+                        question,
+                        needs_response=True,
+                        overlay=True,
+                        console=True,
+                        tts=speak,
+                        style=style,
+                        timeout_s=float(self._cfg.prompt_timeout),
                     )
+                    print(f"[Agent] Response: {response!r}")
+                    self._clear_message()
 
-                self._say(
-                    question,
-                    needs_response=False,
-                    overlay=True,
-                    console=True,
-                    tts=speak,
-                    style=style,
-                    timeout_s=timeout_s,
-                )
+                    if response is None:
+                        self._skip_streak += 1
+                    else:
+                        self._skip_streak = 0
+
+                    result = self._call_llm(state, prompt=question, response=response)
+                    adj = self._apply(result)
+                    self._record(state, prompt=question, response=response, adj=adj)
+
+                else:
+                    # ── Display-only path (no dialog, no response waited on) ─────
+                    print(f"[Agent] Display message (no response): {question!r}")
+
+                    if speak:
+                        # Tie the overlay lifetime to estimated TTS playback (~70 ms/char)
+                        tts_dur = max(3.0, len(question) * 0.070)
+                        timeout_s = tts_dur
+                        dwell = tts_dur + 1.0
+                    else:
+                        # Visual-only: user needs time to read
+                        timeout_s = None
+                        dwell = self._DISPLAY_DWELL.get(
+                            style.get("zoom_speed", "normal"), 15.0
+                        )
+
+                    self._say(
+                        question,
+                        needs_response=False,
+                        overlay=True,
+                        console=True,
+                        tts=speak,
+                        style=style,
+                        timeout_s=timeout_s,
+                    )
+                    self._silent_turns += 1
+
+                    time.sleep(dwell)
+                    self._clear_message()
+
+                    adj = self._apply(probe) if not probe.get("adjustments") else {}
+                    self._record(state, prompt=question, response=None, adj=adj)
+            else:
+                # LLM decided not to ask — adapt silently; track for context clarity
                 self._silent_turns += 1
-
-                time.sleep(dwell)
-                self._clear_message()
-
-                adj = self._apply(probe) if not probe.get("adjustments") else {}
-                self._record(state, prompt=question, response=None, adj=adj)
-        else:
-            # LLM decided not to ask — adapt silently; track for context clarity
-            self._silent_turns += 1
-            adj = self._apply(probe)
-            aff = probe.get("next_affirmation")
-            if aff:
-                self._inject_affirmation(aff, state)
-            self._record(state, prompt=None, response=None, adj=adj, affirmation=aff)
+                adj = self._apply(probe)
+                aff = probe.get("next_affirmation")
+                if aff:
+                    self._inject_affirmation(aff, state)
+                self._record(
+                    state, prompt=None, response=None, adj=adj, affirmation=aff
+                )
 
     def _genus_engagement_tick(self, state: dict) -> None:
         """
@@ -4503,6 +4576,26 @@ class SomnaAgent:
         # ── SILENT tier: gap < 2 min and has prior history ───────────────────
         if gap_min < 2.0 and self._history:
             print("[Agent] Silent resume — no greeting (gap < 2 min).")
+            if self._external_only:
+                # Send a compact resume notification so Resonance knows we're back
+                resume_msg = (
+                    f"Session resumed (gap {gap_min:.1f} min). "
+                    f"Session folder: {session!r}.\n"
+                    f"User profile:\n{self._profile_context()}\n"
+                    f"Current state: {self._state_summary(state)}\n"
+                    f"Exchange history (newest last):\n{self._history_summary()}\n\n"
+                    "This is a silent resume — the user was just here. "
+                    "Deliver a brief settling-in line (under 15 words). "
+                    "Set next_prompt to it."
+                )
+                messages_ext = [{"role": "user", "content": resume_msg}]
+                try:
+                    self._llm.chat(messages_ext, max_tokens=512)
+                except Exception as e:
+                    print(f"[Agent] Silent resume ext send failed: {e}")
+                print(
+                    "[Agent] Silent resume: external-only — greeting deferred to Resonance"
+                )
             return
 
         # ── SESSION ZERO: first session, calibration-in-disguise ────────────────
@@ -4567,6 +4660,24 @@ class SomnaAgent:
                 "How are you feeling right now, and what would you like to get out of this session?"
             )
 
+        # ── External-only mode: send startup prompt, return immediately ──────
+        # The external agent (Resonance) will write agent_ext_response which
+        # gets consumed on the first _interactive_tick.  No local _say() here.
+        print(
+            f"[Agent] Startup check: external_only={self._external_only} ext_enabled={self._ext_enabled}"
+        )
+        if self._external_only:
+            messages_ext = [
+                {"role": "user", "content": startup_msg},
+            ]
+            try:
+                self._llm.chat(messages_ext, max_tokens=512)
+            except Exception as e:
+                print(f"[Agent] Startup ext send failed: {e}")
+            print(f"[Agent] Startup: external-only — greeting deferred to Resonance")
+            self._record(state, prompt=None, response=None, adj={})
+            return
+
         messages = [
             {"role": "system", "content": _build_system_prompt(self._cfg)},
             {"role": "user", "content": startup_msg},
@@ -4586,12 +4697,17 @@ class SomnaAgent:
             question = None
 
         if not question:
-            question = fallback
-            print(f"[Agent] Startup prompt (fallback): {question!r}")
-        else:
-            print(f"[Agent] Startup prompt: {question!r}")
+            # No LLM response — console only, nothing else.
+            print(f"[Agent] Startup (fallback): {fallback!r}")
+            self._skip_streak += 1
+            self._record(state, prompt=fallback, response=None, adj={})
+            return
+
+        # LLM produced a greeting
+        print(f"[Agent] Startup prompt: {question!r}")
 
         if console_ctx:
+            # Session launched from console — don't ask a question
             self._say(
                 question,
                 needs_response=False,
@@ -4604,21 +4720,24 @@ class SomnaAgent:
             self._prompt_sent_at = time.time()
             time.sleep(8.0)
             self._clear_message()
-            response = None
-            print(f"[Agent] Startup (console-launched): {question!r} — no reply needed")
-        else:
-            self._prompt_sent_at = time.time()
-            response = self._say(
-                question,
-                needs_response=True,
-                overlay=True,
-                console=True,
-                tts=True,
-                style={},
-                timeout_s=float(self._cfg.prompt_timeout),
-            )
-            print(f"[Agent] Startup response: {response!r}")
-            self._clear_message()
+            self._skip_streak = 0
+            self._record(state, prompt=question, response=None, adj={})
+            print(f"[Agent] Startup (console-launched): {question!r}")
+            return
+
+        # Normal interactive startup — ask the question and wait
+        self._prompt_sent_at = time.time()
+        response = self._say(
+            question,
+            needs_response=True,
+            overlay=True,
+            console=True,
+            tts=True,
+            style={},
+            timeout_s=float(self._cfg.prompt_timeout),
+        )
+        print(f"[Agent] Startup response: {response!r}")
+        self._clear_message()
 
         if response:
             self._skip_streak = 0

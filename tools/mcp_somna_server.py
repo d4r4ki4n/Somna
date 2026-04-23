@@ -316,7 +316,8 @@ def _try_patch_via_server(updates: dict[str, Any]) -> bool:
         s.sendall((msg + "\n").encode("utf-8"))
         s.close()
         return True
-    except Exception:
+    except Exception as e:
+        print(f"[MCP] StateServer patch failed: {e}")
         return False
 
 
@@ -894,9 +895,16 @@ class _PromptBridge:
         system_prompt = msg.get("system_prompt", "")
         user_text = msg.get("prompt", "")
         max_tokens = msg.get("max_tokens", 4096)
+        print(
+            f"[Bridge] Forwarding prompt tick_id={tick_id[:8]}... len={len(user_text)}"
+        )
 
         if not self._session:
-            await self._send_response(tick_id, {"error": "no MCP session"})
+            print("[Bridge] ERROR: no MCP session")
+            await self._send_response(
+                tick_id,
+                {"tick_id": tick_id, "type": "error", "error": "no MCP session"},
+            )
             return
 
         messages = [
@@ -913,11 +921,13 @@ class _PromptBridge:
             from mcp.types import SamplingMessage
 
             sampling_messages = [SamplingMessage(**m) for m in messages]
+            print(f"[Bridge] Calling create_message()...")
             result = await self._session.create_message(
                 messages=sampling_messages,
                 max_tokens=max_tokens,
                 system_prompt=system_prompt or None,
             )
+            print(f"[Bridge] create_message() returned")
             content = result.content
             if hasattr(content, "text"):
                 text = content.text

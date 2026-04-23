@@ -3154,6 +3154,10 @@ class SomnaAgent:
         response, adjustments, transitions, action, next_prompt,
         prompt_style, next_affirmation, reasoning, session, session_intent.
         """
+        # Clear stale reply from previous interaction so Resonance doesn't
+        # re-read it on the next prompt cycle.
+        self._write_live({"last_user_reply": None})
+
         response_text = ext.get("response")
         if response_text:
             style = ext.get("prompt_style") or {}
@@ -3177,8 +3181,20 @@ class SomnaAgent:
                 timeout_s=timeout_s,
             )
             if needs_response:
-                # Forward the user's reply so the external agent (Resonance)
-                # can read it via somna_read_live on the next prompt cycle.
+                # Push the user's reply back to Resonance via the external channel
+                # so she doesn't have to poll live_control.json.
+                if user_reply and self._ext_enabled:
+                    reply_msg = (
+                        f"[User reply] session={state.get('session_folder', 'live')!r}\n"
+                        f"User said: {user_reply}"
+                    )
+                    try:
+                        self._llm.chat(
+                            [{"role": "user", "content": reply_msg}],
+                            max_tokens=512,
+                        )
+                    except Exception as e:
+                        print(f"[Agent] Reply forward failed: {e}")
                 self._write_live({"last_user_reply": user_reply})
                 print(
                     f"[Agent] Ext response applied (reply={user_reply!r}): {response_text[:80]}"
@@ -3202,7 +3218,11 @@ class SomnaAgent:
             self._inject_affirmation(aff, state)
 
         self._record(
-            state, prompt=None, response=response_text, adj=adj, affirmation=aff
+            state,
+            prompt=response_text,
+            response=user_reply if needs_response else None,
+            adj=adj,
+            affirmation=aff,
         )
 
     # ── Affirmation injection ─────────────────────────────────────────────────
@@ -6074,6 +6094,17 @@ class SomnaAgent:
         style         : prompt_style overrides (zoom_speed, intensity, etc.)
         timeout_s     : Dialog countdown (None = no timeout).
         """
+        # Guard: don't overwrite a pending external prompt with maintenance speech
+        if not needs_response and hasattr(self, "_last_ext_response_ts"):
+            live = self._read_live()
+            cur = live.get("agent_message") or {}
+            if (
+                isinstance(cur, dict)
+                and cur.get("needs_response")
+                and cur.get("ts", 0) >= self._last_ext_response_ts
+                and not live.get("user_response")
+            ):
+                return None
         resolved_style = dict(style or {})
         resolved_style["needs_response"] = needs_response
         if not tts:
@@ -6552,6 +6583,10 @@ class SomnaAgent:
             live_mode = state.get("agent_mode", self._cfg.mode)
             if first_tick and live_mode == "interactive":
                 session_time = float(state.get("session_time", 0) or 0)
+                # No session loaded — skip startup delay entirely.
+                if session == "default" and session_time == 0:
+                    first_tick = False
+                    continue
                 g = self._startup_gap_min
                 if g < 2.0 and self._history:
                     effective_delay = 5.0  # SILENT — beats were just running

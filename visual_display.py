@@ -927,14 +927,17 @@ class VisualDisplay:
                     )
                 self.trail_vao.render(moderngl.TRIANGLE_STRIP)
 
-                # Step 3: blit accumulated trail to main framebuffer
+                # Step 3: blit accumulated trail to main framebuffer.
+                # Pre-multiplied alpha composite — spiral FBO already has alpha baked into RGB.
                 if self._vr_fbo is not None:
                     self._vr_fbo.use()
                 else:
                     self.ctx.screen.use()
                 self._trail_hist_texs[self._trail_index].use(0)
                 self.blit_prog["tex"].value = 0
+                self.ctx.blend_func = (moderngl.ONE, moderngl.ONE_MINUS_SRC_ALPHA)
                 self.blit_vao.render(moderngl.TRIANGLE_STRIP)
+                self.ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
 
                 self._trail_index = 1 - self._trail_index
                 self._spiral_error_count = 0

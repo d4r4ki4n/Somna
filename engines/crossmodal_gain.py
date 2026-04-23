@@ -249,6 +249,12 @@ class CrossmodalGainEngine:
             for ch, key in active_channels.items()
         }
 
+        # Guard: if all core audio/visual raw values are zero, this is a bad
+        # read (write race) — return empty patch to avoid zero feedback loop.
+        _CORE = {"beats", "noise", "pattern", "text_veil"}
+        if all(raw.get(ch, 0) == 0 for ch in _CORE):
+            return {}
+
         # ── Step 2: Depth scalar from spectral slope ──────────────────────────
         slope = live_state.get("eeg_spectral_slope") or self.profile["baseline_slope"]
         baseline = self.profile["baseline_slope"]
@@ -305,8 +311,13 @@ class CrossmodalGainEngine:
                 )
 
         # ── Step 6: Delta patch ───────────────────────────────────────────────
+        # Never write zero for core audio/visual keys — that's a write race
+        # artifact, not a real state.  Skip those entries entirely.
+        _PROTECTED = {"volume", "spiral_opacity", "veil_opacity", "noise_volume"}
         patch: dict = {}
         for k, v in gains.items():
+            if k in _PROTECTED and v <= 0:
+                continue
             if abs(v - self.last_gains.get(k, -999)) > 0.5:
                 patch[k] = v
         self.last_gains = gains
@@ -336,11 +347,18 @@ class CrossmodalGainEngine:
         raw slider values back to the timeline runner.
         """
         locked = set(live_state.get("timeline_locked_params") or [])
-        patch = {
-            key: float(live_state.get(key, 0) or 0)
-            for key in self.GAIN_KEYS.values()
-            if key not in locked
-        }
+        patch: dict = {}
+        for key in self.GAIN_KEYS.values():
+            if key in locked:
+                continue
+            val = live_state.get(key)
+            if val is None:
+                continue
+            patch[key] = float(val)
+        # If all core keys ended up zero/missing, this is a bad read — bail out
+        _PROTECTED = {"volume", "spiral_opacity", "veil_opacity", "noise_volume"}
+        if all(patch.get(k, 0) <= 0 for k in _PROTECTED):
+            return {"crossmodal_gain_state": {"enabled": False, "ts": time.time()}}
         patch["crossmodal_gain_state"] = {"enabled": False, "ts": time.time()}
         self.last_gains = {}
         return patch

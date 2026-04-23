@@ -144,19 +144,81 @@ class ControlPanelImGui:
 
     def _save_geometry(self) -> None:
         try:
-            # Read position via hello_imgui / SDL so the coordinate space is
-            # identical to what from_coords uses on the next launch.
-            # GetWindowRect includes the invisible DWM shadow (~8px each side)
-            # which causes per-cycle Y drift when round-tripped through SDL.
             geom = hello_imgui.get_runner_params().app_window_params.window_geometry
-            x, y = int(geom.position[0]), int(geom.position[1])
             w, h = int(geom.size[0]), int(geom.size[1])
+            # hello_imgui's geom.position doesn't update when the user drags
+            # the window. Use Win32 FindWindow + GetWindowRect for actual position.
+            try:
+                import ctypes
+                import ctypes.wintypes
+
+                hwnd = ctypes.windll.user32.FindWindowW(None, "Somna")
+                if hwnd:
+                    # Use GetWindowPlacement — returns WORK area coords,
+                    # unaffected by DWM shadow padding (unlike GetWindowRect).
+                    class WINDOWPLACEMENT(ctypes.Structure):
+                        _fields_ = [
+                            ("length", ctypes.wintypes.UINT),
+                            ("flags", ctypes.wintypes.UINT),
+                            ("showCmd", ctypes.wintypes.UINT),
+                            ("ptMinPosition", ctypes.wintypes.POINT),
+                            ("ptMaxPosition", ctypes.wintypes.POINT),
+                            ("rcNormalPosition", ctypes.wintypes.RECT),
+                        ]
+
+                    wp = WINDOWPLACEMENT()
+                    wp.length = ctypes.sizeof(WINDOWPLACEMENT)
+                    ctypes.windll.user32.GetWindowPlacement(hwnd, ctypes.byref(wp))
+                    r = wp.rcNormalPosition
+                    x, y = int(r.left), int(r.top)
+                else:
+                    x, y = int(geom.position[0]), int(geom.position[1])
+            except Exception:
+                x, y = int(geom.position[0]), int(geom.position[1])
             pm = self._panel_manager
+            # Determine which monitor the window is on
+            monitor_idx = 0
+            try:
+                import ctypes
+                import ctypes.wintypes
+
+                hwnd = ctypes.windll.user32.FindWindowW(None, "Somna")
+                if hwnd:
+                    hmon = ctypes.windll.user32.MonitorFromWindow(
+                        hwnd,
+                        2,  # MONITOR_DEFAULTTONEAREST
+                    )
+                    mi = ctypes.wintypes.MONITORINFO()
+                    mi.cbSize = ctypes.sizeof(mi)
+                    ctypes.windll.user32.GetMonitorInfoW(hmon, ctypes.byref(mi))
+                    # Enumerate monitors to find index
+                    monitors = []
+                    ctypes.windll.user32.EnumDisplayMonitors(
+                        None,
+                        None,
+                        ctypes.WINFUNCTYPE(
+                            ctypes.wintypes.BOOL,
+                            ctypes.wintypes.HMONITOR,
+                            ctypes.wintypes.HDC,
+                            ctypes.POINTER(ctypes.wintypes.RECT),
+                            ctypes.wintypes.LPARAM,
+                        )(
+                            lambda hmon, hdc, lprc, lparam: (
+                                monitors.append(hmon) or True
+                            )
+                        ),
+                        0,
+                    )
+                    if hmon in monitors:
+                        monitor_idx = monitors.index(hmon)
+            except Exception:
+                pass
             payload = {
                 "x": x,
                 "y": y,
                 "w": w,
                 "h": h,
+                "monitor_idx": monitor_idx,
                 "sidebar_width": float(pm._sidebar_width),
                 "console_bar_height": float(pm._console_bar_height),
                 "debug_mode": pm._debug_mode,
@@ -974,6 +1036,9 @@ class ControlPanelImGui:
         runner.app_window_params.window_geometry.position = [x, y]
         runner.app_window_params.window_geometry.position_mode = (
             hello_imgui.WindowPositionMode.from_coords
+        )
+        runner.app_window_params.window_geometry.monitor_idx = int(
+            g0.get("monitor_idx", 0)
         )
         runner.app_window_params.resizable = True
 

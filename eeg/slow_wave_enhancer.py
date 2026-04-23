@@ -17,7 +17,7 @@ This class decides when to deliver a burst based on:
 
 The actual burst is delivered by audio_engine.py reading sleep_burst_cmd_ts
 from live_control.json.  This class writes that key via the returned patch dict
-which the Conductor applies via _patch_live().
+which the Conductor applies via patch_live().
 """
 
 from __future__ import annotations
@@ -31,20 +31,20 @@ class SlowWaveEnhancer:
     """Phase-locked pink noise burst scheduler for SWS enhancement.
 
     Called every Conductor tick during SLEEP_MAINTAIN.
-    Reads delta phase gate and sleep stage; returns a _patch_live patch.
+    Reads delta phase gate and sleep stage; returns a patch_live() patch.
     """
 
-    MIN_ISI_S   = 0.80    # minimum inter-stimulus interval (seconds)
-    MAX_RATE_HZ = 1.20    # hard cap; equivalent to MIN_ISI
+    MIN_ISI_S = 0.80  # minimum inter-stimulus interval (seconds)
+    MAX_RATE_HZ = 1.20  # hard cap; equivalent to MIN_ISI
 
     def __init__(self):
-        self._last_stimulus_ts: float  = 0.0
-        self._burst_count: int         = 0
+        self._last_stimulus_ts: float = 0.0
+        self._burst_count: int = 0
         self._enhancement_active: bool = False
         self._swa_baseline: Optional[float] = None
         self._swa_history: list[float] = []
-        self._wake_since: Optional[float] = None   # timestamp when WAKE streak started
-        self._disabled: bool           = False     # latched True after WAKE > 10 s
+        self._wake_since: Optional[float] = None  # timestamp when WAKE streak started
+        self._disabled: bool = False  # latched True after WAKE > 10 s
 
     # ── Tick ──────────────────────────────────────────────────────────────────
 
@@ -66,7 +66,7 @@ class SlowWaveEnhancer:
             sleep_stage : from SleepStageClassifier ("N2", "N3", "WAKE", ...)
             timestamp   : time.time() float; defaults to time.time()
 
-        Returns patch dict for _patch_live().  Keys written:
+        Returns patch dict for patch_live().  Keys written:
             sleep_burst_cmd_ts : float  — monotonic timestamp; audio_engine fires
                                           if this is newer than its last burst
             sleep_sw_burst_count: int   — cumulative burst count for session metrics
@@ -113,10 +113,10 @@ class SlowWaveEnhancer:
         burst_vol = int(live_state.get("sleep_sw_enhance_volume", 12) * vol_mul)
 
         return {
-            "sleep_burst_cmd_ts":    now,
-            "sleep_burst_volume":    burst_vol,
+            "sleep_burst_cmd_ts": now,
+            "sleep_burst_volume": burst_vol,
             "sleep_burst_duration_ms": 50,
-            "sleep_sw_burst_count":  self._burst_count,
+            "sleep_sw_burst_count": self._burst_count,
         }
 
     # ── SWA tracking ─────────────────────────────────────────────────────────
@@ -132,7 +132,7 @@ class SlowWaveEnhancer:
             return 0.0
 
         self._swa_history.append(delta_power)
-        if len(self._swa_history) > 150:   # 5 min at 2 s ticks
+        if len(self._swa_history) > 150:  # 5 min at 2 s ticks
             self._swa_history.pop(0)
 
         mean_current = float(np.mean(self._swa_history))

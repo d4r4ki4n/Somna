@@ -108,10 +108,10 @@ class PPGEngine:
     def tick(self, board: object, board_id: int) -> dict:
         """
         Read one 1-second chunk from ANCILLARY_PRESET, extend rolling buffer,
-        and return a metrics dict for _patch_live().
+        and return a metrics dict for the caller to pass to patch_live().
 
         Returns {} on hard failure (BrainFlow error) so the caller can skip
-        _patch_live safely.  Returns a dict with ppg_available=False on soft
+        the patch_live() call safely.  Returns a dict with ppg_available=False on soft
         failures (insufficient data) so consumers know the signal is present
         but not yet warm.
         """

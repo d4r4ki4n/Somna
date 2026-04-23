@@ -8,7 +8,7 @@ pushed by EEGEngine's main acquisition loop via update_batch().
 On each tick (nominally every 1 s) detect() runs a Welch PSD on the last
 WINDOW_S seconds of samples, applies 1/f correction, computes SNR at the
 driving frequencies and their intermodulation products, and writes the
-results to live_control.json via _patch_live.
+results to live_control.json via patch_live().
 
 Keys written to live_control.json:
     ssvep_left_snr          — SNR at left-eye tag frequency
@@ -25,6 +25,7 @@ A positive SNR indicates the frequency is reliably present.
 A binocular_index > 0.5 and positive IM products together suggest strong
 binocular integration — a useful proxy for trance depth (Bible Ch.8 §8.2 §7).
 """
+
 from __future__ import annotations
 
 import json
@@ -38,11 +39,13 @@ from ipc import patch_live
 _LIVE_PATH = Path(__file__).parent.parent / "live_control.json"
 
 # ── Detection parameters ──────────────────────────────────────────────────────
-WINDOW_S           = 4.0     # rolling window for Welch PSD (seconds)
-NPERSEG_RATIO      = 0.5     # nperseg = WINDOW_S * FS * ratio
-SNR_NEIGHBOR_BINS  = 2       # bins each side of target for noise estimate
-MIN_SNR_DB         = 1.0     # SNR threshold for "signal present"
-DOMINANCE_HISTORY  = 30      # samples for switch-rate estimation
+WINDOW_S = 4.0  # rolling window for Welch PSD (seconds)
+NPERSEG_RATIO = 0.5  # nperseg = WINDOW_S * FS * ratio
+SNR_NEIGHBOR_BINS = 2  # bins each side of target for noise estimate
+MIN_SNR_DB = 1.0  # SNR threshold for "signal present"
+DOMINANCE_HISTORY = 30  # samples for switch-rate estimation
+
+
 def _snr_at_freq(freqs: np.ndarray, psd_db: np.ndarray, target_hz: float) -> float:
     """Compute SNR (dB) at target_hz using neighbor bins as noise estimate.
 
@@ -54,10 +57,12 @@ def _snr_at_freq(freqs: np.ndarray, psd_db: np.ndarray, target_hz: float) -> flo
     lo = max(0, idx - SNR_NEIGHBOR_BINS - 1)
     hi = min(len(psd_db) - 1, idx + SNR_NEIGHBOR_BINS + 1)
     neighbor_mask = np.ones(len(psd_db), dtype=bool)
-    neighbor_mask[max(0, idx - 1): idx + 2] = False
+    neighbor_mask[max(0, idx - 1) : idx + 2] = False
     neighbors = psd_db[lo:hi][neighbor_mask[lo:hi]]
 
-    noise_floor = float(neighbors.mean()) if len(neighbors) > 0 else float(np.median(psd_db))
+    noise_floor = (
+        float(neighbors.mean()) if len(neighbors) > 0 else float(np.median(psd_db))
+    )
     return float(bin_power - noise_floor)
 
 
@@ -70,7 +75,7 @@ def _correct_1f(freqs: np.ndarray, psd: np.ndarray) -> np.ndarray:
     if not np.any(valid):
         return 10.0 * np.log10(np.maximum(psd, 1e-30))
 
-    log_f   = np.log10(freqs[valid])
+    log_f = np.log10(freqs[valid])
     log_psd = np.log10(psd[valid])
 
     try:
@@ -78,9 +83,9 @@ def _correct_1f(freqs: np.ndarray, psd: np.ndarray) -> np.ndarray:
     except Exception:
         return 10.0 * np.log10(np.maximum(psd, 1e-30))
 
-    trend    = slope * np.log10(np.maximum(freqs, 1e-9)) + intercept
-    psd_db   = 10.0 * np.log10(np.maximum(psd, 1e-30))
-    return psd_db - trend   # 1/f-corrected dB
+    trend = slope * np.log10(np.maximum(freqs, 1e-9)) + intercept
+    psd_db = 10.0 * np.log10(np.maximum(psd, 1e-30))
+    return psd_db - trend  # 1/f-corrected dB
 
 
 class SSVEPDetector:
@@ -105,7 +110,7 @@ class SSVEPDetector:
         # Dominance history for switch-rate estimation
         self._dominance_history: deque[float] = deque(maxlen=DOMINANCE_HISTORY)
 
-        self._last_f_left:  float = 0.0
+        self._last_f_left: float = 0.0
         self._last_f_right: float = 0.0
         self._last_result: dict = {}
 
@@ -138,7 +143,7 @@ class SSVEPDetector:
         except ImportError:
             return {}
 
-        self._last_f_left  = f_left
+        self._last_f_left = f_left
         self._last_f_right = f_right
 
         nperseg = max(64, int(self._window_n * NPERSEG_RATIO))
@@ -146,21 +151,21 @@ class SSVEPDetector:
         af8 = np.array(self._af8, dtype=np.float64)
 
         freqs, psd_af7 = _sig.welch(af7, fs=self.fs, nperseg=nperseg)
-        _,     psd_af8 = _sig.welch(af8, fs=self.fs, nperseg=nperseg)
+        _, psd_af8 = _sig.welch(af8, fs=self.fs, nperseg=nperseg)
 
         # Average the two channels for binocular metrics
         psd_avg = 0.5 * (psd_af7 + psd_af8)
 
-        psd_af7_db  = _correct_1f(freqs, psd_af7)
-        psd_af8_db  = _correct_1f(freqs, psd_af8)
-        psd_avg_db  = _correct_1f(freqs, psd_avg)
+        psd_af7_db = _correct_1f(freqs, psd_af7)
+        psd_af8_db = _correct_1f(freqs, psd_af8)
+        psd_avg_db = _correct_1f(freqs, psd_avg)
 
-        snr_left  = _snr_at_freq(freqs, psd_af7_db, f_left)
+        snr_left = _snr_at_freq(freqs, psd_af7_db, f_left)
         snr_right = _snr_at_freq(freqs, psd_af8_db, f_right)
 
-        f_sum  = f_left + f_right
+        f_sum = f_left + f_right
         f_diff = abs(f_left - f_right)
-        im_sum  = _snr_at_freq(freqs, psd_avg_db, f_sum)
+        im_sum = _snr_at_freq(freqs, psd_avg_db, f_sum)
         im_diff = _snr_at_freq(freqs, psd_avg_db, f_diff)
 
         # Binocular integration index: both tags positive + at least one IM positive
@@ -173,16 +178,16 @@ class SSVEPDetector:
         switch_rate = self._estimate_switch_rate()
 
         result = {
-            "ssvep_left_snr":        round(snr_left,       3),
-            "ssvep_right_snr":       round(snr_right,      3),
+            "ssvep_left_snr": round(snr_left, 3),
+            "ssvep_right_snr": round(snr_right, 3),
             "ssvep_binocular_index": round(binocular_index, 3),
-            "ssvep_im_f1_plus_f2":   round(im_sum,         3),
-            "ssvep_im_f1_minus_f2":  round(im_diff,        3),
-            "ssvep_dominance_raw":   round(dominance,      3),
-            "ssvep_switch_rate_hz":  round(switch_rate,    4),
-            "ssvep_f_left":          round(f_left,         2),
-            "ssvep_f_right":         round(f_right,        2),
-            "ssvep_timestamp":       time.time(),
+            "ssvep_im_f1_plus_f2": round(im_sum, 3),
+            "ssvep_im_f1_minus_f2": round(im_diff, 3),
+            "ssvep_dominance_raw": round(dominance, 3),
+            "ssvep_switch_rate_hz": round(switch_rate, 4),
+            "ssvep_f_left": round(f_left, 2),
+            "ssvep_f_right": round(f_right, 2),
+            "ssvep_timestamp": time.time(),
         }
         self._last_result = result
         patch_live(result)
@@ -219,9 +224,9 @@ class SSVEPDetector:
             return max(0.0, 0.3 * (snr_l + snr_r) / (2 * abs(MIN_SNR_DB) + 1))
 
         # Both tags reliably detected — scale by IM products
-        base_score   = 0.5
-        tag_bonus    = min(0.25, 0.05 * min(snr_l, snr_r))
-        im_bonus     = min(0.25, 0.05 * max(0.0, max(im_sum, im_diff)))
+        base_score = 0.5
+        tag_bonus = min(0.25, 0.05 * min(snr_l, snr_r))
+        im_bonus = min(0.25, 0.05 * max(0.0, max(im_sum, im_diff)))
         return min(1.0, base_score + tag_bonus + im_bonus)
 
     def _estimate_switch_rate(self) -> float:
@@ -231,5 +236,5 @@ class SSVEPDetector:
             return 0.0
         signs = np.sign(h)
         crossings = int(np.sum(np.abs(np.diff(signs)) > 0))
-        window_duration_s = len(h) * 1.0   # 1 sample per second tick
+        window_duration_s = len(h) * 1.0  # 1 sample per second tick
         return crossings / max(window_duration_s, 1.0)

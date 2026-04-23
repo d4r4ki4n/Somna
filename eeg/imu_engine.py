@@ -74,7 +74,7 @@ class IMUEngine:
         """
         Read one window of accelerometer data and return a metrics dict.
 
-        Returns an empty dict on any error so the caller can skip _patch_live
+        Returns an empty dict on any error so the caller can skip patch_live()
         without crashing. Returns safe defaults (not empty) only for known
         synthetic boards so downstream consumers always see the expected keys.
         """

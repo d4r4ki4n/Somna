@@ -1164,7 +1164,7 @@ Live key: `feedback_mode` (str, one of the above or `none`). Live key: `feedback
 - `u_entrainment_phase` (float 0.0–1.0) — normalized phase locked to target beat frequency, uploaded from `beat_phase` accumulator in `spirals_opengl.py`
 - `u_entrainment_strength` (float 0.0–0.10) — modulation depth; 0.0 = free-running (no flicker), 0.10 = maximum safe phase-locking. Read from `entrainment_strength` in `live_control.json`, default 0.0
 - `sinEnvelope(phase)` — returns 0.5 + 0.5 * cos(phase * 2π); 1.0 at phase boundaries, 0.0 at 0.5
-- `entrainmentModulation()` — returns `mix(1.0, sinEnvelope(u_entrainment_phase), u_entrainment_strength)`; applied to all 27 style return values
+- `entrainmentModulation()` — returns `mix(1.0, sinEnvelope(u_entrainment_phase), u_entrainment_strength)`; applied to all 26 style return values
 - Separates **pattern animation** (style-specific, driven by `u_time`) from **entrainment flicker** (universal, driven by `u_entrainment_phase`)
 - Conductor/user controls via `entrainment_strength` key in `live_control.json`; renderer only exposes the uniform, does not auto-map
 

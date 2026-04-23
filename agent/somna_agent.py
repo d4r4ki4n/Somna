@@ -3165,7 +3165,7 @@ class SomnaAgent:
             needs_response = style.get("needs_response", False)
             timeout_s = style.get("timeout_s") or ext.get("timeout_s")
 
-            self._say(
+            user_reply = self._say(
                 response_text,
                 needs_response=needs_response,
                 overlay=True,
@@ -3174,11 +3174,18 @@ class SomnaAgent:
                 style=style,
                 timeout_s=timeout_s,
             )
-            if not needs_response:
+            if needs_response:
+                # Forward the user's reply so the external agent (Resonance)
+                # can read it via somna_read_live on the next prompt cycle.
+                self._write_live({"last_user_reply": user_reply})
+                print(
+                    f"[Agent] Ext response applied (reply={user_reply!r}): {response_text[:80]}"
+                )
+            else:
                 dwell = max(3.0, len(response_text) * 0.070)
                 time.sleep(dwell)
                 self._clear_message()
-            print(f"[Agent] Ext response applied: {response_text[:80]}")
+                print(f"[Agent] Ext response applied: {response_text[:80]}")
 
         # Apply adjustments + transitions the same way _apply does
         result_for_apply = {

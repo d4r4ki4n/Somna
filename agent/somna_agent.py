@@ -4411,13 +4411,14 @@ class SomnaAgent:
     def _startup_sequence(self, state: dict) -> None:
         """Run once per session start in interactive mode.
 
-        Three tiers based on session history:
-          SILENT    — gap < 2 min and has history: conductor init only, no greeting.
-          RETURNING — has history: short template welcome-back, no LLM, no response wait.
-          FRESH     — no history: LLM greeting + intake question, waits for response.
+        When external_only (Resonance driving): sends a compact event
+        notification and returns immediately.  Resonance handles the greeting
+        via agent_ext_response, consumed on the first _interactive_tick.
 
-        The session YAML defaults and control panel state own the starting visual/audio
-        values. This method never overwrites them with hardcoded agent defaults.
+        When local LLM: three tiers based on session history —
+          SILENT    — gap < 2 min with history: no greeting.
+          SESSION_ZERO — first session with EEG: calibration-in-disguise.
+          FRESH     — no history: LLM greeting + intake question.
         """
         print("[Agent] Running startup sequence…")
 
@@ -4573,29 +4574,18 @@ class SomnaAgent:
                 self._director = None
                 self._session_plan = None
 
+        # ── Greeting logic ────────────────────────────────────────────────────
+        # When external_only: send one compact notification to Resonance and
+        # return.  No _say() — Resonance handles the greeting via MCP tools.
+        # When local LLM: tiered greeting based on session history.
+
+        if self._external_only:
+            self._send_startup_event(state, session, name, console_ctx, gap_min)
+            return
+
         # ── SILENT tier: gap < 2 min and has prior history ───────────────────
         if gap_min < 2.0 and self._history:
             print("[Agent] Silent resume — no greeting (gap < 2 min).")
-            if self._external_only:
-                # Send a compact resume notification so Resonance knows we're back
-                resume_msg = (
-                    f"Session resumed (gap {gap_min:.1f} min). "
-                    f"Session folder: {session!r}.\n"
-                    f"User profile:\n{self._profile_context()}\n"
-                    f"Current state: {self._state_summary(state)}\n"
-                    f"Exchange history (newest last):\n{self._history_summary()}\n\n"
-                    "This is a silent resume — the user was just here. "
-                    "Deliver a brief settling-in line (under 15 words). "
-                    "Set next_prompt to it."
-                )
-                messages_ext = [{"role": "user", "content": resume_msg}]
-                try:
-                    self._llm.chat(messages_ext, max_tokens=512)
-                except Exception as e:
-                    print(f"[Agent] Silent resume ext send failed: {e}")
-                print(
-                    "[Agent] Silent resume: external-only — greeting deferred to Resonance"
-                )
             return
 
         # ── SESSION ZERO: first session, calibration-in-disguise ────────────────
@@ -4623,7 +4613,7 @@ class SomnaAgent:
             self._record(state, prompt=sz_greeting, response=None, adj={})
             return
 
-        # ── FRESH tier: no history — true first use ───────────────────────────
+        # ── FRESH tier: local LLM greeting ────────────────────────────────────
         profile_ctx = self._profile_context()
         history_note = "This is the first session — no prior history."
 
@@ -4640,10 +4630,6 @@ class SomnaAgent:
                 "directly from the agreed intent and begins leading them into the experience. "
                 "Set next_prompt to this line."
             )
-            fallback = (
-                f"{'Good. ' + name + ', let' if name else 'Let'}'s begin. "
-                "Close your eyes and let the weight find you."
-            )
         else:
             startup_msg = (
                 f"A new session is starting. Session folder: {session!r}.\n"
@@ -4655,28 +4641,6 @@ class SomnaAgent:
                 "they want from this session. Set next_prompt to this greeting+question. "
                 "Do not adjust parameters. Under 40 words."
             )
-            fallback = (
-                f"Welcome{', ' + name if name else ''}. "
-                "How are you feeling right now, and what would you like to get out of this session?"
-            )
-
-        # ── External-only mode: send startup prompt, return immediately ──────
-        # The external agent (Resonance) will write agent_ext_response which
-        # gets consumed on the first _interactive_tick.  No local _say() here.
-        print(
-            f"[Agent] Startup check: external_only={self._external_only} ext_enabled={self._ext_enabled}"
-        )
-        if self._external_only:
-            messages_ext = [
-                {"role": "user", "content": startup_msg},
-            ]
-            try:
-                self._llm.chat(messages_ext, max_tokens=512)
-            except Exception as e:
-                print(f"[Agent] Startup ext send failed: {e}")
-            print(f"[Agent] Startup: external-only — greeting deferred to Resonance")
-            self._record(state, prompt=None, response=None, adj={})
-            return
 
         messages = [
             {"role": "system", "content": _build_system_prompt(self._cfg)},
@@ -4685,29 +4649,28 @@ class SomnaAgent:
 
         try:
             raw = self._llm.chat(messages, max_tokens=512)
+            question = None
             if raw:
                 data = _extract_json(raw)
                 question = data.get("next_prompt") if data else None
                 if isinstance(question, str):
                     question = question.strip() or None
-            else:
-                question = None
         except Exception as e:
             print(f"[Agent] Startup LLM call failed: {e}")
             question = None
 
         if not question:
-            # No LLM response — console only, nothing else.
-            print(f"[Agent] Startup (fallback): {fallback!r}")
+            # No LLM response — console log only, no channels.
+            print("[Agent] Startup: LLM returned nothing — no greeting.")
             self._skip_streak += 1
-            self._record(state, prompt=fallback, response=None, adj={})
+            self._record(state, prompt=None, response=None, adj={})
             return
 
         # LLM produced a greeting
         print(f"[Agent] Startup prompt: {question!r}")
 
         if console_ctx:
-            # Session launched from console — don't ask a question
+            # Session launched from console — display only, no dialog
             self._say(
                 question,
                 needs_response=False,
@@ -4722,7 +4685,6 @@ class SomnaAgent:
             self._clear_message()
             self._skip_streak = 0
             self._record(state, prompt=question, response=None, adj={})
-            print(f"[Agent] Startup (console-launched): {question!r}")
             return
 
         # Normal interactive startup — ask the question and wait
@@ -4744,6 +4706,69 @@ class SomnaAgent:
         else:
             self._skip_streak += 1
         self._record(state, prompt=question, response=response, adj={})
+
+    def _send_startup_event(
+        self,
+        state: dict,
+        session: str,
+        name: str,
+        console_ctx: str,
+        gap_min: float,
+    ) -> None:
+        """Send a compact startup event to the external agent (Resonance).
+
+        Resonance reads context via MCP tools and writes agent_ext_response.
+        No _say() is called — the greeting comes from Resonance asynchronously.
+        """
+        is_silent = gap_min < 2.0 and self._history
+        if is_silent:
+            event_type = "silent_resume"
+            instruction = (
+                "This is a silent resume — the user was just here. "
+                "Deliver a brief settling-in line (under 15 words). "
+                "Set next_prompt to it."
+            )
+        elif console_ctx:
+            event_type = "console_launch"
+            instruction = (
+                "The user's intent is already established. "
+                "Generate a short opening line (under 20 words) that picks up "
+                "from the agreed intent. Set next_prompt to this line."
+            )
+        else:
+            event_type = "fresh_start"
+            instruction = (
+                "Generate a warm opening greeting (use their name/designation from "
+                "the profile if present) and a single open-ended question. "
+                "Set next_prompt to this greeting+question. Under 40 words."
+            )
+
+        profile_ctx = self._profile_context()
+        history_note = (
+            f"Exchange history (newest last):\n{self._history_summary()}"
+            if self._history
+            else "This is the first session — no prior history."
+        )
+
+        msg = (
+            f"[Startup event: {event_type}] gap={gap_min:.1f}min "
+            f"session={session!r}\n"
+            f"User profile:\n{profile_ctx}\n"
+            f"Current state: {self._state_summary(state)}\n"
+            f"{history_note}\n\n"
+        )
+        if console_ctx:
+            msg += f"Console context:\n{console_ctx}\n\n"
+        msg += instruction
+
+        messages_ext = [{"role": "user", "content": msg}]
+        try:
+            self._llm.chat(messages_ext, max_tokens=512)
+        except Exception as e:
+            print(f"[Agent] Startup event send failed: {e}")
+
+        print(f"[Agent] Startup event ({event_type}) sent to Resonance")
+        self._record(state, prompt=None, response=None, adj={})
 
     def _session_zero_tick(self, state: dict) -> None:
         if not self._sz_active:

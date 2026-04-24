@@ -654,6 +654,13 @@ class VisualDisplay:
         ):
             return
 
+        if not getattr(self, "_pp_diag_logged", False):
+            self._pp_diag_logged = True
+            print(
+                f"[Display] PP active: ca={ca_strength:.3f} bloom={bloom_intensity:.3f} "
+                f"grain={film_grain:.3f} vignette={vignette_int:.3f} tonemap={tonemap}"
+            )
+
         # Advance IAF luminance phase
         iaf_hz = float(cfg.get("eeg_iaf_hz") or 10.0)
         self._pp_iaf_phase = (self._pp_iaf_phase + 2.0 * 3.14159 * iaf_hz * dt) % (

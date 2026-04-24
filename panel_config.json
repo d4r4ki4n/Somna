@@ -2445,6 +2445,24 @@
       ]
     },
     {
+      "key": "haptic_frequency_hz",
+      "widget": "Slider",
+      "classification": "USER_CONTROL",
+      "layer": "Advanced",
+      "label": "Vibration Freq (Hz)",
+      "section": "Haptic",
+      "modes": [
+        "TRANCE",
+        "GENUS",
+        "CUE_TEST"
+      ],
+      "tooltip": "Vibration frequency driven by Interference Graph or manual control. Affects how the pattern feels.",
+      "range": [
+        1.0,
+        100.0
+      ]
+    },
+    {
       "key": "haptic_actual_intensity",
       "widget": "Indicator",
       "classification": "TELEMETRY",

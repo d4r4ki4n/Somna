@@ -19,32 +19,32 @@ fixed duty cycle. This is non-negotiable (Bible Ch.4 §4.6 §13).
 import time
 
 # Stall thresholds for progressive gate relaxation
-_ALPHA_GATE_TIMEOUT_S     = 25.0   # drop alpha after this many seconds stalled
-_EMERGENCY_TIMEOUT_S      = 40.0   # force respiratory-only delivery after this
+_ALPHA_GATE_TIMEOUT_S = 25.0  # drop alpha after this many seconds stalled
+_EMERGENCY_TIMEOUT_S = 40.0  # force respiratory-only delivery after this
 
 # Phase-specific cardiac gate timeouts (Bible Ch.2 §2.9 §3.5)
 # Keys match Conductor Phase.value strings
 _CARDIAC_TIMEOUT_S: dict[str, float] = {
-    "induction":       15.0,
-    "deepening":       15.0,
-    "maintenance":     15.0,
-    "frac_emerge":     15.0,
+    "induction": 15.0,
+    "deepening": 15.0,
+    "maintenance": 15.0,
+    "frac_emerge": 15.0,
     "frac_emerge_hold": 15.0,
-    "frac_redrop":     15.0,
-    "emergence":       10.0,
-    "sleep_approach":  10.0,
-    "sleep_onset":     10.0,
-    "sleep_maintain":  10.0,
-    "sleep_training":   8.0,
+    "frac_redrop": 15.0,
+    "emergence": 10.0,
+    "sleep_approach": 10.0,
+    "sleep_onset": 10.0,
+    "sleep_maintain": 10.0,
+    "sleep_training": 8.0,
 }
 _DEFAULT_CARDIAC_TIMEOUT_S = 15.0
 
 # Phase-specific motion thresholds in g (Bible Ch.2 §2.9 §5.4)
 _MOTION_THRESH_SLEEP: dict[str, float] = {
-    "sleep_approach":  0.02,
-    "sleep_onset":     0.02,
-    "sleep_maintain":  0.02,
-    "sleep_training":  0.02,
+    "sleep_approach": 0.02,
+    "sleep_onset": 0.02,
+    "sleep_maintain": 0.02,
+    "sleep_training": 0.02,
 }
 _DEFAULT_MOTION_THRESH = 0.04
 
@@ -63,13 +63,13 @@ class DeliveryGate:
 
     def __init__(self):
         self._last_fire_time = 0.0
-        self._fire_count     = 0
-        self._gated_count    = 0
+        self._fire_count = 0
+        self._gated_count = 0
         # Rolling delivery rate tracking
-        self._rate_window    = []   # list of monotonic fire timestamps
-        self._rate_window_s  = 5.0  # compute rate over last 5 s
+        self._rate_window = []  # list of monotonic fire timestamps
+        self._rate_window_s = 5.0  # compute rate over last 5 s
         # Trace conditioning hook (Bible Ch.10 §10.1 §11.2) — set by display host if available
-        self._conditioning   = None   # optional ConditioningEngine reference
+        self._conditioning = None  # optional ConditioningEngine reference
 
     # ── Primary interface ─────────────────────────────────────────────────────
 
@@ -101,10 +101,14 @@ class DeliveryGate:
         """
         # ── Master switch — if disabled, caller uses legacy timer ─────────────
         if not config.get("phase_gate_enabled", False):
-            return {"fire": False, "reason": "gate_disabled", "mode": "disabled",
-                    "gate_relaxation_level": 0}
+            return {
+                "fire": False,
+                "reason": "gate_disabled",
+                "mode": "disabled",
+                "gate_relaxation_level": 0,
+            }
 
-        now     = time.monotonic()
+        now = time.monotonic()
         elapsed = now - self._last_fire_time
 
         min_s = config.get("phase_gate_min_interval_ms", 200) / 1000.0
@@ -112,16 +116,21 @@ class DeliveryGate:
 
         # ── Rate limiter ──────────────────────────────────────────────────────
         if elapsed < min_s:
-            return {"fire": False, "reason": "rate_limited", "mode": "gated",
-                    "gate_relaxation_level": 0}
+            return {
+                "fire": False,
+                "reason": "rate_limited",
+                "mode": "gated",
+                "gate_relaxation_level": 0,
+            }
 
         # ── Timeout fallback — never block longer than max_s ─────────────────
         if elapsed > max_s:
-            return self._record_fire(now, reason="timeout_fallback",
-                                     mode="fallback", relaxation=3)
+            return self._record_fire(
+                now, reason="timeout_fallback", mode="fallback", relaxation=3
+            )
 
         # ── Motion artifact block (Bible Ch.2 §2.9 §3.1) ──────────────────────────────
-        phase_name    = str(config.get("conductor_phase", "induction")).lower()
+        phase_name = str(config.get("conductor_phase", "induction")).lower()
         motion_thresh = _MOTION_THRESH_SLEEP.get(phase_name, _DEFAULT_MOTION_THRESH)
         # Conductor may override via imu_motion_threshold_override
         override = config.get("imu_motion_threshold_override")
@@ -129,19 +138,23 @@ class DeliveryGate:
             motion_thresh = float(override)
         motion_rms = float(config.get("imu_motion_rms", 0.0) or 0.0)
         if motion_rms > motion_thresh or config.get("imu_motion_contaminated", False):
-            return {"fire": False, "reason": "motion_contaminated", "mode": "gated",
-                    "gate_relaxation_level": 0}
+            return {
+                "fire": False,
+                "reason": "motion_contaminated",
+                "mode": "gated",
+                "gate_relaxation_level": 0,
+            }
 
         # ── Determine EEG quality ─────────────────────────────────────────────
-        eeg_ok   = bool(config.get("eeg_connected", False))
-        sqi      = float(config.get("eeg_sqi", 0.0) or 0.0)
-        sqi_min  = float(config.get("eeg_sqi_min_threshold", 0.40))
-        sqi_ok   = eeg_ok and (sqi >= sqi_min)
+        eeg_ok = bool(config.get("eeg_connected", False))
+        sqi = float(config.get("eeg_sqi", 0.0) or 0.0)
+        sqi_min = float(config.get("eeg_sqi_min_threshold", 0.40))
+        sqi_ok = eeg_ok and (sqi >= sqi_min)
 
-        conf_min   = float(config.get("phase_gate_confidence_min", 0.5))
-        at_trough  = bool(config.get("alpha_at_trough", False))
+        conf_min = float(config.get("phase_gate_confidence_min", 0.5))
+        at_trough = bool(config.get("alpha_at_trough", False))
         confidence = float(config.get("alpha_phase_confidence", 0.0) or 0.0)
-        resp_hot   = bool(config.get("respiratory_hot", False))
+        resp_hot = bool(config.get("respiratory_hot", False))
 
         # Cardiac diastole gate — permissive default when PPG not available
         cardiac_ok = bool(config.get("ppg_cardiac_diastole", True))
@@ -152,53 +165,75 @@ class DeliveryGate:
         if elapsed > _EMERGENCY_TIMEOUT_S:
             # Level 3: emergency — respiratory only
             if resp_hot:
-                return self._record_fire(now, reason="emergency_resp_only",
-                                         mode="fallback", relaxation=3)
+                return self._record_fire(
+                    now, reason="emergency_resp_only", mode="fallback", relaxation=3
+                )
         elif elapsed > _ALPHA_GATE_TIMEOUT_S:
             # Level 2: drop alpha — respiratory + cardiac + SQI
             if sqi_ok and resp_hot and cardiac_ok:
-                return self._record_fire(now, reason="relaxed_no_alpha",
-                                         mode="gated", relaxation=2)
+                return self._record_fire(
+                    now, reason="relaxed_no_alpha", mode="gated", relaxation=2
+                )
             if not sqi_ok and resp_hot:
-                return self._record_fire(now, reason="resp_only_stalled",
-                                         mode="resp_only", relaxation=2)
+                return self._record_fire(
+                    now, reason="resp_only_stalled", mode="resp_only", relaxation=2
+                )
         elif elapsed > cardiac_timeout:
             # Level 1: drop cardiac — respiratory + alpha + SQI
             if sqi_ok and at_trough and resp_hot and confidence >= conf_min:
-                return self._record_fire(now, reason="relaxed_no_cardiac",
-                                         mode="gated", relaxation=1)
+                return self._record_fire(
+                    now, reason="relaxed_no_cardiac", mode="gated", relaxation=1
+                )
             if not sqi_ok and resp_hot and elapsed >= 0.5:
-                return self._record_fire(now, reason="resp_only",
-                                         mode="resp_only", relaxation=1)
+                return self._record_fire(
+                    now, reason="resp_only", mode="resp_only", relaxation=1
+                )
         else:
             # Level 0: full quad-gate
-            if sqi_ok and at_trough and resp_hot and cardiac_ok and confidence >= conf_min:
-                return self._record_fire(now, reason="phase_gated",
-                                         mode="gated", relaxation=0)
+            if (
+                sqi_ok
+                and at_trough
+                and resp_hot
+                and cardiac_ok
+                and confidence >= conf_min
+            ):
+                return self._record_fire(
+                    now, reason="phase_gated", mode="gated", relaxation=0
+                )
             # Level 1 (respiratory only when EEG absent)
             if not sqi_ok and resp_hot and elapsed >= 0.5:
-                return self._record_fire(now, reason="resp_only",
-                                         mode="resp_only", relaxation=0)
+                return self._record_fire(
+                    now, reason="resp_only", mode="resp_only", relaxation=0
+                )
 
         # ── Still waiting ─────────────────────────────────────────────────────
         reason = "waiting_for_gate" if sqi_ok else "waiting_resp"
-        return {"fire": False, "reason": reason,
-                "mode": "gated" if sqi_ok else "resp_only",
-                "gate_relaxation_level": 0}
+        return {
+            "fire": False,
+            "reason": reason,
+            "mode": "gated" if sqi_ok else "resp_only",
+            "gate_relaxation_level": 0,
+        }
 
     # ── Internal helpers ──────────────────────────────────────────────────────
 
-    def _record_fire(self, now: float, reason: str, mode: str,
-                     relaxation: int = 0) -> dict:
+    def _record_fire(
+        self, now: float, reason: str, mode: str, relaxation: int = 0
+    ) -> dict:
         self._last_fire_time = now
-        self._fire_count    += 1
+        self._fire_count += 1
         if mode == "gated" and relaxation == 0:
             self._gated_count += 1
         self._rate_window.append(now)
-        self._rate_window = [t for t in self._rate_window
-                             if now - t <= self._rate_window_s]
-        return {"fire": True, "reason": reason, "mode": mode,
-                "gate_relaxation_level": relaxation}
+        self._rate_window = [
+            t for t in self._rate_window if now - t <= self._rate_window_s
+        ]
+        return {
+            "fire": True,
+            "reason": reason,
+            "mode": mode,
+            "gate_relaxation_level": relaxation,
+        }
 
     # ── Diagnostics ───────────────────────────────────────────────────────────
 
@@ -232,22 +267,22 @@ class DeliveryGate:
         if not config.get("conditioning_engine_enabled", False):
             return
         try:
-            import json
-            from pathlib import Path
-            _live = Path(__file__).parent.parent / "live_control.json"
-            live  = json.loads(_live.read_text(encoding="utf-8")) if _live.exists() else {}
+            from ipc import read_live
+
+            live = read_live()
             from engines.conditioning_engine import NeuralStateFingerprint
+
             ns = NeuralStateFingerprint.from_live(live)
             self._conditioning.on_delivery(
-                cs_class        = "veil_phrase",
-                cs_identity     = cs_identity,
-                cs_pool         = cs_pool,
-                neural_state    = ns,
-                delivery_gate   = self.diagnostics_dict(),
-                conductor_phase = str(config.get("conductor_phase") or ""),
-                cardiac_phase   = float(live.get("ppg_cardiac_phase") or 0.0),
-                respiratory_phase= float(live.get("respiratory_phase") or 0.0),
-                us_magnitude    = float(live.get("eeg_trance_score_v2") or 0.0),
+                cs_class="veil_phrase",
+                cs_identity=cs_identity,
+                cs_pool=cs_pool,
+                neural_state=ns,
+                delivery_gate=self.diagnostics_dict(),
+                conductor_phase=str(config.get("conductor_phase") or ""),
+                cardiac_phase=float(live.get("ppg_cardiac_phase") or 0.0),
+                respiratory_phase=float(live.get("respiratory_phase") or 0.0),
+                us_magnitude=float(live.get("eeg_trance_score_v2") or 0.0),
             )
         except Exception:
             pass
@@ -255,6 +290,6 @@ class DeliveryGate:
     def diagnostics_dict(self) -> dict:
         """For writing to live_control.json diagnostics keys."""
         return {
-            "phase_gate_hit_rate":  round(self.hit_rate, 3),
-            "delivery_rate_hz":     round(self.delivery_rate_hz, 2),
+            "phase_gate_hit_rate": round(self.hit_rate, 3),
+            "delivery_rate_hz": round(self.delivery_rate_hz, 2),
         }

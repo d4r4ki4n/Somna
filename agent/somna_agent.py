@@ -4735,6 +4735,17 @@ class SomnaAgent:
         Resonance reads context via MCP tools and writes agent_ext_response.
         No _say() is called — the greeting comes from Resonance asynchronously.
         """
+        # Dedup: skip if this session already got a startup event recently.
+        # Prevents spam when the display crashes and restarts the same session.
+        if not hasattr(self, "_startup_event_sent_for"):
+            self._startup_event_sent_for = {}
+        _last_sent = self._startup_event_sent_for.get(session, 0)
+        if time.time() - _last_sent < 600:  # 10 min cooldown per session
+            print(
+                f"[Agent] Startup event skipped — already sent for {session!r} recently"
+            )
+            return
+        self._startup_event_sent_for[session] = time.time()
         is_silent = gap_min < 2.0 and self._history
         if is_silent:
             event_type = "silent_resume"
@@ -6337,6 +6348,15 @@ class SomnaAgent:
             print("[Agent] Clearing stale nudge from previous run.")
             self._nudge_clear()
 
+        # Clear any stale external agent response from a previous run.
+        # If the agent died after Resonance wrote agent_ext_response but
+        # before it was consumed, the next startup would immediately consume
+        # it — producing a phantom response and eating the first_tick.
+        _stale_ext = self._read_live().get("agent_ext_response")
+        if _stale_ext and isinstance(_stale_ext, dict):
+            print("[Agent] Clearing stale external response from previous run.")
+            self._write_live({"agent_ext_response": None})
+
         last_session = None
         first_tick = True
         _prev_display_active = False  # for summary trigger on closure
@@ -6568,7 +6588,7 @@ class SomnaAgent:
                         gap_min = (time.time() - self._history[-1].timestamp) / 60.0
                     self._fresh_start = (not self._history) or (gap_min > 30.0)
                     self._startup_gap_min = gap_min
-                    if not first_tick and not self._external_only:
+                    if not first_tick:
                         first_tick = True
                     print(
                         f"[Agent] Session: {session!r}  "

@@ -327,7 +327,9 @@ class Conductor:
 
         # Agent-supplied hints — updated each tick from live_control.json.
         # Keys: depth_patience (float multiplier), request_fractionation (bool),
-        #       target_floor_hz (float | None), note (str).
+        #       target_floor_hz (float | None), note (str), passthrough (bool).
+        # When passthrough is true, _compute_parameters skips owned param writes
+        # so an external agent (Resonance) can drive them directly via MCP.
         self._hints: Dict[str, Any] = {}
 
         # Phase transition history — list of (phase_value, duration_s) tuples,
@@ -2122,6 +2124,13 @@ class Conductor:
         """Compute parameter updates for the current phase tick."""
         params: Dict[str, Any] = {}
         phase = self.phase
+
+        # Passthrough mode: external agent (Resonance) drives all owned params
+        # via MCP. Conductor still tracks phase, logs decisions, publishes
+        # conductor_state, and handles phase transitions — but does NOT write
+        # beat_frequency, trail_decay, pp_bloom_intensity, etc.
+        if self._hints.get("passthrough"):
+            return params
 
         # AM depth: write target on every tick so audio engine can interpolate.
         am_target = Conductor._AM_DEPTH_BY_PHASE.get(phase)

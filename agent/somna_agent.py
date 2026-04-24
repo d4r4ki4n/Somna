@@ -3459,8 +3459,12 @@ class SomnaAgent:
 
         self._record(state, prompt=msg, response=None, adj=adj, affirmation=aff)
 
-    def _interactive_tick(self, state: dict) -> None:
-        # ── Consume external agent response (Resonance via MCP) ────────────────
+    def _consume_ext_response(self, state: dict) -> None:
+        """Check for and apply an external agent response (Resonance via MCP).
+
+        Called from the main loop before the active/idle branch so
+        Resonance can deliver messages even when no session is running.
+        """
         ext = state.get("agent_ext_response")
         if ext and isinstance(ext, dict):
             ts = ext.get("_ts", 0)
@@ -3468,6 +3472,10 @@ class SomnaAgent:
                 self._last_ext_response_ts = ts
                 self._apply_ext_response(ext, state)
                 self._write_live({"agent_ext_response": None})
+
+    def _interactive_tick(self, state: dict) -> None:
+        # ── Consume external agent response (Resonance via MCP) ────────────────
+        self._consume_ext_response(state)
 
         # ── Session Zero calibration-in-disguise ──────────────────────────────────
         if self._sz_active:
@@ -4593,12 +4601,12 @@ class SomnaAgent:
                 self._session_plan = None
 
         # ── Greeting logic ────────────────────────────────────────────────────
-        # When external_only: send one compact notification to Resonance and
-        # return.  No _say() — Resonance handles the greeting via MCP tools.
+        # When external_only: Resonance initiated the session via MCP launch tool.
+        # No notification needed — Resonance already knows. Skip greeting entirely.
         # When local LLM: tiered greeting based on session history.
 
         if self._external_only:
-            self._send_startup_event(state, session, name, console_ctx, gap_min)
+            # Resonance is driving — she'll handle her own opening.
             return
 
         # ── SILENT tier: gap < 2 min and has prior history ───────────────────
@@ -4722,65 +4730,7 @@ class SomnaAgent:
             self._skip_streak += 1
         self._record(state, prompt=question, response=response, adj={})
 
-    def _send_startup_event(
-        self,
-        state: dict,
-        session: str,
-        name: str,
-        console_ctx: str,
-        gap_min: float,
-    ) -> None:
-        """Send a compact startup event to the external agent (Resonance).
-
-        Resonance reads context via MCP tools and writes agent_ext_response.
-        No _say() is called — the greeting comes from Resonance asynchronously.
-        """
-        is_silent = gap_min < 2.0 and self._history
-        if is_silent:
-            event_type = "silent_resume"
-            instruction = (
-                "This is a silent resume — the user was just here. "
-                "Deliver a brief settling-in line (under 15 words). "
-                "Set next_prompt to it."
-            )
-        elif console_ctx:
-            event_type = "console_launch"
-            instruction = (
-                "The user's intent is already established. "
-                "Generate a short opening line (under 20 words) that picks up "
-                "from the agreed intent. Set next_prompt to this line."
-            )
-        else:
-            event_type = "fresh_start"
-            instruction = (
-                "Generate a warm opening greeting (use their name/designation from "
-                "the profile if present) and a single open-ended question. "
-                "Set next_prompt to this greeting+question. Under 40 words."
-            )
-
-        msg = f"[Startup event: {event_type}] gap={gap_min:.1f}min session={session!r}\n{instruction}"
-        if console_ctx:
-            msg += f"\nConsole context:\n{console_ctx}"
-
-        messages_ext = [{"role": "user", "content": msg}]
-        try:
-            # Fire-and-forget: send the prompt to the MCP bridge without
-            # blocking for a response.  Resonance reads context via MCP tools
-            # and writes agent_ext_response, consumed on the next tick.
-            if self._llm._ext_client and self._llm._ext_client.connected:
-                self._llm._ext_client.send_only(
-                    prompt=msg, system_prompt="", tick_id=f"startup-{time.time()}"
-                )
-                print(f"[Agent] Startup event ({event_type}) sent to Resonance (async)")
-            else:
-                # No external client — try the blocking path as fallback
-                self._llm.chat(messages_ext, max_tokens=512)
-                print(f"[Agent] Startup event ({event_type}) sent to Resonance")
-        except Exception as e:
-            print(f"[Agent] Startup event send failed: {e}")
-
-        print(f"[Agent] Startup event ({event_type}) sent to Resonance")
-        self._record(state, prompt=None, response=None, adj={})
+    # ── Idle tick: planning, console, nudge ──────────────────────────────────────
 
     def _session_zero_tick(self, state: dict) -> None:
         if not self._sz_active:
@@ -6522,6 +6472,10 @@ class SomnaAgent:
                     )
             _prev_display_active = _display_active
 
+            # Consume external agent responses regardless of display state
+            # so Resonance can deliver messages even when no session is running.
+            self._consume_ext_response(state)
+
             if not _display_active:
                 # Display is not running — run idle tick (planning, nudge, console)
                 self._idle_tick(state)
@@ -6607,6 +6561,17 @@ class SomnaAgent:
                 # No session loaded — skip startup delay entirely.
                 if session == "default" and session_time == 0:
                     first_tick = False
+                    continue
+                # External-only: Resonance controls timing, skip the delay loop
+                # but still run startup_sequence to init Conductor, Director, etc.
+                if self._external_only:
+                    first_tick = False
+                    try:
+                        self._startup_sequence(state)
+                    except KeyboardInterrupt:
+                        raise
+                    except Exception as e:
+                        print(f"[Agent] Startup error: {e}")
                     continue
                 g = self._startup_gap_min
                 if g < 2.0 and self._history:

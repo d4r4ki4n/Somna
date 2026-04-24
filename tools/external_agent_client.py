@@ -84,40 +84,6 @@ class ExternalAgentClient:
                 pass
             self._sock = None
 
-    def send_only(
-        self,
-        prompt: str,
-        system_prompt: str = "",
-        tick_id: str = "",
-        max_tokens: int = 4096,
-    ) -> bool:
-        """Fire-and-forget: send a prompt without waiting for response.
-
-        Used by startup events where the response comes back asynchronously
-        via agent_ext_response.  Returns True if sent successfully.
-        """
-        if not self._connected or not self._sock:
-            return False
-
-        if not tick_id:
-            tick_id = str(uuid.uuid4())
-
-        msg = {
-            "type": "prompt",
-            "tick_id": tick_id,
-            "prompt": prompt,
-            "system_prompt": system_prompt,
-            "max_tokens": max_tokens,
-        }
-
-        try:
-            data = json.dumps(msg, ensure_ascii=False) + "\n"
-            self._sock.sendall(data.encode("utf-8"))
-            return True
-        except (ConnectionResetError, BrokenPipeError, OSError):
-            self.disconnect()
-            return False
-
     def request(
         self,
         prompt: str,

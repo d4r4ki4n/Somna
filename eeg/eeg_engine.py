@@ -1454,7 +1454,7 @@ class EEGEngine:
                                     "against your forehead.",
                                     "ts": time.time(),
                                     "needs_response": False,
-                                    "via": ["console", "tts"],
+                                    "via": ["console"],
                                     "style": {
                                         "voice_mode": "tts",
                                         "intensity": "soft",

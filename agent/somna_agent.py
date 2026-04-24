@@ -453,7 +453,9 @@ class Exchange:
     prompt: str | None  # None in observe mode
     response: str | None  # None if skipped or observe mode
     adjustments: dict  # what the LLM decided to change
-    complexity_score: float = 1.0  # 0 = simple/deep, 1 = alert/complex
+    complexity_score: float | None = (
+        None  # None when no response; 0=simple/deep, 1=alert
+    )
     latency_s: float = 0.0  # seconds from prompt display to first keypress
 
 
@@ -1649,7 +1651,7 @@ class SomnaAgent:
 
     def _complexity_trend(self, n: int = 5) -> str:
         """Describe the recent complexity trend as a human-readable string."""
-        scored = [ex for ex in self._history if ex.response is not None][-n:]
+        scored = [ex for ex in self._history if ex.complexity_score is not None][-n:]
         if len(scored) < 2:
             return "insufficient data"
         scores = [ex.complexity_score for ex in scored]
@@ -1834,7 +1836,9 @@ class SomnaAgent:
             "affirmation": self._last_affirmation
             if hasattr(self, "_last_affirmation")
             else "",
-            "complexity": round(ex.complexity_score, 2),
+            "complexity": round(ex.complexity_score, 2)
+            if ex.complexity_score is not None
+            else None,
         }
         self._update_profile({"effective_moment": moment})
         print(f"[Agent] Effective moment logged: {moment}")
@@ -2712,7 +2716,10 @@ class SomnaAgent:
         """Update the in-memory accumulators after each recorded exchange."""
         if ex.beat_hz < self._session_deepest_beat:
             self._session_deepest_beat = ex.beat_hz
-        if ex.complexity_score < self._session_best_cmplx:
+        if (
+            ex.complexity_score is not None
+            and ex.complexity_score < self._session_best_cmplx
+        ):
             self._session_best_cmplx = ex.complexity_score
             self._session_best_phase = ex.session_name
         if affirmation:
@@ -2927,7 +2934,7 @@ class SomnaAgent:
             t = time.strftime("%H:%M:%S", time.localtime(ex.timestamp))
             complexity_note = (
                 f"  complexity={ex.complexity_score:.2f}  latency={ex.latency_s:.0f}s"
-                if ex.response is not None
+                if ex.complexity_score is not None
                 else ""
             )
             lines.append(
@@ -3847,7 +3854,7 @@ class SomnaAgent:
         adj: dict,
         affirmation: str | None = None,
     ) -> None:
-        complexity = self._score_complexity(response) if response else 1.0
+        complexity = self._score_complexity(response) if response else None
         latency = (
             time.time() - self._prompt_sent_at
             if self._prompt_sent_at and response is not None

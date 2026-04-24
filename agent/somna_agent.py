@@ -1494,6 +1494,10 @@ class SomnaAgent:
         self._display_launch_at: float = (
             0.0  # wall time of last console-triggered launch
         )
+        self._user_stop_ts: float = (
+            0.0  # wall time of last user-initiated display stop; gates auto-relaunch
+        )
+        self._agent_stop_pending: bool = False  # True when agent wrote _agent_stop_display; distinguishes agent vs user stop
         self._pending_console_context: str = (
             ""  # console exchange that triggered a session launch
         )
@@ -5356,6 +5360,11 @@ class SomnaAgent:
         return f"Come back{addr} — you know you want to go deeper"
 
     def _nudge_start(self, reason: str) -> None:
+        # Suppress if user recently stopped the display — don't auto-relaunch.
+        _USER_STOP_COOLDOWN = 300.0  # 5 minutes
+        if time.time() - self._user_stop_ts < _USER_STOP_COOLDOWN:
+            print("[Agent] Nudge suppressed — user recently stopped display.")
+            return
         profile = _load_profile()
         profile.setdefault("engagement", {})["pending_nudge"] = {
             "started_at": time.time(),
@@ -5467,6 +5476,7 @@ class SomnaAgent:
             self._ramp.cancel("volume")
             self._ramp.cancel("noise_volume")
             self._clear_message()
+            self._agent_stop_pending = True
             self._write_live(
                 {
                     "window_opacity": self._NUDGE_OPACITY_START,
@@ -6452,6 +6462,16 @@ class SomnaAgent:
             # summary.
             _SUMMARY_MIN_DURATION = 120.0
             if _prev_display_active and not _display_active:
+                # Track user-initiated stops to prevent auto-relaunch.
+                # Agent-initiated stops (nudge timeout) set _agent_stop_pending
+                # before writing _agent_stop_display.
+                if self._agent_stop_pending:
+                    self._agent_stop_pending = False
+                else:
+                    self._user_stop_ts = time.time()
+                    print(
+                        "[Agent] User-initiated display stop detected — auto-relaunch suppressed for 5 min."
+                    )
                 if _last_session_stime >= _SUMMARY_MIN_DURATION:
                     print(
                         f"[Agent] Post-session summary triggered "

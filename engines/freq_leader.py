@@ -182,6 +182,23 @@ class AdaptiveFrequencyLeader:
                 if live.get("eeg_entrainment_confidence") == "alpha_overlap":
                     assr *= 0.7
 
+                # Conductor passthrough: don't write beat_frequency — the
+                # external agent is driving parameters directly.  Still compute
+                # and publish freq_lead_current as a recommendation.
+                hints = live.get("agent_conductor_hints") or {}
+                if hints.get("passthrough"):
+                    if self.state.phase != LeadPhase.INACTIVE:
+                        patch_live(
+                            {
+                                "freq_lead_phase": self.state.phase.value,
+                                "freq_lead_current": round(self.state.current_freq, 2),
+                                "freq_lead_steps": self.state.steps_completed,
+                                "freq_lead_holds": self.state.holds_completed,
+                            }
+                        )
+                    self._stop_evt.wait(timeout=_POLL_INTERVAL)
+                    continue
+
                 # SQI gate
                 if sqi < 0.5:
                     self._stop_evt.wait(timeout=_POLL_INTERVAL)

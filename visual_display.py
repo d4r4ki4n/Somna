@@ -695,7 +695,11 @@ class VisualDisplay:
                 self._pp_out_tex.use(0)
                 self._pp_ca_prog["u_texture"].value = 0
                 self._pp_ca_prog["u_ca_strength"].value = ca_strength
-                self._pp_ca_prog["u_resolution"].value = (float(self.W), float(self.H))
+                if "u_resolution" in self._pp_ca_prog:
+                    self._pp_ca_prog["u_resolution"].value = (
+                        float(self.W),
+                        float(self.H),
+                    )
                 self._pp_ca_vao.render(moderngl.TRIANGLE_STRIP)
                 # Swap: use blur output as scene for next pass
                 self.ctx.copy_framebuffer(self._pp_out_fbo, self._pp_blur_fbo)

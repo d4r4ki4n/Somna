@@ -4735,17 +4735,6 @@ class SomnaAgent:
         Resonance reads context via MCP tools and writes agent_ext_response.
         No _say() is called — the greeting comes from Resonance asynchronously.
         """
-        # Dedup: skip if this session already got a startup event recently.
-        # Prevents spam when the display crashes and restarts the same session.
-        if not hasattr(self, "_startup_event_sent_for"):
-            self._startup_event_sent_for = {}
-        _last_sent = self._startup_event_sent_for.get(session, 0)
-        if time.time() - _last_sent < 600:  # 10 min cooldown per session
-            print(
-                f"[Agent] Startup event skipped — already sent for {session!r} recently"
-            )
-            return
-        self._startup_event_sent_for[session] = time.time()
         is_silent = gap_min < 2.0 and self._history
         if is_silent:
             event_type = "silent_resume"

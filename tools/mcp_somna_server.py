@@ -41,18 +41,44 @@ _lc_mtime: float = 0.0
 _lc_size: int = 0
 _lc_data: dict[str, Any] = {}
 
+# MCP may run from another cwd / venv; if ``ipc.read_live`` is unavailable, fall back to file.
+_ipc_read_live: Any = None
+
 
 def _read_live(keys: list[str] | None = None) -> dict[str, Any]:
-    """Read live_control.json — always fresh, no caching.
+    """Read live state — prefer StateServer TCP (``read_live``); else disk.
 
     The mtime cache was causing stale reads when the file was being
     written rapidly by multiple processes. For an MCP tool called at
     human interaction speed, fresh reads are negligible cost.
+
+    If ``ipc`` is not importable (e.g. MCP host cwd / venv), falls back to
+    reading ``live_control.json`` directly.
     """
-    try:
-        data = json.loads(LIVE_CONTROL_PATH.read_text(encoding="utf-8"))
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {}
+    global _ipc_read_live
+    data: dict[str, Any]
+
+    if _ipc_read_live is None:
+        try:
+            root = str(SOMNA_ROOT)
+            if root not in sys.path:
+                sys.path.insert(0, root)
+            from ipc import read_live as _ipc_read_live_fn  # type: ignore
+
+            _ipc_read_live = _ipc_read_live_fn
+        except Exception:
+            _ipc_read_live = False
+
+    if _ipc_read_live is not False:
+        try:
+            data = _ipc_read_live() or {}
+        except Exception:
+            data = {}
+    else:
+        try:
+            data = json.loads(LIVE_CONTROL_PATH.read_text(encoding="utf-8"))
+        except (FileNotFoundError, json.JSONDecodeError):
+            data = {}
 
     if keys:
         return {k: data.get(k) for k in keys}

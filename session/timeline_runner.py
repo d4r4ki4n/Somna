@@ -19,7 +19,7 @@ import math
 import yaml
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-from ipc import patch_live
+from ipc import patch_live, read_live
 
 
 # ── Parameters that interpolate vs cut instantly ──────────────────────────────
@@ -315,7 +315,6 @@ class TimelineRunner(threading.Thread):
     def __init__(self, root: Path):
         super().__init__(daemon=True, name="TimelineRunner")
         self.root = root
-        self.live_path = root / "live_control.json"
         self._lock = threading.RLock()  # reentrant — allows load inside tick
         self._stop_evt = threading.Event()
 
@@ -1091,7 +1090,7 @@ class TimelineRunner(threading.Thread):
 
     def _read_live(self) -> Dict:
         try:
-            return json.loads(self.live_path.read_text(encoding="utf-8"))
+            return read_live()
         except Exception:
             return {}
 

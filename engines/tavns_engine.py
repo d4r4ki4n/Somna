@@ -362,10 +362,8 @@ class TavnsEngine:
     @staticmethod
     def _read_live() -> Optional[dict]:
         try:
-            import json
-            from pathlib import Path
+            from ipc import read_live
 
-            path = Path(__file__).parent.parent / "live_control.json"
-            return json.loads(path.read_text(encoding="utf-8"))
+            return read_live()
         except Exception:
             return None

@@ -52,6 +52,41 @@ class StateClient:
         """Full atomic replace of live state."""
         self._enqueue({"op": "write", "data": data})
 
+    def read(self) -> dict:
+        """Blocking read of current live state from StateServer (dedicated TCP connection)."""
+        for attempt in range(5):
+            s: Optional[socket.socket] = None
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.settimeout(2.0)
+                s.connect((self._host, self._port))
+                msg = (
+                    json.dumps({"op": "read"}, separators=(",", ":")).encode("utf-8")
+                    + b"\n"
+                )
+                s.sendall(msg)
+                buf = b""
+                while True:
+                    chunk = s.recv(65536)
+                    if not chunk:
+                        break
+                    buf += chunk
+                    if b"\n" in buf:
+                        break
+                line = buf.split(b"\n", 1)[0].strip()
+                if line:
+                    return json.loads(line.decode("utf-8"))
+                return {}
+            except Exception:
+                time.sleep(0.05 * (attempt + 1))
+            finally:
+                if s is not None:
+                    try:
+                        s.close()
+                    except Exception:
+                        pass
+        return {}
+
     # ── Internal ──────────────────────────────────────────────────────────────
 
     def _enqueue(self, msg: dict) -> None:
@@ -123,6 +158,11 @@ def patch_live(updates: dict) -> None:
 def write_live(data: dict) -> None:
     """Atomically replace all of live_control.json via the StateServer."""
     _get_client().write(data)
+
+
+def read_live() -> dict:
+    """Read current live state from the StateServer via TCP."""
+    return _get_client().read()
 
 
 def set_server_address(host: str = "127.0.0.1", port: int = PORT) -> None:

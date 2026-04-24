@@ -3,7 +3,6 @@
 
 uniform sampler2D u_texture;
 uniform float u_ca_strength;  // 0.0 to 0.01; from pp_ca_strength in live_control
-uniform vec2  u_resolution;
 
 in  vec2 uv;
 out vec4 frag_color;

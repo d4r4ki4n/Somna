@@ -30,6 +30,7 @@ from session.session_director import (
 
 try:
     from session.induction_runner import StrategySelector, STRATEGY_REGISTRY
+
     _SELECTOR_AVAILABLE = True
 except ImportError:
     _SELECTOR_AVAILABLE = False
@@ -37,21 +38,22 @@ except ImportError:
 
 # ── User model data structures ────────────────────────────────────────────────
 
+
 @dataclass
 class UserProfile:
-    user_id:                 str
-    sessions_completed:      int   = 0
-    total_session_time_s:    int   = 0
-    avg_peak_depth:          float = 0.0
-    max_achieved_depth:      float = 0.0
-    preferred_induction:     str   = "entrainment_heavy"
-    preferred_arc:           str   = "GENTLE_DESCENT"
+    user_id: str
+    sessions_completed: int = 0
+    total_session_time_s: int = 0
+    avg_peak_depth: float = 0.0
+    max_achieved_depth: float = 0.0
+    preferred_induction: str = "entrainment_heavy"
+    preferred_arc: str = "GENTLE_DESCENT"
     avg_time_to_induction_s: float = 300.0
-    avg_time_to_peak_s:      float = 900.0
+    avg_time_to_peak_s: float = 900.0
     sleep_fork_success_rate: float = 0.0
-    last_session_at:         Optional[float] = None
-    created_at:              float = field(default_factory=time.time)
-    updated_at:              float = field(default_factory=time.time)
+    last_session_at: Optional[float] = None
+    created_at: float = field(default_factory=time.time)
+    updated_at: float = field(default_factory=time.time)
 
     @classmethod
     def create_default(cls) -> "UserProfile":
@@ -61,25 +63,26 @@ class UserProfile:
 @dataclass
 class SessionRecord:
     """Lightweight record loaded from session_history."""
-    session_id:             str
-    arc_template:           str
-    session_goal:           str
-    achieved_peak_depth:    float
-    induction_strategy:     str
+
+    session_id: str
+    arc_template: str
+    session_goal: str
+    achieved_peak_depth: float
+    induction_strategy: str
     induction_effectiveness: float
-    avg_depth:              float
-    time_in_deep_s:         int
-    duration_s:             int
-    started_at:             float
+    avg_depth: float
+    time_in_deep_s: int
+    duration_s: int
+    started_at: float
 
 
 @dataclass
 class HistoryAnalysis:
-    depth_trend:            Optional[float]
-    best_arc:               Optional[str]
-    best_induction:         Optional[str]
-    conditioning_gaps:      list[str]
-    last_arc_used:          Optional[str]
+    depth_trend: Optional[float]
+    best_arc: Optional[str]
+    best_induction: Optional[str]
+    conditioning_gaps: list[str]
+    last_arc_used: Optional[str]
     sessions_since_variety: int
 
     @classmethod
@@ -98,41 +101,52 @@ class HistoryAnalysis:
 
 _POOL_RANKINGS: dict[str, list[str]] = {
     "deepening_practice": [
-        "deepening_somatic", "entrainment_heavy", "breath_anchors",
+        "deepening_somatic",
+        "entrainment_heavy",
+        "breath_anchors",
         "progressive_relaxation",
     ],
     "conditioning_reinforcement": [
-        "conditioning_primary", "reinforcement_somatic",
-        "anchor_strengthening", "identity_work",
+        "conditioning_primary",
+        "reinforcement_somatic",
+        "anchor_strengthening",
+        "identity_work",
     ],
     "sleep_preparation": [
-        "sleep_bridge", "body_scan_progressive", "breath_slowing",
+        "sleep_bridge",
+        "body_scan_progressive",
+        "breath_slowing",
         "ambient_minimal",
     ],
     "exploration": [
-        "general_induction", "somatic_exploration",
-        "conceptual_frameworks", "novelty_high",
+        "general_induction",
+        "somatic_exploration",
+        "conceptual_frameworks",
+        "novelty_high",
     ],
     "maintenance": [
-        "balanced_general", "somatic_familiar", "light_conditioning",
+        "balanced_general",
+        "somatic_familiar",
+        "light_conditioning",
         "ambient_support",
     ],
 }
 
 _PHASE_ENTRY_CONDITIONS: dict[DirectorPhase, str] = {
-    DirectorPhase.ARRIVAL:             "session_start",
-    DirectorPhase.INDUCTION:           "arrival_complete",
-    DirectorPhase.DEEPENING:           "trance_score_v2 >= 0.25",
-    DirectorPhase.WORK:                "trance_score_v2 >= target_peak_depth_x0.8",
-    DirectorPhase.WORK_BLOCK:          "trance_score_v2 >= 0.4",
+    DirectorPhase.ARRIVAL: "session_start",
+    DirectorPhase.INDUCTION: "arrival_complete",
+    DirectorPhase.DEEPENING: "trance_score_v2 >= 0.25",
+    DirectorPhase.WORK: "trance_score_v2 >= target_peak_depth_x0.8",
+    DirectorPhase.WORK_BLOCK: "trance_score_v2 >= 0.4",
     DirectorPhase.MICRO_CONSOLIDATION: "work_block_complete",
-    DirectorPhase.CONSOLIDATION:       "work_complete",
-    DirectorPhase.EMERGENCE:           "consolidation_complete OR emergency",
-    DirectorPhase.SLEEP_TRANSITION:    "drowsiness_detected AND sleep_fork_armed",
+    DirectorPhase.CONSOLIDATION: "work_complete",
+    DirectorPhase.EMERGENCE: "consolidation_complete OR emergency",
+    DirectorPhase.SLEEP_TRANSITION: "drowsiness_detected AND sleep_fork_armed",
 }
 
 
 # ── SessionPlanner ────────────────────────────────────────────────────────────
+
 
 class SessionPlanner:
     """
@@ -155,15 +169,25 @@ class SessionPlanner:
 
     def plan_session(self, user_request: Optional[dict] = None) -> SessionPlan:
         """Produce a SessionPlan for the upcoming session."""
-        profile  = self._load_user_profile()
-        history  = self._load_recent_sessions(limit=5)
+        profile = self._load_user_profile()
+        history = self._load_recent_sessions(limit=5)
         analysis = self._analyze_history(history)
 
-        goal       = (user_request or {}).get("goal") or self._auto_select_goal(profile, analysis)
-        arc        = (user_request or {}).get("arc_template") or self._select_arc(profile, analysis)
-        depth      = (user_request or {}).get("target_peak_depth") or self._set_depth_target(profile, analysis)
-        induction  = (user_request or {}).get("induction_strategy") or self._select_induction(profile, analysis)
-        duration   = (user_request or {}).get("duration_s") or self._estimate_duration(profile, arc)
+        goal = (user_request or {}).get("goal") or self._auto_select_goal(
+            profile, analysis
+        )
+        arc = (user_request or {}).get("arc_template") or self._select_arc(
+            profile, analysis
+        )
+        depth = (user_request or {}).get("target_peak_depth") or self._set_depth_target(
+            profile, analysis
+        )
+        induction = (user_request or {}).get(
+            "induction_strategy"
+        ) or self._select_induction(profile, analysis)
+        duration = (user_request or {}).get("duration_s") or self._estimate_duration(
+            profile, arc
+        )
         sleep_fork = (
             arc == "SLEEP_BRIDGE"
             or bool((user_request or {}).get("sleep_fork", False))
@@ -173,7 +197,7 @@ class SessionPlanner:
         cond_targets = self._select_conditioning_targets(profile, goal)
         self._plan_conditioning_targets = cond_targets
 
-        phase_plan    = self._build_phase_plan(arc, profile, int(duration))
+        phase_plan = self._build_phase_plan(arc, profile, int(duration))
         contingencies = self._build_contingencies(phase_plan)
         content_strat = self._build_content_strategy(goal, phase_plan)
 
@@ -222,19 +246,27 @@ class SessionPlanner:
         try:
             rows = self.db.get_recent_session_history(limit=limit)
             records = []
-            for r in (rows or []):
-                records.append(SessionRecord(
-                    session_id=r.get("session_id", ""),
-                    arc_template=r.get("arc_template", "GENTLE_DESCENT"),
-                    session_goal=r.get("session_goal", "exploration"),
-                    achieved_peak_depth=float(r.get("achieved_peak_depth", 0.0) or 0.0),
-                    induction_strategy=r.get("induction_strategy", "entrainment_heavy"),
-                    induction_effectiveness=float(r.get("induction_effectiveness", 0.5) or 0.5),
-                    avg_depth=float(r.get("avg_depth", 0.0) or 0.0),
-                    time_in_deep_s=int(r.get("time_in_deep_s", 0) or 0),
-                    duration_s=int(r.get("duration_s", 0) or 0),
-                    started_at=float(r.get("started_at", 0.0) or 0.0),
-                ))
+            for r in rows or []:
+                records.append(
+                    SessionRecord(
+                        session_id=r.get("session_id", ""),
+                        arc_template=r.get("arc_template", "GENTLE_DESCENT"),
+                        session_goal=r.get("session_goal", "exploration"),
+                        achieved_peak_depth=float(
+                            r.get("achieved_peak_depth", 0.0) or 0.0
+                        ),
+                        induction_strategy=r.get(
+                            "induction_strategy", "entrainment_heavy"
+                        ),
+                        induction_effectiveness=float(
+                            r.get("induction_effectiveness", 0.5) or 0.5
+                        ),
+                        avg_depth=float(r.get("avg_depth", 0.0) or 0.0),
+                        time_in_deep_s=int(r.get("time_in_deep_s", 0) or 0),
+                        duration_s=int(r.get("duration_s", 0) or 0),
+                        started_at=float(r.get("started_at", 0.0) or 0.0),
+                    )
+                )
             return records
         except Exception:
             return []
@@ -250,10 +282,20 @@ class SessionPlanner:
         ind_scores: dict[str, list[float]] = {}
         for s in history:
             arc_scores.setdefault(s.arc_template, []).append(s.achieved_peak_depth)
-            ind_scores.setdefault(s.induction_strategy, []).append(s.induction_effectiveness)
+            ind_scores.setdefault(s.induction_strategy, []).append(
+                s.induction_effectiveness
+            )
 
-        best_arc = max(arc_scores, key=lambda k: sum(arc_scores[k]) / len(arc_scores[k])) if arc_scores else None
-        best_ind = max(ind_scores, key=lambda k: sum(ind_scores[k]) / len(ind_scores[k])) if ind_scores else None
+        best_arc = (
+            max(arc_scores, key=lambda k: sum(arc_scores[k]) / len(arc_scores[k]))
+            if arc_scores
+            else None
+        )
+        best_ind = (
+            max(ind_scores, key=lambda k: sum(ind_scores[k]) / len(ind_scores[k]))
+            if ind_scores
+            else None
+        )
 
         sessions_since_variety = 0
         for s in reversed(history):
@@ -284,9 +326,11 @@ class SessionPlanner:
     def _auto_select_goal(self, profile: UserProfile, analysis: HistoryAnalysis) -> str:
         if analysis.conditioning_gaps:
             return "conditioning_reinforcement"
-        if (analysis.depth_trend is not None
-                and analysis.depth_trend < 0.001
-                and profile.sessions_completed > 10):
+        if (
+            analysis.depth_trend is not None
+            and analysis.depth_trend < 0.001
+            and profile.sessions_completed > 10
+        ):
             return "deepening_practice"
         if self._is_evening_session() and profile.sleep_fork_success_rate > 0.5:
             return "sleep_preparation"
@@ -300,16 +344,21 @@ class SessionPlanner:
 
         # Bible Ch.4 Addendum A §6.1–6.2 — evaluate GENUS eligibility before variety/depth logic.
         # Estimate session duration for minimum-time gate (900 s).
-        estimated_s = self._estimate_duration(profile, analysis.best_arc or "GENTLE_DESCENT")
+        estimated_s = self._estimate_duration(
+            profile, analysis.best_arc or "GENTLE_DESCENT"
+        )
         if self._is_genus_eligible(profile, analysis, int(estimated_s)):
             return self._select_genus_arc(int(estimated_s), analysis)
 
         if analysis.sessions_since_variety >= 3:
             alternatives = [
-                a for a in ARC_TEMPLATES
+                a
+                for a in ARC_TEMPLATES
                 if a != analysis.best_arc
                 and not (a == "DEEP_PLATEAU" and profile.sessions_completed < 5)
-                and not a.startswith("GENUS_")   # exclude GENUS from random variety picks
+                and not a.startswith(
+                    "GENUS_"
+                )  # exclude GENUS from random variety picks
             ]
             if alternatives:
                 return random.choice(alternatives)
@@ -349,17 +398,18 @@ class SessionPlanner:
             recent = self.db.get_recent_sessions(limit=1) or []
             if recent:
                 last = recent[0] if isinstance(recent[0], dict) else {}
-                if last.get("genus_fallback") and not dp.get("genus_adjusted_since_fallback"):
+                if last.get("genus_fallback") and not dp.get(
+                    "genus_adjusted_since_fallback"
+                ):
                     return False
         except Exception:
             pass
 
         # Inclusion: monitor refresh rate >= 80 Hz (or audio-only mode)
         try:
-            import json
-            from pathlib import Path
-            _live = Path(__file__).parent.parent / "live_control.json"
-            live  = json.loads(_live.read_text(encoding="utf-8"))
+            from ipc import read_live
+
+            live = read_live()
             refresh_ok = (
                 int(live.get("display_refresh_rate", 0) or 0) >= 80
                 or bool(live.get("genus_audio_only_mode", False))
@@ -383,7 +433,9 @@ class SessionPlanner:
 
         return True
 
-    def _select_genus_arc(self, session_duration_s: int, analysis: HistoryAnalysis) -> str:
+    def _select_genus_arc(
+        self, session_duration_s: int, analysis: HistoryAnalysis
+    ) -> str:
         """Bible Ch.4 Addendum A §6.2 — select the appropriate GENUS arc template."""
         try:
             dp = self.db.get_director_profile() or {}
@@ -424,9 +476,9 @@ class SessionPlanner:
             try:
                 selector = StrategySelector(STRATEGY_REGISTRY, db=self.db)
                 ctx = {
-                    "session_count":  profile.sessions_completed,
-                    "ppg_available":  False,   # unknown at planning time; conservative
-                    "arc_template":   analysis.preferred_arc or "GENTLE_DESCENT",
+                    "session_count": profile.sessions_completed,
+                    "ppg_available": False,  # unknown at planning time; conservative
+                    "arc_template": analysis.preferred_arc or "GENTLE_DESCENT",
                     "synthetic_board": False,
                 }
                 # Load contraindication flags and effectiveness from DB if possible
@@ -434,14 +486,14 @@ class SessionPlanner:
                 try:
                     dp = self.db.get_director_profile()
                     if dp:
-                        user_profile_dict["contraindication_flags"] = (
-                            dp.get("contraindication_flags", [])
+                        user_profile_dict["contraindication_flags"] = dp.get(
+                            "contraindication_flags", []
                         )
-                        user_profile_dict["strategy_effectiveness"] = (
-                            dp.get("strategy_effectiveness", {})
+                        user_profile_dict["strategy_effectiveness"] = dp.get(
+                            "strategy_effectiveness", {}
                         )
-                        user_profile_dict["preferred_strategy"] = (
-                            dp.get("preferred_strategy")
+                        user_profile_dict["preferred_strategy"] = dp.get(
+                            "preferred_strategy"
                         )
                 except Exception:
                     pass
@@ -462,21 +514,23 @@ class SessionPlanner:
         """Proxy: no direct access here — return neutral 0.6."""
         return 0.6
 
-    def _set_depth_target(self, profile: UserProfile, analysis: HistoryAnalysis) -> float:
+    def _set_depth_target(
+        self, profile: UserProfile, analysis: HistoryAnalysis
+    ) -> float:
         if profile.sessions_completed < 3:
             return 0.5
-        trend   = analysis.depth_trend or 0.0
+        trend = analysis.depth_trend or 0.0
         stretch = 0.02 + 0.03 * _clamp(trend, 0.0, 1.0)
-        target  = profile.avg_peak_depth + stretch
+        target = profile.avg_peak_depth + stretch
         ceiling = profile.max_achieved_depth + 0.1
         return _clamp(target, 0.3, min(ceiling, 0.95))
 
     def _estimate_duration(self, profile: UserProfile, arc: str) -> int:
         base = {
-            "DEEP_PLATEAU":       2700,
-            "SLEEP_BRIDGE":       2400,
+            "DEEP_PLATEAU": 2700,
+            "SLEEP_BRIDGE": 2400,
             "CONDITIONING_FOCUS": 2400,
-            "WAVE_PATTERN":       2100,
+            "WAVE_PATTERN": 2100,
         }.get(arc, 1800)
 
         if profile.sessions_completed > 5 and profile.total_session_time_s > 0:
@@ -490,7 +544,10 @@ class SessionPlanner:
     # ── Phase plan construction ───────────────────────────────────────────────
 
     def _build_phase_plan(
-        self, arc_name: str, profile: UserProfile, duration_s: int,
+        self,
+        arc_name: str,
+        profile: UserProfile,
+        duration_s: int,
     ) -> list[PhasePlan]:
         template = ARC_TEMPLATES.get(arc_name, ARC_TEMPLATES["GENTLE_DESCENT"])
         plans: list[PhasePlan] = []
@@ -504,26 +561,36 @@ class SessionPlanner:
             min_dur = max(30, int(target_dur * 0.5))
             max_dur = int(target_dur * 2.5)
 
-            plans.append(PhasePlan(
-                phase=phase,
-                target_duration_s=target_dur,
-                min_duration_s=min_dur,
-                max_duration_s=max_dur,
-                entry_condition=_PHASE_ENTRY_CONDITIONS.get(phase, ""),
-                exit_condition=_PHASE_EXIT_CONDITIONS.get(phase, "phase_elapsed >= target_duration"),
-                intensity_target=_PHASE_INTENSITY_TARGETS.get(phase, 0.5),
-                content_pools=list(_PHASE_CONTENT_POOLS.get(phase, ["ambient_support"])),
-                gain_ceiling=_PHASE_GAIN_CEILINGS.get(phase, 0.5),
-            ))
+            plans.append(
+                PhasePlan(
+                    phase=phase,
+                    target_duration_s=target_dur,
+                    min_duration_s=min_dur,
+                    max_duration_s=max_dur,
+                    entry_condition=_PHASE_ENTRY_CONDITIONS.get(phase, ""),
+                    exit_condition=_PHASE_EXIT_CONDITIONS.get(
+                        phase, "phase_elapsed >= target_duration"
+                    ),
+                    intensity_target=_PHASE_INTENSITY_TARGETS.get(phase, 0.5),
+                    content_pools=list(
+                        _PHASE_CONTENT_POOLS.get(phase, ["ambient_support"])
+                    ),
+                    gain_ceiling=_PHASE_GAIN_CEILINGS.get(phase, 0.5),
+                )
+            )
 
         return plans
 
-    def _build_contingencies(self, phase_plan: list[PhasePlan]) -> dict[str, list[PhasePlan]]:
+    def _build_contingencies(
+        self, phase_plan: list[PhasePlan]
+    ) -> dict[str, list[PhasePlan]]:
         return {
             "induction_failure": [
                 PhasePlan(
                     phase=DirectorPhase.INDUCTION,
-                    target_duration_s=300, min_duration_s=120, max_duration_s=600,
+                    target_duration_s=300,
+                    min_duration_s=120,
+                    max_duration_s=600,
                     entry_condition="redirect_triggered",
                     exit_condition="trance_score_v2 >= 0.2",
                     intensity_target=0.3,
@@ -534,7 +601,9 @@ class SessionPlanner:
             "depth_plateau": [
                 PhasePlan(
                     phase=DirectorPhase.DEEPENING,
-                    target_duration_s=240, min_duration_s=120, max_duration_s=480,
+                    target_duration_s=240,
+                    min_duration_s=120,
+                    max_duration_s=480,
                     entry_condition="depth_stalled",
                     exit_condition="trance_score_v2 increasing for 60s",
                     intensity_target=0.6,
@@ -545,7 +614,9 @@ class SessionPlanner:
             "drowsiness_detected": [
                 PhasePlan(
                     phase=DirectorPhase.SLEEP_TRANSITION,
-                    target_duration_s=600, min_duration_s=120, max_duration_s=900,
+                    target_duration_s=600,
+                    min_duration_s=120,
+                    max_duration_s=900,
                     entry_condition="drowsiness_sustained > 60s",
                     exit_condition="handoff_to_doc39",
                     intensity_target=0.2,
@@ -556,7 +627,9 @@ class SessionPlanner:
         }
 
     def _build_content_strategy(
-        self, goal: str, phase_plan: list[PhasePlan],
+        self,
+        goal: str,
+        phase_plan: list[PhasePlan],
     ) -> dict[str, dict]:
         strategy: dict[str, dict] = {}
         for pp in phase_plan:
@@ -575,7 +648,9 @@ class SessionPlanner:
         return list(_POOL_RANKINGS.get(goal, _POOL_RANKINGS["exploration"]))
 
     def _select_conditioning_targets(
-        self, profile: UserProfile, goal: str,
+        self,
+        profile: UserProfile,
+        goal: str,
     ) -> list[str]:
         if goal != "conditioning_reinforcement":
             return []

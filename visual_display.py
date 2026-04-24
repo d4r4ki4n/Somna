@@ -685,6 +685,11 @@ class VisualDisplay:
         target = self._vr_fbo if self._vr_fbo is not None else self.ctx.screen
 
         try:
+            # Disable blending — PP passes are fullscreen quads that write every pixel.
+            # With blending ON, transparent output (0,0,0,0) blends with the clear
+            # color (0,0,0,1.0) and stays opaque black, destroying transparency.
+            self.ctx.blend_func = (moderngl.ONE, moderngl.ZERO)
+
             # ── Step 1: Capture current scene into _pp_out_fbo ───────────────
             self.ctx.copy_framebuffer(self._pp_out_fbo, target)
 
@@ -758,6 +763,9 @@ class VisualDisplay:
                 )
             self._pp_composite_vao.render(moderngl.TRIANGLE_STRIP)
 
+            # Restore standard alpha blending for overlay layers
+            self.ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
+
         except Exception as _pe:
             # Non-fatal: restore target and log once
             if not getattr(self, "_pp_error_logged", False):
@@ -767,6 +775,7 @@ class VisualDisplay:
                 target.use()
             except Exception:
                 pass
+            self.ctx.blend_func = (moderngl.SRC_ALPHA, moderngl.ONE_MINUS_SRC_ALPHA)
 
     # ── Upload a pygame surface and blit it as a fullscreen quad ──────────────
 

@@ -36,9 +36,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from ipc import patch_live
-
-_LIVE = Path(__file__).parent / "live_control.json"
+from ipc import patch_live, read_live
 
 # ── Sweep Definitions ─────────────────────────────────────────────────────────
 
@@ -268,7 +266,7 @@ SWEEPS = {
 
 def _read_live():
     try:
-        return json.loads(_LIVE.read_text(encoding="utf-8"))
+        return read_live()
     except Exception:
         return {}
 

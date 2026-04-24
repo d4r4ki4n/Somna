@@ -46,6 +46,7 @@ not by this subprocess.
 
 Entry point: python vr_display_runner.py
 """
+
 from __future__ import annotations
 
 import json
@@ -53,7 +54,7 @@ import os
 import sys
 import time
 from pathlib import Path
-from ipc import patch_live
+from ipc import patch_live, read_live
 
 # Ensure the Somna root (parent of this vr/ package) is on sys.path so that
 # both `from vr.vr_flicker_engine import ...` and `from eeg.eeg_engine import ...`
@@ -62,19 +63,20 @@ _PKG_ROOT = Path(__file__).parent.parent
 if str(_PKG_ROOT) not in sys.path:
     sys.path.insert(0, str(_PKG_ROOT))
 
-_ROOT      = _PKG_ROOT          # live_control.json lives at Somna root
-_LIVE_PATH = _ROOT / "live_control.json"
+_ROOT = _PKG_ROOT  # live_control.json lives at Somna root
 
 # ── Optional dependencies with graceful fallback ──────────────────────────────
 
 try:
     import pyopenxr as xr
+
     _XR_AVAILABLE = True
 except ImportError:
     _XR_AVAILABLE = False
 
 try:
     from OpenGL import GL
+
     _GL_AVAILABLE = True
 except ImportError:
     _GL_AVAILABLE = False
@@ -82,11 +84,14 @@ except ImportError:
 
 # ── IPC helpers ───────────────────────────────────────────────────────────────
 
+
 def _read_live() -> dict:
     try:
-        return json.loads(_LIVE_PATH.read_text(encoding="utf-8")) if _LIVE_PATH.exists() else {}
+        return read_live()
     except Exception:
         return {}
+
+
 def run_vr_session() -> None:
     """Open an OpenXR session and run the per-eye render loop.
 
@@ -95,7 +100,7 @@ def run_vr_session() -> None:
     from vr.vr_flicker_engine import DichopticFlickerEngine, FlickerMode
     from vr.vr_safety import SafetyEnforcer, check_paroxysmal, PHOTOSENSITIVITY_WARNING
 
-    safety  = SafetyEnforcer()
+    safety = SafetyEnforcer()
     flicker = DichopticFlickerEngine(safety=safety)
 
     if not safety.warning_acknowledged:
@@ -131,14 +136,14 @@ def _run_frame_loop(context, flicker, safety) -> None:
     from vr.vr_subliminal import SubLiminalRenderer
     from vr.vr_ssvep_detector import SSVEPDetector
 
-    frame_count  = 0
-    last_cfg_ts  = 0.0
+    frame_count = 0
+    last_cfg_ts = 0.0
     last_ssvep_s = 0.0
-    cfg          = _read_live()
+    cfg = _read_live()
     _apply_cfg(flicker, cfg)
     ssvep_detector = SSVEPDetector(fs=256)
 
-    ganzfeld_proto   = GanzfeldProtocol()
+    ganzfeld_proto = GanzfeldProtocol()
     _ganzfeld_started = False
 
     vection = VectionRenderer(n_particles=int(cfg.get("vr_vection_density", 800)))
@@ -150,6 +155,7 @@ def _run_frame_loop(context, flicker, safety) -> None:
 
     # Rolling buffer for paroxysmal detection (AF7 channel, 5 s at 256 Hz)
     import numpy as np
+
     _eeg_buffer: list[float] = []
     _EEG_BUF_MAX = 256 * 5
 
@@ -195,16 +201,22 @@ def _run_frame_loop(context, flicker, safety) -> None:
                     flicker.fade_out(duration_s=2.0, timestamp=now)
 
             # Feed SSVEP detector whenever in dichoptic mode
-            if cfg.get("vr_render_mode") == "dichoptic_ssvep" and raw_af8 and len(raw_af8) == 256:
+            if (
+                cfg.get("vr_render_mode") == "dichoptic_ssvep"
+                and raw_af8
+                and len(raw_af8) == 256
+            ):
                 ssvep_detector.update_batch(np.array(raw_af7), np.array(raw_af8))
                 if now - last_ssvep_s >= 1.0:
-                    f_left  = float(cfg.get("vr_ssvep_left_hz",  7.5))
+                    f_left = float(cfg.get("vr_ssvep_left_hz", 7.5))
                     f_right = float(cfg.get("vr_ssvep_right_hz", 12.0))
                     ssvep_detector.detect(f_left, f_right)
                     last_ssvep_s = now
 
         # Vection: start/stop based on vr_vection_enabled flag
-        vection_enabled = bool(cfg.get("vr_vection_enabled", False)) and not safety.killed
+        vection_enabled = (
+            bool(cfg.get("vr_vection_enabled", False)) and not safety.killed
+        )
         if vection_enabled and not _vection_was_enabled:
             vection.update_cfg(cfg)
             vection.start()
@@ -231,7 +243,7 @@ def _run_frame_loop(context, flicker, safety) -> None:
             if vection_enabled:
                 # Query swapchain image dimensions from the view
                 w = getattr(getattr(view, "sub_image", None), "image_rect", None)
-                vw = w.extent.width  if w else 1280
+                vw = w.extent.width if w else 1280
                 vh = w.extent.height if w else 1280
                 vection.render_eye(eye_index, vw, vh)
 
@@ -245,7 +257,7 @@ def _run_frame_loop(context, flicker, safety) -> None:
                 _subliminal_was_active = False
 
         frame_count += 1
-        if frame_count % 600 == 0:   # update status every ~10 s at 60 fps
+        if frame_count % 600 == 0:  # update status every ~10 s at 60 fps
             patch_live({"vr_frame_count": frame_count})
 
 
@@ -261,16 +273,16 @@ def _apply_cfg(flicker, cfg: dict) -> None:
         flicker.set_mode(FlickerMode.GANZFELD)
 
     elif mode_str == "photic":
-        hz       = float(cfg.get("vr_photic_hz",    10.0))
-        depth    = float(cfg.get("vr_photic_depth",  0.20))
-        waveform = str  (cfg.get("vr_photic_waveform", "sine"))
+        hz = float(cfg.get("vr_photic_hz", 10.0))
+        depth = float(cfg.get("vr_photic_depth", 0.20))
+        waveform = str(cfg.get("vr_photic_waveform", "sine"))
         flicker.set_photic_bilateral(hz, depth, waveform)
         flicker.set_mode(FlickerMode.PHOTIC_BILATERAL)
 
     elif mode_str == "rivalry":
-        left_hz  = float(cfg.get("vr_rivalry_left_hz",  7.5))
+        left_hz = float(cfg.get("vr_rivalry_left_hz", 7.5))
         right_hz = float(cfg.get("vr_rivalry_right_hz", 12.0))
-        depth    = float(cfg.get("vr_rivalry_depth",    0.20))
+        depth = float(cfg.get("vr_rivalry_depth", 0.20))
         try:
             flicker.set_rivalry_pair(left_hz, right_hz, depth)
             flicker.set_mode(FlickerMode.DICHOPTIC_RIVALRY)
@@ -279,9 +291,9 @@ def _apply_cfg(flicker, cfg: dict) -> None:
             flicker.set_ganzfeld()
 
     elif mode_str == "dichoptic_ssvep":
-        left_hz  = float(cfg.get("vr_ssvep_left_hz",  7.5))
+        left_hz = float(cfg.get("vr_ssvep_left_hz", 7.5))
         right_hz = float(cfg.get("vr_ssvep_right_hz", 12.0))
-        depth    = float(cfg.get("vr_ssvep_depth",    0.20))
+        depth = float(cfg.get("vr_ssvep_depth", 0.20))
         try:
             flicker.set_ssvep_pair(left_hz, right_hz, depth)
             flicker.set_mode(FlickerMode.DICHOPTIC_SSVEP)

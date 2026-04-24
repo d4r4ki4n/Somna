@@ -33,13 +33,10 @@ is computed and when the DeliveryGate is evaluated.
 
 from __future__ import annotations
 
-import json
 from collections import deque
-from pathlib import Path
 
 import numpy as np
-
-_LIVE = Path(__file__).parent.parent / "live_control.json"
+from ipc import read_live
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -117,13 +114,7 @@ class IMUEngine:
             # Conductor writes imu_motion_threshold_override on sleep phase entry
             # (Bible Ch.2 §2.9 §5.4) — fall back to module default when not set
             try:
-                _override = (
-                    json.loads(_LIVE.read_text(encoding="utf-8")).get(
-                        "imu_motion_threshold_override"
-                    )
-                    if _LIVE.exists()
-                    else None
-                )
+                _override = read_live().get("imu_motion_threshold_override")
                 motion_thresh = (
                     float(_override) if _override is not None else _MOTION_THRESH
                 )

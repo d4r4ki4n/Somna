@@ -26,9 +26,7 @@ Intended usage from an LLM:
 import json
 from pathlib import Path
 from typing import Any
-from ipc import patch_live
-
-_LIVE = Path(__file__).resolve().parent.parent / "live_control.json"
+from ipc import patch_live, read_live
 
 # ── Parameter reference ───────────────────────────────────────────────────────
 
@@ -138,10 +136,8 @@ def read_state() -> dict[str, Any]:
       "restart"         — jump back to t=0 and clear user locks
       "load"            — load session named by session_folder key
     """
-    if not _LIVE.exists():
-        return {}
     try:
-        return json.loads(_LIVE.read_text(encoding="utf-8"))
+        return read_live()
     except Exception:
         return {}
 

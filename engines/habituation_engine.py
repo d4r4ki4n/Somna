@@ -30,22 +30,25 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any
-from ipc import patch_live
+from ipc import patch_live, read_live
 
-_ROOT      = Path(__file__).parent.parent
-_LIVE_PATH = _ROOT / "live_control.json"
+_ROOT = Path(__file__).parent.parent
+
+
 def _db():
     from content_tools import somna_db
+
     return somna_db
 
 
 # ── Stimulus state lifecycle ──────────────────────────────────────────────────
 
+
 class StimulusState(Enum):
-    NOVEL    = "novel"
-    ACTIVE   = "active"
-    COOLING  = "cooling"
-    RETIRED  = "retired"
+    NOVEL = "novel"
+    ACTIVE = "active"
+    COOLING = "cooling"
+    RETIRED = "retired"
     ARCHIVED = "archived"
 
 
@@ -53,112 +56,113 @@ class StimulusState(Enum):
 
 # τ_micro — consecutive-presentation decay constant (number of presentations)
 _TAU_MICRO: dict[str, float] = {
-    "word":    8.0,
+    "word": 8.0,
     "visual": 20.0,
-    "audio":  45.0,
+    "audio": 45.0,
     "spiral": 20.0,
-    "fractal":20.0,
-    "beat":   45.0,
-    "tone":   45.0,
+    "fractal": 20.0,
+    "beat": 45.0,
+    "tone": 45.0,
 }
 _TAU_MICRO_DEFAULT = 15.0
 
 # Recovery gap (seconds) — gap resets consecutive_presentations → 0
 _RECOVERY_GAP_S: dict[str, float] = {
-    "word":    30.0,
+    "word": 30.0,
     "visual": 120.0,
-    "audio":   60.0,
+    "audio": 60.0,
     "spiral": 120.0,
-    "beat":    60.0,
+    "beat": 60.0,
 }
 _RECOVERY_GAP_DEFAULT = 60.0
 
 # Session budget — max presentations per class per session (meso)
 _SESSION_BUDGET: dict[str, int] = {
-    "visual":      60,
-    "shadows":     40,
+    "visual": 60,
+    "shadows": 40,
     "center_text": 25,
-    "audio":       80,
-    "voice":       15,
-    "word":        25,
+    "audio": 80,
+    "voice": 15,
+    "word": 25,
 }
 _SESSION_BUDGET_DEFAULT = 30
 
 # τ_macro — lifetime-sessions decay constant
 _TAU_MACRO: dict[str, float] = {
     "visual": 15.0,
-    "word":   25.0,
-    "audio":  30.0,
+    "word": 25.0,
+    "audio": 30.0,
 }
 _TAU_MACRO_DEFAULT = 20.0
 
 # Rest recovery rate per day (macro bonus)
 _REST_RECOVERY_RATE = 0.02
-_REST_RECOVERY_CAP  = 0.30
+_REST_RECOVERY_CAP = 0.30
 
 # Novelty budget (session)
-_TOTAL_BUDGET   = 100.0
-_RESERVE        = 20.0
-_BASE_COST      = 1.0
-_COST_FLOOR     = 0.1
+_TOTAL_BUDGET = 100.0
+_RESERVE = 20.0
+_BASE_COST = 1.0
+_COST_FLOOR = 0.1
 
 # Rotation thresholds
-_COOLING_THRESHOLD       = 0.30
-_REACTIVATION_THRESHOLD  = 0.50
-_MAX_COOLING_CYCLES      = 3
-_RETIREMENT_REST_DAYS    = 30.0
-_ARCHIVE_THRESHOLD       = 0.05
+_COOLING_THRESHOLD = 0.30
+_REACTIVATION_THRESHOLD = 0.50
+_MAX_COOLING_CYCLES = 3
+_RETIREMENT_REST_DAYS = 30.0
+_ARCHIVE_THRESHOLD = 0.05
 
 # Semantic gate thresholds
-NOVELTY_GATE_THRESHOLD   = 0.20   # exclude from selection below this
-NOVELTY_CONDITIONING_CAP = 0.30   # signal conditioning engine if below this
+NOVELTY_GATE_THRESHOLD = 0.20  # exclude from selection below this
+NOVELTY_CONDITIONING_CAP = 0.30  # signal conditioning engine if below this
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # StimulusRecord
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class StimulusRecord:
-    stimulus_id:             str
-    stimulus_class:          str   # 'word', 'visual', 'audio', 'spiral', ...
-    layer:                   str   # 'center_text', 'shadows', 'visual', 'audio', 'voice'
+    stimulus_id: str
+    stimulus_class: str  # 'word', 'visual', 'audio', 'spiral', ...
+    layer: str  # 'center_text', 'shadows', 'visual', 'audio', 'voice'
 
     # Micro counters
-    consecutive_presentations: int   = 0
-    last_presented_ts:         float = 0.0
+    consecutive_presentations: int = 0
+    last_presented_ts: float = 0.0
 
     # Meso counters
     session_presentations: int = 0
 
     # Macro counters (DB-persisted)
-    lifetime_presentations: int   = 0
-    lifetime_sessions:      int   = 0
-    first_used_ts:          float = 0.0
-    last_session_ts:        float = 0.0
+    lifetime_presentations: int = 0
+    lifetime_sessions: int = 0
+    first_used_ts: float = 0.0
+    last_session_ts: float = 0.0
 
     # State
-    state:           StimulusState = StimulusState.NOVEL
-    cooling_since_ts: float        = 0.0
-    times_cooled:    int           = 0
+    state: StimulusState = StimulusState.NOVEL
+    cooling_since_ts: float = 0.0
+    times_cooled: int = 0
 
     # Computed
-    novelty_score:    float = 1.0
+    novelty_score: float = 1.0
     effectiveness_ema: float = 1.0
 
     def as_db_dict(self) -> dict:
         return {
-            "stimulus_id":           self.stimulus_id,
-            "stimulus_class":        self.stimulus_class,
-            "layer":                 self.layer,
-            "lifetime_presentations":self.lifetime_presentations,
-            "lifetime_sessions":     self.lifetime_sessions,
-            "first_used_ts":         self.first_used_ts,
-            "last_session_ts":       self.last_session_ts,
-            "state":                 self.state.value,
-            "cooling_since_ts":      self.cooling_since_ts or None,
-            "times_cooled":          self.times_cooled,
-            "macro_novelty":         self.novelty_score,
+            "stimulus_id": self.stimulus_id,
+            "stimulus_class": self.stimulus_class,
+            "layer": self.layer,
+            "lifetime_presentations": self.lifetime_presentations,
+            "lifetime_sessions": self.lifetime_sessions,
+            "first_used_ts": self.first_used_ts,
+            "last_session_ts": self.last_session_ts,
+            "state": self.state.value,
+            "cooling_since_ts": self.cooling_since_ts or None,
+            "times_cooled": self.times_cooled,
+            "macro_novelty": self.novelty_score,
         }
 
 
@@ -166,16 +170,17 @@ class StimulusRecord:
 # NoveltyBudget
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class NoveltyBudget:
-    total_budget:        float = _TOTAL_BUDGET
-    spent:               float = 0.0
-    reserve:             float = _RESERVE
-    visual_budget:       float = 60.0
-    audio_budget:        float = 80.0
-    shadows_budget:      float = 40.0
-    center_text_budget:  float = 25.0
-    voice_budget:        float = 15.0
+    total_budget: float = _TOTAL_BUDGET
+    spent: float = 0.0
+    reserve: float = _RESERVE
+    visual_budget: float = 60.0
+    audio_budget: float = 80.0
+    shadows_budget: float = 40.0
+    center_text_budget: float = 25.0
+    voice_budget: float = 15.0
 
     _layer_spent: dict[str, float] = field(default_factory=dict)
 
@@ -188,13 +193,13 @@ class NoveltyBudget:
         if layer is None:
             return max(0.0, self.total_budget - self.spent)
         cap_map = {
-            "visual":      self.visual_budget,
-            "audio":       self.audio_budget,
-            "shadows":     self.shadows_budget,
+            "visual": self.visual_budget,
+            "audio": self.audio_budget,
+            "shadows": self.shadows_budget,
             "center_text": self.center_text_budget,
-            "voice":       self.voice_budget,
+            "voice": self.voice_budget,
         }
-        cap   = cap_map.get(layer, _SESSION_BUDGET_DEFAULT)
+        cap = cap_map.get(layer, _SESSION_BUDGET_DEFAULT)
         spent = self._layer_spent.get(layer, 0.0)
         return max(0.0, cap - spent)
 
@@ -210,6 +215,7 @@ class NoveltyBudget:
 # DishabituationScheduler
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class DishabituationScheduler:
     """
     Schedules surprise/deviant events when aggregate novelty drops too low.
@@ -223,27 +229,31 @@ class DishabituationScheduler:
     """
 
     _TRIGGER_COOLDOWNS = {
-        "visual":     180.0,
-        "audio":      120.0,
+        "visual": 180.0,
+        "audio": 120.0,
         "crossmodal": 300.0,
-        "semantic":    90.0,
-        "gain":       150.0,
+        "semantic": 90.0,
+        "gain": 150.0,
     }
-    _TRIGGER_THRESHOLD      = 0.40
-    _MAX_TRIGGERS           = 8
-    _MIN_INTERVAL_S         = 90.0
-    _RECENCY_PENALTY_WINDOW = 3    # same type not repeated within last N triggers
-    _DEPTH_CEILING          = 0.80 # above this trance depth only mild triggers
+    _TRIGGER_THRESHOLD = 0.40
+    _MAX_TRIGGERS = 8
+    _MIN_INTERVAL_S = 90.0
+    _RECENCY_PENALTY_WINDOW = 3  # same type not repeated within last N triggers
+    _DEPTH_CEILING = 0.80  # above this trance depth only mild triggers
 
     def __init__(self):
-        self._triggers_fired  = 0
+        self._triggers_fired = 0
         self._last_trigger_ts = 0.0
-        self._trigger_history : deque[tuple[float, str]] = deque(maxlen=20)
-        self._pending_trigger : str | None = None
-        self._per_type_ts     : dict[str, float] = {}
+        self._trigger_history: deque[tuple[float, str]] = deque(maxlen=20)
+        self._pending_trigger: str | None = None
+        self._per_type_ts: dict[str, float] = {}
 
-    def check(self, mean_novelty: float, trance_score: float = 0.0,
-              reserve_remaining: float = _RESERVE) -> bool:
+    def check(
+        self,
+        mean_novelty: float,
+        trance_score: float = 0.0,
+        reserve_remaining: float = _RESERVE,
+    ) -> bool:
         """Return True if conditions warrant scheduling a dishabituation event."""
         if mean_novelty >= self._TRIGGER_THRESHOLD:
             return False
@@ -259,11 +269,13 @@ class DishabituationScheduler:
 
     def _select_trigger(self, trance_score: float) -> None:
         """Pick the least-recently-used trigger type that respects its cooldown."""
-        now     = time.time()
+        now = time.time()
         options = list(self._TRIGGER_COOLDOWNS.keys())
 
         # Build recency exclusion set
-        recent_types = {t for _, t in list(self._trigger_history)[-self._RECENCY_PENALTY_WINDOW:]}
+        recent_types = {
+            t for _, t in list(self._trigger_history)[-self._RECENCY_PENALTY_WINDOW :]
+        }
 
         # Only mild triggers at high trance depth
         if trance_score > self._DEPTH_CEILING:
@@ -284,24 +296,25 @@ class DishabituationScheduler:
         t = self._pending_trigger
         if t is not None:
             now = time.time()
-            self._pending_trigger     = None
-            self._last_trigger_ts     = now
-            self._per_type_ts[t]      = now
+            self._pending_trigger = None
+            self._last_trigger_ts = now
+            self._per_type_ts[t] = now
             self._trigger_history.append((now, t))
-            self._triggers_fired     += 1
+            self._triggers_fired += 1
         return t
 
     def reset(self) -> None:
-        self._triggers_fired   = 0
-        self._last_trigger_ts  = 0.0
+        self._triggers_fired = 0
+        self._last_trigger_ts = 0.0
         self._trigger_history.clear()
-        self._pending_trigger  = None
+        self._pending_trigger = None
         self._per_type_ts.clear()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # HabituationEngine
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class HabituationEngine:
     """
@@ -320,8 +333,8 @@ class HabituationEngine:
 
     def __init__(self, session_id: str):
         self.session_id = session_id
-        self._records  : dict[str, StimulusRecord] = {}
-        self.budget    = NoveltyBudget()
+        self._records: dict[str, StimulusRecord] = {}
+        self.budget = NoveltyBudget()
         self._scheduler = DishabituationScheduler()
         self._tick_count = 0
 
@@ -334,12 +347,14 @@ class HabituationEngine:
         try:
             rows = _db().get_all_stimulus_exposure()
             for sid, row in rows.items():
-                rec = self._get_or_create(sid, row.get("stimulus_class", ""), row.get("layer", ""))
+                rec = self._get_or_create(
+                    sid, row.get("stimulus_class", ""), row.get("layer", "")
+                )
                 rec.lifetime_presentations = row.get("lifetime_presentations", 0)
-                rec.lifetime_sessions      = row.get("lifetime_sessions", 0)
-                rec.first_used_ts          = row.get("first_used_ts") or 0.0
-                rec.last_session_ts        = row.get("last_session_ts") or 0.0
-                rec.times_cooled           = row.get("times_cooled", 0)
+                rec.lifetime_sessions = row.get("lifetime_sessions", 0)
+                rec.first_used_ts = row.get("first_used_ts") or 0.0
+                rec.last_session_ts = row.get("last_session_ts") or 0.0
+                rec.times_cooled = row.get("times_cooled", 0)
                 state_str = row.get("state", "novel")
                 try:
                     rec.state = StimulusState(state_str)
@@ -353,10 +368,10 @@ class HabituationEngine:
 
     def on_stimulus_presented(
         self,
-        stimulus_id:    str,
+        stimulus_id: str,
         stimulus_class: str,
-        layer:          str,
-        duration_s:     float = 1.0,
+        layer: str,
+        duration_s: float = 1.0,
     ) -> float:
         """
         Record one stimulus presentation; return current novelty score.
@@ -373,9 +388,9 @@ class HabituationEngine:
 
         # Update counters
         rec.consecutive_presentations += 1
-        rec.session_presentations     += 1
-        rec.lifetime_presentations    += 1
-        rec.last_presented_ts          = now
+        rec.session_presentations += 1
+        rec.lifetime_presentations += 1
+        rec.last_presented_ts = now
 
         if rec.first_used_ts == 0.0:
             rec.first_used_ts = now
@@ -401,25 +416,26 @@ class HabituationEngine:
     def _compute_novelty(self, rec: StimulusRecord) -> float:
         # Micro: exponential decay in consecutive presentations
         tau_micro = _TAU_MICRO.get(rec.stimulus_class, _TAU_MICRO_DEFAULT)
-        micro     = math.exp(-rec.consecutive_presentations / tau_micro)
+        micro = math.exp(-rec.consecutive_presentations / tau_micro)
 
         # Meso: quadratic budget consumption within session
-        sess_budget = _SESSION_BUDGET.get(rec.layer,
-                      _SESSION_BUDGET.get(rec.stimulus_class, _SESSION_BUDGET_DEFAULT))
-        meso_ratio  = min(1.0, rec.session_presentations / max(sess_budget, 1))
-        meso        = max(0.0, 1.0 - meso_ratio ** 2)
+        sess_budget = _SESSION_BUDGET.get(
+            rec.layer, _SESSION_BUDGET.get(rec.stimulus_class, _SESSION_BUDGET_DEFAULT)
+        )
+        meso_ratio = min(1.0, rec.session_presentations / max(sess_budget, 1))
+        meso = max(0.0, 1.0 - meso_ratio**2)
 
         # Macro: lifetime sessions decay
-        tau_macro  = _TAU_MACRO.get(rec.stimulus_class, _TAU_MACRO_DEFAULT)
+        tau_macro = _TAU_MACRO.get(rec.stimulus_class, _TAU_MACRO_DEFAULT)
         macro_base = math.exp(-rec.lifetime_sessions / tau_macro)
 
         # Rest bonus
-        now      = time.time()
+        now = time.time()
         days_off = (now - rec.last_session_ts) / 86400.0 if rec.last_session_ts else 0.0
         rest_rec = min(_REST_RECOVERY_CAP, days_off * _REST_RECOVERY_RATE)
-        macro    = min(1.0, macro_base + rest_rec)
+        macro = min(1.0, macro_base + rest_rec)
 
-        novelty  = micro * meso * macro
+        novelty = micro * meso * macro
         return max(0.0, min(1.0, novelty))
 
     def _compute_cost(self, novelty: float) -> float:
@@ -433,12 +449,12 @@ class HabituationEngine:
             return
 
         # Compute macro novelty alone for rotation threshold
-        tau_macro  = _TAU_MACRO.get(rec.stimulus_class, _TAU_MACRO_DEFAULT)
+        tau_macro = _TAU_MACRO.get(rec.stimulus_class, _TAU_MACRO_DEFAULT)
         macro_base = math.exp(-rec.lifetime_sessions / tau_macro)
-        now        = time.time()
-        days_off   = (now - rec.last_session_ts) / 86400.0 if rec.last_session_ts else 0.0
-        rest_rec   = min(_REST_RECOVERY_CAP, days_off * _REST_RECOVERY_RATE)
-        macro      = min(1.0, macro_base + rest_rec)
+        now = time.time()
+        days_off = (now - rec.last_session_ts) / 86400.0 if rec.last_session_ts else 0.0
+        rest_rec = min(_REST_RECOVERY_CAP, days_off * _REST_RECOVERY_RATE)
+        macro = min(1.0, macro_base + rest_rec)
 
         if macro < _ARCHIVE_THRESHOLD:
             rec.state = StimulusState.ARCHIVED
@@ -448,16 +464,16 @@ class HabituationEngine:
             else:
                 rec.state = StimulusState.COOLING
                 rec.cooling_since_ts = now
-                rec.times_cooled    += 1
+                rec.times_cooled += 1
 
     def _try_reactivate(self, rec: StimulusRecord) -> None:
         """Check if a COOLING stimulus is ready to return to ACTIVE."""
         if rec.state != StimulusState.COOLING:
             return
         # Reactivate when projected novelty is above threshold
-        temp       = rec.consecutive_presentations
+        temp = rec.consecutive_presentations
         rec.consecutive_presentations = 0
-        projected  = self._compute_novelty(rec)
+        projected = self._compute_novelty(rec)
         rec.consecutive_presentations = temp
         if projected >= _REACTIVATION_THRESHOLD:
             rec.state = StimulusState.ACTIVE
@@ -480,34 +496,42 @@ class HabituationEngine:
                 rec.novelty_score = self._compute_novelty(rec)
 
         # Aggregate stats
-        active_scores = [r.novelty_score for r in self._records.values()
-                         if r.state == StimulusState.ACTIVE]
-        mean_novelty  = sum(active_scores) / len(active_scores) if active_scores else 1.0
+        active_scores = [
+            r.novelty_score
+            for r in self._records.values()
+            if r.state == StimulusState.ACTIVE
+        ]
+        mean_novelty = sum(active_scores) / len(active_scores) if active_scores else 1.0
 
-        active_count  = sum(1 for r in self._records.values() if r.state == StimulusState.ACTIVE)
-        cooling_count = sum(1 for r in self._records.values() if r.state == StimulusState.COOLING)
+        active_count = sum(
+            1 for r in self._records.values() if r.state == StimulusState.ACTIVE
+        )
+        cooling_count = sum(
+            1 for r in self._records.values() if r.state == StimulusState.COOLING
+        )
 
         # Read live trance for dishabituation guard
         try:
-            live         = json.loads(_LIVE_PATH.read_text(encoding="utf-8"))
+            live = read_live()
             trance_score = float(live.get("eeg_trance_score_v2", 0.0) or 0.0)
         except Exception:
             trance_score = 0.0
 
         # Dishabituation scheduler
-        reserve_left = max(0.0, self.budget.reserve
-                           - self.budget._layer_spent.get("_reserve", 0.0))
+        reserve_left = max(
+            0.0, self.budget.reserve - self.budget._layer_spent.get("_reserve", 0.0)
+        )
         if self._scheduler.check(mean_novelty, trance_score, reserve_left):
             trigger = self._scheduler.get_pending_trigger()
         else:
             trigger = None
 
         return {
-            "habituation_mean_novelty":       round(mean_novelty, 3),
-            "habituation_trigger_pending":    trigger,
-            "habituation_budget_remaining":   round(self.budget.remaining(), 1),
-            "habituation_active_count":       active_count,
-            "habituation_cooling_count":      cooling_count,
+            "habituation_mean_novelty": round(mean_novelty, 3),
+            "habituation_trigger_pending": trigger,
+            "habituation_budget_remaining": round(self.budget.remaining(), 1),
+            "habituation_active_count": active_count,
+            "habituation_cooling_count": cooling_count,
         }
 
     # ── Session end ───────────────────────────────────────────────────────────
@@ -527,14 +551,14 @@ class HabituationEngine:
         for rec in self._records.values():
             try:
                 _db().upsert_stimulus_exposure(
-                    stimulus_id          = rec.stimulus_id,
-                    stimulus_class       = rec.stimulus_class,
-                    layer                = rec.layer,
-                    presentations_delta  = 0,  # already accumulated
-                    exposure_s_delta     = 0.0,
-                    state                = rec.state.value,
-                    macro_novelty        = rec.novelty_score,
-                    cooling_since_ts     = rec.cooling_since_ts or None,
+                    stimulus_id=rec.stimulus_id,
+                    stimulus_class=rec.stimulus_class,
+                    layer=rec.layer,
+                    presentations_delta=0,  # already accumulated
+                    exposure_s_delta=0.0,
+                    state=rec.state.value,
+                    macro_novelty=rec.novelty_score,
+                    cooling_since_ts=rec.cooling_since_ts or None,
                 )
             except Exception:
                 pass
@@ -560,9 +584,9 @@ class HabituationEngine:
     def get_active_stimuli(self, layer: str | None = None) -> list[str]:
         """Return stimulus_ids in ACTIVE state, optionally filtered by layer."""
         return [
-            sid for sid, r in self._records.items()
-            if r.state == StimulusState.ACTIVE
-            and (layer is None or r.layer == layer)
+            sid
+            for sid, r in self._records.items()
+            if r.state == StimulusState.ACTIVE and (layer is None or r.layer == layer)
         ]
 
     def ranked_by_novelty(self, stimulus_ids: list[str]) -> list[str]:
@@ -580,9 +604,9 @@ class HabituationEngine:
     ) -> StimulusRecord:
         if stimulus_id not in self._records:
             self._records[stimulus_id] = StimulusRecord(
-                stimulus_id    = stimulus_id,
-                stimulus_class = stimulus_class,
-                layer          = layer,
+                stimulus_id=stimulus_id,
+                stimulus_class=stimulus_class,
+                layer=layer,
             )
         return self._records[stimulus_id]
 
@@ -590,6 +614,9 @@ class HabituationEngine:
 
     @property
     def mean_novelty(self) -> float:
-        active = [r.novelty_score for r in self._records.values()
-                  if r.state == StimulusState.ACTIVE]
+        active = [
+            r.novelty_score
+            for r in self._records.values()
+            if r.state == StimulusState.ACTIVE
+        ]
         return sum(active) / len(active) if active else 1.0

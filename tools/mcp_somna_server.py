@@ -152,22 +152,97 @@ def _read_session_file(session_name: str, filename: str) -> str:
 
 # ── Phase 2: Write infrastructure ────────────────────────────────────────────
 
+BLOCKED_PATCH_PREFIXES = frozenset(
+    {
+        "eeg_",  # sensor data owned by eeg_engine
+        "ppg_",  # sensor data owned by ppg_engine
+        "imu_",  # sensor data owned by imu_engine
+        "calibration_",  # calibration state owned by eeg_engine
+        "freq_lead_",  # state owned by freq_leader thread
+    }
+)
+
+BLOCKED_PATCH_KEYS = frozenset(
+    {
+        "display_active",  # owned by visual_display.py
+        "conductor_state",  # owned by conductor.py
+        "conductor_summary",  # owned by agent
+        "session_time",  # owned by timeline_runner
+        "session_duration",  # owned by timeline_runner
+        "timeline_paused",  # owned by timeline_runner
+        "timeline_label",  # owned by timeline_runner
+        "timeline_locked_params",  # owned by timeline_runner
+        "playlist_index",  # owned by timeline_runner
+        "_timeline_cmd",  # internal command — use proper flow
+        "_agent_launch_display",  # use somna_launch_session tool
+        "_agent_stop_display",  # use somna_stop_session tool
+        "seek_time",  # timeline internal
+        "tts_playing",  # owned by control panel
+        "tts_playing_ts",  # owned by control panel
+        "tts_playing_ms",  # owned by control panel
+        "user_response",  # user input
+        "response_timestamp",  # user input
+        "user_console_input",  # user input
+        "user_console_ts",  # user input
+    }
+)
+
+KNOWN_PATCH_RANGES: dict[str, dict[str, Any]] = {
+    "beat_frequency": {"min": 0.5, "max": 40.0},
+    "carrier_frequency": {"min": 20.0, "max": 500.0},
+    "volume": {"min": 0.0, "max": 100.0},
+    "veil_opacity": {"min": 0.0, "max": 100.0},
+    "spiral_speed_multiplier": {"min": 0.1, "max": 10.0},
+    "spiral_chaos": {"min": 0.0, "max": 100.0},
+    "spiral_opacity": {"min": 0.0, "max": 100.0},
+    "spiral_count": {"min": 1, "max": 12},
+    "spiral_tightness": {"min": 0.5, "max": 20.0},
+    "spiral_thickness": {"min": 1, "max": 50},
+    "shadow_opacity": {"min": 0.0, "max": 100.0},
+    "noise_volume": {"min": 0.0, "max": 100.0},
+    "bg_opacity": {"min": 0.0, "max": 100.0},
+    "breath_rate_bpm": {"min": 4.0, "max": 12.0},
+    "breath_depth": {"min": 0.0, "max": 1.0},
+    "fm_mod_depth": {"min": 0.5, "max": 30.0},
+    "bilateral_rate": {"min": 0.1, "max": 20.0},
+    "bilateral_depth": {"min": 0.0, "max": 1.0},
+    "entrainment_strength": {"min": 0.0, "max": 0.10},
+    "trail_decay": {"min": 0.0, "max": 0.80},
+    "feedback_strength": {"min": 0.0, "max": 1.0},
+    "sr_noise_level": {"min": 0.0, "max": 2.0},
+    "pp_ca_strength": {"min": 0.0, "max": 1.0},
+    "pp_bloom_intensity": {"min": 0.0, "max": 1.0},
+    "pp_film_grain": {"min": 0.0, "max": 0.15},
+    "haptic_intensity": {"min": 0.0, "max": 100.0},
+    "haptic_frequency_hz": {"min": 1.0, "max": 200.0},
+    "haptic_pattern_speed": {"min": 0.1, "max": 10.0},
+    "tavns_intensity": {"min": 0.0, "max": 100.0},
+    "window_opacity": {"min": 0.0, "max": 100.0},
+    "center_flash_on_time": {"min": 10, "max": 5000},
+    "center_flash_off_time": {"min": 10, "max": 5000},
+    "flash_duty_cycle": {"min": 0.0, "max": 1.0},
+    "flash_variance": {"min": 0.0, "max": 1.0},
+    "slideshow_interval": {"min": 0.5, "max": 60.0},
+    "shadow_flash_on_time": {"min": 10, "max": 5000},
+    "shadow_flash_off_time": {"min": 10, "max": 5000},
+    "spiral_speed_multiplier": {"min": 0.1, "max": 10.0},
+}
+
 VALID_SPIRAL_STYLES = frozenset(
     {
+        "fibonacci",
+        "archimedean",
+        "logarithmic",
+        "fermat",
+        "vogel",
         "tunnel_dream",
         "galaxy",
-        "archimedean",
-        "kaleidoscope",
-        "interference",
-        "vortex",
-        "dna",
+        "hypnotic",
+        "bloom",
+        "lissajous",
         "rose",
-        "moire",
-        "spirograph",
-        "fermat",
-        "superformula",
-        "liminal",
-        "nebula",
+        "lissajous_3d",
+        "maze",
         "cobwebs",
         "strange_attractor",
         "flow_field",
@@ -186,76 +261,60 @@ VALID_SPIRAL_STYLES = frozenset(
 VALID_NOISE_COLORS = frozenset(
     {"white", "pink", "brown", "blue", "violet", "grey", "off"}
 )
+
+VALID_BEAT_TYPES = frozenset({"binaural", "isochronic", "both", "fm"})
+
+VALID_BILATERAL_MODES = frozenset({"smooth", "hard"})
+
+VALID_BG_MODES = frozenset({"slideshow", "none"})
+
 VALID_VEIL_MODES = frozenset(
     {"scroll", "rain", "drift", "converge", "strobe", "tunnel"}
 )
-VALID_BEAT_TYPES = frozenset({"binaural", "isochronic", "both", "fm"})
-VALID_BG_MODES = frozenset({"slideshow", "none"})
+
 VALID_FEEDBACK_MODES = frozenset(
     {
+        "none",
         "alpha_decay",
         "radial_zoom",
         "rotational_smear",
         "directional_blur",
         "reaction_diffusion",
         "kaleidoscopic_fold",
-        "none",
     }
 )
-VALID_BILATERAL_MODES = frozenset({"smooth", "hard"})
 
-ALLOWED_PATCH_KEYS: dict[str, dict[str, Any]] = {
-    "beat_frequency": {"type": "float", "min": 0.5, "max": 40.0},
-    "carrier_frequency": {"type": "float", "min": 20.0, "max": 500.0},
-    "volume": {"type": "float", "min": 0.0, "max": 100.0},
-    "veil_opacity": {"type": "float", "min": 0.0, "max": 100.0},
-    "spiral_style": {"type": "enum", "values": VALID_SPIRAL_STYLES},
-    "spiral_speed_multiplier": {"type": "float", "min": 0.1, "max": 10.0},
-    "spiral_chaos": {"type": "float", "min": 0.0, "max": 100.0},
-    "spiral_opacity": {"type": "float", "min": 0.0, "max": 100.0},
-    "shadow_opacity": {"type": "float", "min": 0.0, "max": 100.0},
-    "noise_volume": {"type": "float", "min": 0.0, "max": 100.0},
-    "noise_color": {"type": "enum", "values": VALID_NOISE_COLORS},
-    "bg_opacity": {"type": "float", "min": 0.0, "max": 100.0},
-    "bg_mode": {"type": "enum", "values": VALID_BG_MODES},
-    "breath_mod_enabled": {"type": "bool"},
-    "breath_rate_bpm": {"type": "float", "min": 4.0, "max": 12.0},
-    "breath_depth": {"type": "float", "min": 0.0, "max": 1.0},
-    "beat_type": {"type": "enum", "values": VALID_BEAT_TYPES},
-    "fm_mod_depth": {"type": "float", "min": 0.5, "max": 30.0},
-    "bilateral_panning": {"type": "bool"},
-    "bilateral_rate": {"type": "float", "min": 0.1, "max": 20.0},
-    "bilateral_mode": {"type": "enum", "values": VALID_BILATERAL_MODES},
-    "bilateral_depth": {"type": "float", "min": 0.0, "max": 1.0},
-    "entrainment_strength": {"type": "float", "min": 0.0, "max": 0.10},
-    "trail_decay": {"type": "float", "min": 0.0, "max": 0.80},
-    "feedback_mode": {"type": "enum", "values": VALID_FEEDBACK_MODES},
-    "feedback_strength": {"type": "float", "min": 0.0, "max": 1.0},
-    "veil_mode": {"type": "enum", "values": VALID_VEIL_MODES},
-    "sr_noise_level": {"type": "float", "min": 0.0, "max": 2.0},
-    "pp_ca_strength": {"type": "float", "min": 0.0, "max": 1.0},
-    "pp_bloom_intensity": {"type": "float", "min": 0.0, "max": 1.0},
-    "pp_film_grain": {"type": "float", "min": 0.0, "max": 0.15},
-    "haptic_intensity": {"type": "float", "min": 0.0, "max": 100.0},
-    "haptic_frequency_hz": {"type": "float", "min": 1.0, "max": 200.0},
-    "haptic_pattern": {
-        "type": "enum",
-        "values": frozenset(
-            {
-                "continuous",
-                "pulse",
-                "wave",
-                "ramp",
-                "fractionation",
-                "tmr_cue",
-                "conditioned_anchor",
-            }
-        ),
-    },
-    "haptic_pattern_speed": {"type": "float", "min": 0.1, "max": 10.0},
-    "tavns_intensity": {"type": "float", "min": 0.0, "max": 100.0},
-    "agent_conductor_hints": {"type": "dict"},
-    "agent_message": {"type": "dict"},
+VALID_HAPTIC_PATTERNS = frozenset(
+    {
+        "continuous",
+        "pulse",
+        "wave",
+        "ramp",
+        "fractionation",
+        "tmr_cue",
+        "conditioned_anchor",
+    }
+)
+
+VALID_FONT_SWITCH_MODES = frozenset(
+    {"intelligent", "rapid", "beat_sync", "breathe_sync", "depth_adaptive"}
+)
+
+VALID_COLOR_MODES = frozenset(
+    {"rainbow", "mono", "complementary", "analogous", "triadic"}
+)
+
+KNOWN_PATCH_ENUMS: dict[str, frozenset] = {
+    "spiral_style": VALID_SPIRAL_STYLES,
+    "noise_color": VALID_NOISE_COLORS,
+    "beat_type": VALID_BEAT_TYPES,
+    "bilateral_mode": VALID_BILATERAL_MODES,
+    "bg_mode": VALID_BG_MODES,
+    "veil_mode": VALID_VEIL_MODES,
+    "feedback_mode": VALID_FEEDBACK_MODES,
+    "haptic_pattern": VALID_HAPTIC_PATTERNS,
+    "font_switch_mode": VALID_FONT_SWITCH_MODES,
+    "spiral_color_mode": VALID_COLOR_MODES,
 }
 
 ALLOWED_CONDUCTOR_HINT_KEYS = frozenset(
@@ -268,40 +327,27 @@ ALLOWED_CONDUCTOR_HINT_KEYS = frozenset(
     }
 )
 
-ALLOWED_PROFILE_APPEND_PATHS: dict[str, str] = {
-    "notes": "list",
-    "responsive_themes": "list",
-    "effective_moments": "list",
-}
-
-ALLOWED_PROFILE_SET_PATHS: dict[str, str] = {
-    "preferences.session_interval_target_days": "int",
-    "preferences.preferred_time_of_day": "str",
-}
-
 
 def _validate_patch_value(key: str, value: Any) -> Optional[str]:
-    """Validate a single patch value against the schema. Returns error or None."""
-    spec = ALLOWED_PATCH_KEYS.get(key)
-    if spec is None:
-        return f"Key '{key}' is not in the allowed whitelist."
-    vtype = spec["type"]
-    if vtype == "float":
-        if not isinstance(value, (int, float)):
-            return f"Key '{key}' expects a number, got {type(value).__name__}."
+    """Validate a patch value. Returns error or None."""
+    # Block internal/sensor keys
+    if key in BLOCKED_PATCH_KEYS:
+        return f"Key '{key}' is internally owned and cannot be written via MCP."
+    for prefix in BLOCKED_PATCH_PREFIXES:
+        if key.startswith(prefix):
+            return f"Key '{key}' is sensor/internal state (prefix '{prefix}') and cannot be written via MCP."
+    # Range-check known numeric keys
+    spec = KNOWN_PATCH_RANGES.get(key)
+    if spec and isinstance(value, (int, float)):
         if "min" in spec and value < spec["min"]:
             return f"Key '{key}' value {value} below minimum {spec['min']}."
         if "max" in spec and value > spec["max"]:
             return f"Key '{key}' value {value} above maximum {spec['max']}."
-    elif vtype == "bool":
-        if not isinstance(value, bool):
-            return f"Key '{key}' expects a boolean, got {type(value).__name__}."
-    elif vtype == "enum":
-        if value not in spec["values"]:
-            return f"Key '{key}' value '{value}' not in allowed set: {sorted(spec['values'])}."
-    elif vtype == "dict":
-        if not isinstance(value, dict):
-            return f"Key '{key}' expects a dict, got {type(value).__name__}."
+    # Validate known enum keys
+    enum_values = KNOWN_PATCH_ENUMS.get(key)
+    if enum_values is not None and isinstance(value, str):
+        if value not in enum_values:
+            return f"Key '{key}' value '{value}' not in allowed set: {sorted(enum_values)}."
     return None
 
 
@@ -359,8 +405,6 @@ def _patch_live(updates: dict[str, Any]) -> dict[str, Any]:
 
 def _append_profile(path: str, value: Any) -> dict[str, Any]:
     """Append to a user_profile.json list field with reload-first merge."""
-    if path not in ALLOWED_PROFILE_APPEND_PATHS:
-        return {"error": f"Path '{path}' is not an appendable profile field."}
     try:
         data = json.loads(PROFILE_PATH.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError):
@@ -389,8 +433,6 @@ def _append_profile(path: str, value: Any) -> dict[str, Any]:
 
 def _set_profile(path: str, value: Any) -> dict[str, Any]:
     """Set a user_profile.json scalar field with reload-first merge."""
-    if path not in ALLOWED_PROFILE_SET_PATHS:
-        return {"error": f"Path '{path}' is not a settable profile field."}
     try:
         data = json.loads(PROFILE_PATH.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError):
@@ -732,6 +774,16 @@ async def list_tools() -> list[Tool]:
                 "required": ["session"],
             },
         ),
+        Tool(
+            name="somna_stop_session",
+            description=(
+                "Stop a running display session from the external agent (Resonance). "
+                "Writes _agent_stop_display to live_control.json which the control panel "
+                "polls and executes. The control panel handles subprocess termination. "
+                "Returns immediately — poll display_active to confirm stop."
+            ),
+            inputSchema={"type": "object", "properties": {}},
+        ),
     ]
 
 
@@ -864,6 +916,10 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         result = _patch_live(
             {"_agent_launch_display": {"session": session.strip(), "ts": time.time()}}
         )
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+    if name == "somna_stop_session":
+        result = _patch_live({"_agent_stop_display": True})
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
     return [

@@ -40,10 +40,13 @@ Pattern types:
 
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
 import math
 import time
 from enum import Enum
+from pathlib import Path
 from typing import Optional
 
 from engines.device_safety import (
@@ -55,15 +58,14 @@ from engines.device_safety import (
 log = logging.getLogger(__name__)
 
 try:
-    from buttplug import Client, WebsocketConnector, ProtocolSpec
+    from buttplug import Client, WebsocketConnector
 
     _BUTTPLUG_AVAILABLE = True
 except ImportError:
     _BUTTPLUG_AVAILABLE = False
 
 
-LOVENSE_COMPANY_ID = 0x0396
-LOVENSE_NAME_PREFIX = "LVS-"
+LOVENSE_NAME_PREFIX = "Lovense"
 DEFAULT_INTENSITY = 0.0
 MAX_INTENSITY = 100.0
 MAX_RAMP_RATE_PER_S = 20.0
@@ -93,9 +95,9 @@ PATTERN_NAMES = [p.value for p in HapticPattern]
 class HapticEngine:
     """Lovense BLE haptic output engine.
 
-    Started by control_panel_imgui.py when the user clicks "Connect Haptic"
-    or during hardware discovery. Runs as a background thread that
-    reads live_control.json at ~10 Hz and sends commands to the device.
+    Started by control_panel_imgui.py when the user clicks "Connect Lovense"
+    or during hardware discovery. Runs as an asyncio event loop in a background
+    thread that reads live_control.json at ~10 Hz and sends commands to the device.
     """
 
     def __init__(self):
@@ -107,12 +109,12 @@ class HapticEngine:
         self._connected = False
         self._device_name: Optional[str] = None
         self._motor_count: int = 0
-        self._client: Optional[object] = None
+        self._client: Optional[Client] = None
         self._device = None
         self._running = False
         self._thread = None
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
         self._last_tick = time.time()
-        self._pattern_start_time: float = 0.0
         self._pattern_state: dict = {}
 
     @property
@@ -130,14 +132,12 @@ class HapticEngine:
         if self._running:
             return True
 
-        if not self._connect(connector_url):
-            return False
-
         self._running = True
         import threading
 
         self._thread = threading.Thread(
-            target=self._loop,
+            target=self._thread_entry,
+            args=(connector_url,),
             name="haptic-engine",
             daemon=True,
         )
@@ -146,18 +146,30 @@ class HapticEngine:
 
     def stop(self) -> None:
         self._running = False
+        if self._loop is not None and not self._loop.is_closed():
+            try:
+                asyncio.run_coroutine_threadsafe(self._async_disconnect(), self._loop)
+            except Exception:
+                pass
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=5.0)
-        self._disconnect()
         self._thread = None
+        self._loop = None
 
     def ping_back(self) -> bool:
         if not self._connected or self._device is None:
             return False
         try:
-            self._send_intensity(PING_BACK_INTENSITY)
-            time.sleep(PING_BACK_DURATION_S)
-            self._send_intensity(0.0)
+            if self._loop is not None and not self._loop.is_closed():
+                future = asyncio.run_coroutine_threadsafe(
+                    self._async_send(PING_BACK_INTENSITY), self._loop
+                )
+                future.result(timeout=2.0)
+                time.sleep(PING_BACK_DURATION_S)
+                future = asyncio.run_coroutine_threadsafe(
+                    self._async_send(0.0), self._loop
+                )
+                future.result(timeout=2.0)
             return True
         except Exception as e:
             log.error("haptic ping-back failed: %s", e)
@@ -171,45 +183,139 @@ class HapticEngine:
         }
 
     def trigger_tmr_cue(self, intensity: float = 30.0) -> None:
-        if not self._connected:
+        if not self._connected or self._loop is None:
             return
         safe = self._safety.cap_intensity(intensity)
-        self._send_intensity(safe)
-        time.sleep(TMR_CUE_DURATION_S)
-        self._send_intensity(0.0)
+        try:
+            asyncio.run_coroutine_threadsafe(self._async_send(safe), self._loop)
+            time.sleep(TMR_CUE_DURATION_S)
+            asyncio.run_coroutine_threadsafe(self._async_send(0.0), self._loop)
+        except Exception as e:
+            log.error("TMR cue failed: %s", e)
 
     def trigger_conditioned_anchor(self, intensity: float = 60.0) -> None:
-        if not self._connected:
+        if not self._connected or self._loop is None:
             return
         safe = self._safety.cap_intensity(intensity)
-        self._send_intensity(safe)
-        time.sleep(CONDITIONED_ANCHOR_DURATION_S)
-        self._send_intensity(0.0)
+        try:
+            asyncio.run_coroutine_threadsafe(self._async_send(safe), self._loop)
+            time.sleep(CONDITIONED_ANCHOR_DURATION_S)
+            asyncio.run_coroutine_threadsafe(self._async_send(0.0), self._loop)
+        except Exception as e:
+            log.error("conditioned anchor failed: %s", e)
 
     def emergency_stop(self, reason: str = EmergencyStopReason.UNKNOWN) -> None:
         self._safety.trigger_emergency(reason)
-        if self._connected:
+        if self._connected and self._loop is not None:
             try:
-                self._send_intensity(0.0)
+                asyncio.run_coroutine_threadsafe(self._async_send(0.0), self._loop)
             except Exception:
                 pass
 
-    def _connect(self, connector_url: str) -> bool:
-        if not _BUTTPLUG_AVAILABLE:
-            return False
+    # ── Async internals ──────────────────────────────────────────────────────
+
+    def _thread_entry(self, connector_url: str) -> None:
+        self._loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self._loop)
+        try:
+            self._loop.run_until_complete(self._async_run(connector_url))
+        except Exception as e:
+            log.error("haptic engine loop crashed: %s", e)
+        finally:
+            self._connected = False
+            self._loop.close()
+
+    async def _async_run(self, connector_url: str) -> None:
+        if not await self._async_connect(connector_url):
+            return
+
+        from ipc import patch_live
+
+        try:
+            while self._running:
+                try:
+                    now = time.time()
+                    dt = now - self._last_tick
+                    self._last_tick = now
+
+                    live = self._read_live()
+                    if live is None:
+                        await asyncio.sleep(0.1)
+                        continue
+
+                    self._update_safety_state(live)
+
+                    if not self._connected:
+                        await asyncio.sleep(0.1)
+                        continue
+
+                    target = self._compute_target(live, dt)
+                    safe = self._safety.cap_intensity(target, dt)
+
+                    await self._async_send(safe)
+
+                    haptic_cue = live.get("tmr_haptic_cue")
+                    if haptic_cue and isinstance(haptic_cue, dict):
+                        cue_ts = float(haptic_cue.get("ts", 0))
+                        if abs(time.time() - cue_ts) < 0.5:
+                            cue_intensity = float(haptic_cue.get("intensity", 30.0))
+                            cue_dur = float(haptic_cue.get("duration_s", 0.2))
+                            cue_safe = self._safety.cap_intensity(cue_intensity)
+                            if cue_safe > 0:
+                                await self._async_send(cue_safe)
+                                await asyncio.sleep(cue_dur)
+                                await self._async_send(safe)
+
+                    patch = {
+                        "haptic_connected": True,
+                        "haptic_device_name": self._device_name or "",
+                        "haptic_motor_count": self._motor_count,
+                        "haptic_actual_intensity": round(safe, 2),
+                        "haptic_safety_state": self._safety.status_dict(),
+                    }
+                    connected_list = list(
+                        set(live.get("hardware_channels_connected") or [])
+                    )
+                    if "haptic" not in connected_list:
+                        connected_list.append("haptic")
+                        patch["hardware_channels_connected"] = connected_list
+
+                    patch_live(patch)
+                    await asyncio.sleep(0.1)
+
+                except Exception as e:
+                    log.error("haptic loop error: %s", e)
+                    self._connected = False
+                    try:
+                        patch_live(
+                            {
+                                "haptic_connected": False,
+                                "haptic_actual_intensity": 0.0,
+                            }
+                        )
+                    except Exception:
+                        pass
+                    await asyncio.sleep(1.0)
+        finally:
+            await self._async_disconnect()
+
+    async def _async_connect(self, connector_url: str) -> bool:
         try:
             client = Client("Somna Haptic")
-            connector = WebsocketConnector(connector_url, ProtocolSpec.v3)
-            client.connect(connector)
+            connector = WebsocketConnector(connector_url)
+            await client.connect(connector)
+
+            await client.start_scanning()
+            await asyncio.sleep(5.0)
 
             lovense_devices = [
                 d
                 for d in client.devices.values()
-                if d.name and d.name.startswith(LOVENSE_NAME_PREFIX)
+                if d.name and LOVENSE_NAME_PREFIX in d.name
             ]
             if not lovense_devices:
-                log.warning("no Lovense devices found")
-                client.disconnect()
+                log.warning("no Lovense devices found (scanned 5 s)")
+                await client.disconnect()
                 return False
 
             self._device = lovense_devices[0]
@@ -229,11 +335,11 @@ class HapticEngine:
             self._connected = False
             return False
 
-    def _disconnect(self) -> None:
+    async def _async_disconnect(self) -> None:
         if self._connected and self._client is not None:
             try:
-                self._send_intensity(0.0)
-                self._client.disconnect()
+                await self._async_send(0.0)
+                await self._client.disconnect()
             except Exception:
                 pass
         self._connected = False
@@ -242,70 +348,18 @@ class HapticEngine:
         self._device_name = None
         self._motor_count = 0
 
-    def _loop(self) -> None:
-        from ipc import patch_live
+    async def _async_send(self, intensity: float) -> None:
+        if self._device is None or not self._connected:
+            return
+        clamped = max(0.0, min(1.0, intensity / 100.0))
+        try:
+            for actuator in self._device.actuators:
+                await actuator.command(clamped)
+        except Exception as e:
+            log.error("haptic send failed: %s", e)
+            self._connected = False
 
-        while self._running:
-            try:
-                now = time.time()
-                dt = now - self._last_tick
-                self._last_tick = now
-
-                live = self._read_live()
-                if live is None:
-                    time.sleep(0.1)
-                    continue
-
-                self._update_safety_state(live)
-
-                if not self._connected:
-                    time.sleep(0.1)
-                    continue
-
-                target = self._compute_target(live, dt)
-                safe = self._safety.cap_intensity(target, dt)
-
-                self._send_intensity(safe)
-
-                haptic_cue = live.get("tmr_haptic_cue")
-                if haptic_cue and isinstance(haptic_cue, dict):
-                    cue_ts = float(haptic_cue.get("ts", 0))
-                    if abs(time.time() - cue_ts) < 0.5:
-                        cue_intensity = float(haptic_cue.get("intensity", 30.0))
-                        cue_dur = float(haptic_cue.get("duration_s", 0.2))
-                        cue_safe = self._safety.cap_intensity(cue_intensity)
-                        if cue_safe > 0:
-                            self._send_intensity(cue_safe)
-                            time.sleep(cue_dur)
-                            self._send_intensity(safe)
-
-                patch = {
-                    "haptic_connected": True,
-                    "haptic_device_name": self._device_name or "",
-                    "haptic_motor_count": self._motor_count,
-                    "haptic_actual_intensity": round(safe, 2),
-                    "haptic_safety_state": self._safety.status_dict(),
-                }
-                connected_list = list(
-                    set(live.get("hardware_channels_connected") or [])
-                )
-                if "haptic" not in connected_list:
-                    connected_list.append("haptic")
-                    patch["hardware_channels_connected"] = connected_list
-
-                patch_live(patch)
-                time.sleep(0.1)
-
-            except Exception as e:
-                log.error("haptic loop error: %s", e)
-                self._connected = False
-                patch_live(
-                    {
-                        "haptic_connected": False,
-                        "haptic_actual_intensity": 0.0,
-                    }
-                )
-                time.sleep(1.0)
+    # ── Synchronous helpers (no buttplug calls) ──────────────────────────────
 
     def _update_safety_state(self, live: dict) -> None:
         sleep_stage = live.get("eeg_sleep_stage", "WAKE") or "WAKE"
@@ -389,23 +443,9 @@ class HapticEngine:
             return base * progress
         return base
 
-    def _send_intensity(self, intensity: float) -> None:
-        if self._device is None or not self._connected:
-            return
-        clamped = max(0.0, min(1.0, intensity / 100.0))
-        try:
-            for actuator in self._device.actuators.values():
-                actuator.command(clamped)
-        except Exception as e:
-            log.error("haptic send failed: %s", e)
-            self._connected = False
-
     @staticmethod
     def _read_live() -> Optional[dict]:
         try:
-            import json
-            from pathlib import Path
-
             path = Path(__file__).parent.parent / "live_control.json"
             return json.loads(path.read_text(encoding="utf-8"))
         except Exception:

@@ -956,6 +956,11 @@ class VisualDisplay:
                         f"[Display] Spiral render error (#{self._spiral_error_count}): {_se}"
                     )
 
+            # ── Bible Ch.3 §3.7 — Post-processing passes (CA, bloom, vignette, IAF) ──
+            # Runs BEFORE overlay blit so PP affects spirals+background only,
+            # not the text layer. This prevents grain/CA from corrupting text.
+            self._run_post_processing(cfg, dt)
+
             # Layers 3-5 — veil + shadows + center text composited on one surface
             self.overlay_surf.fill((0, 0, 0, 0))
 
@@ -991,9 +996,6 @@ class VisualDisplay:
                 float(pygame.time.get_ticks()) / 1000.0
             )
             self.overlay_sr_vao.render(moderngl.TRIANGLE_STRIP)
-
-            # ── Bible Ch.3 §3.7 — Post-processing passes (CA, bloom, vignette, IAF) ──
-            self._run_post_processing(cfg, dt)
 
             # ── GENUS 40 Hz flicker overlay (genus_protocol.md §5.2) ──────
             self._apply_genus_flicker(cfg)

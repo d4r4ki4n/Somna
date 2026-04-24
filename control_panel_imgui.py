@@ -3186,6 +3186,54 @@ class ControlPanelImGui:
         if not ping_enabled:
             imgui.end_disabled()
 
+        imgui.spacing()
+
+        if self._haptic_engine is not None and connected:
+            safety = self._haptic_engine.safety.status_dict()
+            if safety.get("emergency_active"):
+                from ui.panel_theme import token_rgba
+
+                imgui.text_colored(
+                    token_rgba("alert_red"),
+                    f"EMERGENCY STOP: {safety.get('emergency_reason', 'unknown')}",
+                )
+                if imgui.button(
+                    "Clear Emergency##haptic_emerg_clear", imgui.ImVec2(-1, 0)
+                ):
+                    self._haptic_engine.safety.clear_emergency()
+                    self._console.system("Haptic emergency cleared.", src="Haptic")
+            else:
+                from ui.panel_theme import RP, hex_to_rgba
+
+                imgui.push_style_color(
+                    imgui.Col_.button,
+                    imgui.ImVec4(*hex_to_rgba(RP["love"])),
+                )
+                imgui.push_style_color(
+                    imgui.Col_.button_hovered,
+                    imgui.ImVec4(*hex_to_rgba(RP["love"])),
+                )
+                imgui.push_style_color(
+                    imgui.Col_.button_active,
+                    imgui.ImVec4(*hex_to_rgba(RP["love"])),
+                )
+                if imgui.button("EMERGENCY STOP##haptic_stop", imgui.ImVec2(-1, 0)):
+                    self._haptic_engine.emergency_stop("user_button")
+                    self._console.warn("Haptic emergency stop activated!", src="Haptic")
+                imgui.pop_style_color(3)
+
+            imgui.spacing()
+
+            if imgui.button(
+                "Start Comfort Calibration##haptic_cal", imgui.ImVec2(-1, 0)
+            ):
+                self._haptic_engine.start_comfort_calibration()
+                self._console.system(
+                    "Comfort calibration started. Intensity will ramp up. "
+                    "Tap Stop when uncomfortable.",
+                    src="Haptic",
+                )
+
     def _connect_haptic(self) -> None:
         try:
             from engines.haptic_engine import HapticEngine

@@ -5506,6 +5506,11 @@ class SomnaAgent:
     # ── Idle planning cycle ───────────────────────────────────────────────────
 
     def _idle_planning_cycle(self, mode: str = "idle") -> None:
+        # When external_only, skip idle planning — it burns the external
+        # channel's context with maintenance work that needs a local LLM.
+        if self._external_only:
+            print(f"[Agent] Idle planning skipped (external_only, mode={mode}).")
+            return
         print(f"[Agent] Idle planning cycle (mode={mode}).")
         knowledge = _load_idle_knowledge() if self._cfg.inject_knowledge else ""
         messages = [

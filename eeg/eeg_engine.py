@@ -27,7 +27,8 @@ from pathlib import Path
 
 import numpy as np
 
-_LIVE_PATH = Path(__file__).parent.parent / "live_control.json"
+from ipc import patch_live, read_live
+
 _PROFILE_PATH = Path(__file__).parent.parent / "user_profile.json"
 # Muse 2 channel order from BrainFlow: indices 0-3 → TP9, AF7, AF8, TP10
 _CH_NAMES = ["tp9", "af7", "af8", "tp10"]
@@ -35,16 +36,10 @@ _CH_WEIGHTS_ASSR = {"tp9": 0.15, "af7": 0.35, "af8": 0.35, "tp10": 0.15}
 
 # ── IPC helpers ───────────────────────────────────────────────────────────────
 
-from ipc import patch_live
-
 
 def _read_live() -> dict:
     try:
-        return (
-            json.loads(_LIVE_PATH.read_text(encoding="utf-8"))
-            if _LIVE_PATH.exists()
-            else {}
-        )
+        return read_live()
     except Exception:
         return {}
 

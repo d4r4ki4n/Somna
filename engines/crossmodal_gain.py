@@ -23,18 +23,13 @@ always skipped (checked via timeline_locked_params).
 """
 
 import time
-import json
-from pathlib import Path
 from typing import Optional
-from ipc import patch_live
-
-
-_LIVE = Path(__file__).parent.parent / "live_control.json"
+from ipc import patch_live, read_live
 
 
 def _read_live() -> dict:
     try:
-        return json.loads(_LIVE.read_text(encoding="utf-8"))
+        return read_live()
     except Exception:
         return {}
 

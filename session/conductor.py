@@ -25,11 +25,8 @@ from __future__ import annotations
 import json
 import time
 from enum import Enum
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-from ipc import patch_live
-
-_LIVE = Path(__file__).parent.parent / "live_control.json"
+from ipc import patch_live, read_live
 _DB_AVAILABLE = False
 try:
     from content_tools.somna_db import write_conductor_decisions_batch
@@ -427,7 +424,7 @@ class Conductor:
 
                 live_tmp = {}
                 try:
-                    live_tmp = json.loads(_LIVE.read_text(encoding="utf-8"))
+                    live_tmp = read_live()
                 except Exception:
                     pass
                 self._edison = EdisonModeManager(
@@ -480,7 +477,7 @@ class Conductor:
         # Sub-phases: RAMP_UP → ACTIVE → WIND_DOWN → (SESSION_END or FALLBACK)
         # FALLBACK: low entrainment detected; abort gracefully.
         try:
-            _live_tmp = json.loads(_LIVE.read_text(encoding="utf-8"))
+            _live_tmp = read_live()
         except Exception:
             _live_tmp = {}
 
@@ -676,7 +673,7 @@ class Conductor:
             # Delegate to the EdisonModeManager for state updates
             live_snap_edison = {}
             try:
-                live_snap_edison = json.loads(_LIVE.read_text(encoding="utf-8"))
+                live_snap_edison = read_live()
             except Exception:
                 pass
             edison_updates = self._edison.tick(live_snap_edison)
@@ -721,7 +718,7 @@ class Conductor:
 
             live_snap_ssild = {}
             try:
-                live_snap_ssild = json.loads(_LIVE.read_text(encoding="utf-8"))
+                live_snap_ssild = read_live()
             except Exception:
                 pass
             ssild_updates = self._ssild.tick(live_snap_ssild)
@@ -762,8 +759,7 @@ class Conductor:
 
         # ── Step 1b: Read agent hints + Director state ───────────────────────────
         try:
-            live_raw = _LIVE.read_text(encoding="utf-8")
-            live_snap = json.loads(live_raw)
+            live_snap = read_live()
             hints_raw = live_snap.get("agent_conductor_hints") or {}
             self._hints = hints_raw if isinstance(hints_raw, dict) else {}
             # Bible Ch.5 §5.5 — Director gain ceiling; store for downstream use
@@ -894,7 +890,7 @@ class Conductor:
 
     def _read_live(self) -> Dict[str, Any]:
         try:
-            return json.loads(_LIVE.read_text(encoding="utf-8"))
+            return read_live()
         except Exception:
             return {}
 
@@ -2809,7 +2805,7 @@ class Conductor:
             print("[Conductor] Agent-requested fractionation — triggering.")
             # Clear the flag so it doesn't fire every tick
             try:
-                raw = json.loads(_LIVE.read_text(encoding="utf-8"))
+                raw = read_live()
                 hints = raw.get("agent_conductor_hints") or {}
                 hints["request_fractionation"] = False
                 patch_live({"agent_conductor_hints": hints})

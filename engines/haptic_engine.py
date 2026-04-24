@@ -41,12 +41,10 @@ Pattern types:
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import math
 import time
 from enum import Enum
-from pathlib import Path
 from typing import Optional
 
 from engines.device_safety import (
@@ -446,7 +444,8 @@ class HapticEngine:
     @staticmethod
     def _read_live() -> Optional[dict]:
         try:
-            path = Path(__file__).parent.parent / "live_control.json"
-            return json.loads(path.read_text(encoding="utf-8"))
+            from ipc import read_live
+
+            return read_live()
         except Exception:
             return None

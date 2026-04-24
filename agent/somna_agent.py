@@ -153,10 +153,9 @@ def _load_yaml_config() -> dict:
         return {}
 
 
-# ── Shared live_control.json path ─────────────────────────────────────────────
+# ── Repo paths ───────────────────────────────────────────────────────────────
 
 _ROOT = Path(__file__).parent.parent
-_LIVE = _ROOT / "live_control.json"
 _LOGS = _ROOT / "session_logs"
 _USER_PROFILE = _ROOT / "user_profile.json"
 
@@ -1581,10 +1580,10 @@ class SomnaAgent:
     # ── live_control.json I/O ─────────────────────────────────────────────────
 
     def _read_live(self) -> dict:
-        if not _LIVE.exists():
-            return {}
         try:
-            return json.loads(_LIVE.read_text(encoding="utf-8"))
+            from ipc import read_live
+
+            return read_live()
         except Exception:
             return {}
 

@@ -54,6 +54,7 @@ def test_ipc():
         return
     _result("ipc.patch_live", *_has(m, "patch_live"))
     _result("ipc.write_live", *_has(m, "write_live"))
+    _result("ipc.read_live", *_has(m, "read_live"))
     _result("ipc.StateServer", *_has(m, "StateServer"))
     _result("ipc.PORT", *_has(m, "PORT"))
     _result("ipc.PORT == 6789", m.PORT == 6789)

@@ -8,9 +8,10 @@ engine, and display process can never interleave or corrupt the file.
 Protocol: newline-delimited JSON over loopback TCP (port 6789).
   {"op": "patch", "data": {…}}   — merge updates; None values delete the key
   {"op": "write", "data": {…}}   — full atomic replace
+  {"op": "read"}                 — synchronous: one NDJSON line of current state
 
-The server responds with nothing (fire-and-forget from the client side).
-Every write uses temp-file + os.replace() for atomic NTFS visibility.
+Patch/write responses are fire-and-forget from the client side.
+In-memory ``_state`` is canonical; the live file is updated after each change.
 
 Usage (started automatically by control_panel_imgui.py):
     from ipc.state_server import StateServer
@@ -34,7 +35,12 @@ _BACKLOG = 64
 class StateServer:
     def __init__(self, live_path: Path) -> None:
         self._live = live_path
-        self._lock = threading.Lock()  # serialises every write
+        self._lock = threading.Lock()  # serialises every write + read snapshot
+        self._state: dict = {}
+        try:
+            self._state = json.loads(live_path.read_text(encoding="utf-8"))
+        except Exception:
+            self._state = {}
         self._sock: socket.socket | None = None
         self._running = False
         self._thread: threading.Thread | None = None
@@ -96,6 +102,13 @@ class StateServer:
                             self._apply_patch(msg["data"])
                         elif op == "write":
                             self._apply_write(msg["data"])
+                        elif op == "read":
+                            with self._lock:
+                                response = (
+                                    json.dumps(self._state, separators=(",", ":"))
+                                    + "\n"
+                                )
+                            conn.sendall(response.encode("utf-8"))
                     except Exception:
                         pass
         except Exception:
@@ -110,24 +123,17 @@ class StateServer:
 
     def _apply_patch(self, updates: dict) -> None:
         with self._lock:
-            try:
-                data = (
-                    json.loads(self._live.read_text(encoding="utf-8"))
-                    if self._live.exists()
-                    else {}
-                )
-            except Exception:
-                data = {}
             for k, v in updates.items():
                 if v is None:
-                    data.pop(k, None)  # None = delete the key
+                    self._state.pop(k, None)  # None = delete the key
                 else:
-                    data[k] = v
-            self._atomic_write(data)
+                    self._state[k] = v
+            self._atomic_write(self._state)
 
     def _apply_write(self, data: dict) -> None:
         with self._lock:
-            self._atomic_write(data)
+            self._state = dict(data)
+            self._atomic_write(self._state)
 
     def _atomic_write(self, data: dict) -> None:
         """Write directly to the live file. Retries on transient lock failures."""

@@ -25,23 +25,17 @@ import threading
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from pathlib import Path
 
 import numpy as np
-from ipc import patch_live
+from ipc import patch_live, read_live
 
-_LIVE_PATH = Path(__file__).parent.parent / "live_control.json"
 _POLL_INTERVAL = 10.0  # seconds between update cycles
 
 
 # ── IPC ───────────────────────────────────────────────────────────────────────
 def _read_live() -> dict:
     try:
-        return (
-            json.loads(_LIVE_PATH.read_text(encoding="utf-8"))
-            if _LIVE_PATH.exists()
-            else {}
-        )
+        return read_live()
     except Exception:
         return {}
 

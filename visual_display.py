@@ -59,15 +59,29 @@ uniform float     u_time;
 in  vec2 uv;
 out vec4 fragColor;
 
-float sr_hash(vec2 coord, float t) {
-    return fract(sin(dot(coord * t, vec2(12.9898, 78.233))) * 43758.5453) * 2.0 - 1.0;
+float sr_hash(vec2 coord) {
+    return fract(sin(dot(coord, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+float sr_smooth_noise(vec2 coord, float t) {
+    // Spatially smooth noise via bilinear interpolation of integer grid hashes
+    vec2 p = coord * 0.05 + t * 0.3;
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);  // smoothstep for seamless blending
+    float a = sr_hash(i);
+    float b = sr_hash(i + vec2(1.0, 0.0));
+    float c = sr_hash(i + vec2(0.0, 1.0));
+    float d = sr_hash(i + vec2(1.0, 1.0));
+    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y) * 2.0 - 1.0;
 }
 
 void main() {
     vec4 c = texture(tex, uv);
     if (u_sr_noise_level > 0.001 && c.a > 0.001) {
-        float noise = sr_hash(gl_FragCoord.xy, u_time);
-        c.a = clamp(c.a + u_sr_noise_level * noise, 0.0, 1.0);
+        float noise = sr_smooth_noise(gl_FragCoord.xy, u_time);
+        // Scale modulation relative to existing alpha for smooth transitions
+        c.a = clamp(c.a * (1.0 + u_sr_noise_level * noise), 0.0, 1.0);
     }
     fragColor = c;
 }

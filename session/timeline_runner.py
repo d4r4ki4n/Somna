@@ -60,6 +60,8 @@ INTERPOLATABLE = {
     "pp_bloom_intensity",
     "pp_ca_strength",
     "pp_film_grain",
+    "pp_vignette_intensity",
+    "pp_iaf_mod_amplitude",
     # TTS FX chain (entrainment_effects.md §2)
     "tts_reverb_wet",
     "tts_reverb_room_ms",
@@ -93,6 +95,11 @@ INSTANT_ONLY = {
     "tts_duck_ms",
     "tts_duck_trigger",
     "feedback_mode",
+    # Post-processing — integer/enum/struct switches
+    "pp_tonemap",
+    "pp_bloom_threshold",
+    "pp_blur_radius",
+    "pp_vignette_sigma",
 }
 
 # Application-level fallbacks — used if not set in session defaults or timeline
@@ -136,6 +143,16 @@ APP_DEFAULTS = {
     "beat_type": "binaural",
     "noise_volume": 30.0,
     "noise_color": "pink",
+    # Post-processing (Bible Ch.3 §3.7)
+    "pp_bloom_intensity": 0.15,
+    "pp_film_grain": 0.03,
+    "pp_ca_strength": 0.002,
+    "pp_tonemap": 1,
+    "pp_bloom_threshold": 0.75,
+    "pp_blur_radius": 2.0,
+    "pp_vignette_sigma": 0.50,
+    "pp_vignette_intensity": 0.0,
+    "pp_iaf_mod_amplitude": 0.0,
 }
 
 
@@ -358,6 +375,14 @@ class TimelineRunner(threading.Thread):
             )
         except Exception:
             pass
+        # Freeform sessions (no keyframes) return {} from _compute_values,
+        # so defaults never reach live_control.json. Write them once at load
+        # so the display/agent see initial parameter state.
+        if not self._session.keyframes and self._session.defaults:
+            try:
+                patch_live(self._session.defaults)
+            except Exception:
+                pass
         print(f"[Timeline] Loaded: {self._session.name}")
 
     def pause(self):

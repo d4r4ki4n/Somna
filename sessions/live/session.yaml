@@ -28,6 +28,12 @@ defaults:
   font_switch_mode: intelligent
   spiral_show_text: false
   phrases_active: general
+  # Post-processing (Bible Ch.3 §3.7)
+  pp_bloom_intensity: 0.15
+  pp_film_grain: 0.03
+  pp_ca_strength: 0.002
+  pp_tonemap: 1
+  pp_bloom_threshold: 0.75
 
 # No timeline — the agent drives everything.
 timeline: []

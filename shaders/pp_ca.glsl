@@ -16,5 +16,6 @@ void main() {
     float r = texture(u_texture, uv + offset).r;
     float g = texture(u_texture, uv).g;
     float b = texture(u_texture, uv - offset).b;
-    frag_color = vec4(r, g, b, 1.0);
+    float a = texture(u_texture, uv).a;
+    frag_color = vec4(r, g, b, a);
 }

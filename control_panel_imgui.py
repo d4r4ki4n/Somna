@@ -274,6 +274,7 @@ class ControlPanelImGui:
         # Subprocess handles
         self._display_proc: subprocess.Popen | None = None
         self._agent_proc: subprocess.Popen | None = None
+        self._agent_launch_pending: bool = False
         self._eeg_engine: Any = None
         self._eeg_stop_thread: threading.Thread | None = None
         self._eeg_cfg = self._load_eeg_cfg()
@@ -660,13 +661,24 @@ class ControlPanelImGui:
                 patch_live({"eeg_faa_baseline_ready": False})
 
         # Agent-commanded display launch / stop
-        if live.get("_agent_launch_display"):
-            patch_live({"_agent_launch_display": None})
-            if self._needs_session_zero():
-                self._sz_pending_launch = True
-                self._sz_safety_open = True
-            else:
-                self._launch_display()
+        if self._agent_launch_pending:
+            # Waiting for async patch_live clear to reach the file.
+            # Only clear the flag when the JSON actually no longer has the key.
+            if not live.get("_agent_launch_display"):
+                self._agent_launch_pending = False
+        else:
+            agent_launch = live.get("_agent_launch_display")
+            if agent_launch:
+                self._agent_launch_pending = True
+                patch_live({"_agent_launch_display": None})
+                if self._needs_session_zero():
+                    self._sz_pending_launch = True
+                    self._sz_safety_open = True
+                else:
+                    if isinstance(agent_launch, dict) and agent_launch.get("session"):
+                        self._launch_display_for(agent_launch["session"])
+                    else:
+                        self._launch_display()
         if live.get("_agent_stop_display"):
             patch_live({"_agent_stop_display": None})
             if self._display_proc is not None:
@@ -1784,6 +1796,7 @@ class ControlPanelImGui:
         if self._display_proc and self._display_proc.poll() is None:
             self._display_proc.terminate()
         self._display_proc = None
+        self._agent_launch_pending = False
         # Brief sleep lets any in-flight state-server writes from the killed runner
         # settle before we write the definitive post-stop state.
         import time as _t

@@ -264,6 +264,7 @@ ALLOWED_CONDUCTOR_HINT_KEYS = frozenset(
         "request_fractionation",
         "target_floor_hz",
         "note",
+        "passthrough",
     }
 )
 
@@ -643,7 +644,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="somna_write_conductor_hint",
-            description="Write agent_conductor_hints to live_control.json (depth_patience, request_fractionation, target_floor_hz, note).",
+            description="Write agent_conductor_hints to live_control.json (depth_patience, request_fractionation, target_floor_hz, note, passthrough). When passthrough=true, conductor skips owned param writes so external agent drives them directly.",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -710,6 +711,25 @@ async def list_tools() -> list[Tool]:
                         "description": "Plain-text description (when action=build_session)",
                     },
                 },
+            },
+        ),
+        Tool(
+            name="somna_launch_session",
+            description=(
+                "Launch a display session from the external agent (Resonance). "
+                "Writes _agent_launch_display to live_control.json which the control "
+                "panel polls and executes. The control panel handles the actual subprocess "
+                "spawn. Returns immediately — poll display_active to confirm launch."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "session": {
+                        "type": "string",
+                        "description": "Session folder name (e.g. 'live', 'fold')",
+                    }
+                },
+                "required": ["session"],
             },
         ),
     ]
@@ -830,6 +850,20 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             ]
         response_dict["_ts"] = time.time()
         result = _patch_live({"agent_ext_response": response_dict})
+        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+    if name == "somna_launch_session":
+        session = arguments.get("session", "live")
+        if not isinstance(session, str) or not session.strip():
+            return [
+                TextContent(
+                    type="text",
+                    text=json.dumps({"error": "session must be a non-empty string"}),
+                )
+            ]
+        result = _patch_live(
+            {"_agent_launch_display": {"session": session.strip(), "ts": time.time()}}
+        )
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
 
     return [

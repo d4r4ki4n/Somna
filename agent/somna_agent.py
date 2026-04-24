@@ -3876,7 +3876,8 @@ class SomnaAgent:
             complexity_score=complexity,
             latency_s=round(latency, 1),
         )
-        print(f"[Agent] Recorded — complexity={complexity:.2f}  latency={latency:.0f}s")
+        cmplx_str = f"{complexity:.2f}" if complexity is not None else "N/A"
+        print(f"[Agent] Recorded — complexity={cmplx_str}  latency={latency:.0f}s")
 
         # Track last injected affirmation for effective-moment logging
         if affirmation:

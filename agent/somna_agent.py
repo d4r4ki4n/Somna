@@ -4764,7 +4764,18 @@ class SomnaAgent:
 
         messages_ext = [{"role": "user", "content": msg}]
         try:
-            self._llm.chat(messages_ext, max_tokens=512)
+            # Fire-and-forget: send the prompt to the MCP bridge without
+            # blocking for a response.  Resonance reads context via MCP tools
+            # and writes agent_ext_response, consumed on the next tick.
+            if self._llm._ext_client and self._llm._ext_client.connected:
+                self._llm._ext_client.send_only(
+                    prompt=msg, system_prompt="", tick_id=f"startup-{time.time()}"
+                )
+                print(f"[Agent] Startup event ({event_type}) sent to Resonance (async)")
+            else:
+                # No external client — try the blocking path as fallback
+                self._llm.chat(messages_ext, max_tokens=512)
+                print(f"[Agent] Startup event ({event_type}) sent to Resonance")
         except Exception as e:
             print(f"[Agent] Startup event send failed: {e}")
 

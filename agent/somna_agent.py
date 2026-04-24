@@ -6553,7 +6553,11 @@ class SomnaAgent:
                             f"fresh_start={self._fresh_start}  gap={gap_min:.0f}min"
                         )
             elif session != last_session:
-                if session != _pending_session:
+                # 'default' is the no-session state — transient during display restarts.
+                # Don't commit it as a real session switch while display is active.
+                if session == "default":
+                    pass  # ignore — keep last_session as the real running session
+                elif session != _pending_session:
                     # First time we see this new value — start the debounce clock
                     _pending_session = session
                     _pending_session_since = now
@@ -6570,7 +6574,7 @@ class SomnaAgent:
                         gap_min = (time.time() - self._history[-1].timestamp) / 60.0
                     self._fresh_start = (not self._history) or (gap_min > 30.0)
                     self._startup_gap_min = gap_min
-                    if not first_tick:
+                    if not first_tick and session != "default":
                         first_tick = True
                     print(
                         f"[Agent] Session: {session!r}  "

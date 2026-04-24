@@ -275,7 +275,6 @@ class ControlPanelImGui:
         self._display_proc: subprocess.Popen | None = None
         self._agent_proc: subprocess.Popen | None = None
         self._agent_launch_pending: bool = False
-        self._user_stop_ts: float = 0.0  # timestamp of last user-initiated stop; suppresses agent relaunch for 30s
         self._eeg_engine: Any = None
         self._eeg_stop_thread: threading.Thread | None = None
         self._eeg_cfg = self._load_eeg_cfg()
@@ -661,20 +660,23 @@ class ControlPanelImGui:
 
         # Agent-commanded display launch / stop
         if self._agent_launch_pending:
-            # Waiting for async patch_live clear to reach the file.
-            # Only clear the flag when the JSON actually no longer has the key.
-            if not live.get("_agent_launch_display"):
-                self._agent_launch_pending = False
-        elif time.time() - self._user_stop_ts < 30.0:
-            # Suppress agent relaunch for 30s after user-initiated stop.
-            # Clear any stale launch key so it doesn't queue up.
-            if live.get("_agent_launch_display"):
-                patch_live({"_agent_launch_display": None})
+            # Launch already in progress — do nothing until it completes.
+            # The flag is cleared in _launch_display / _stop_display.
+            pass
         else:
             agent_launch = live.get("_agent_launch_display")
             if agent_launch:
+                # Clear the key immediately so it can't re-trigger.
+                # Use a direct write, not async patch_live, to guarantee
+                # the key is gone before the next frame reads the file.
+                try:
+                    data = self._live
+                    data["_agent_launch_display"] = None
+                    with open(self._live_path, "w", encoding="utf-8") as f:
+                        json.dump(data, f, indent=2)
+                except Exception:
+                    patch_live({"_agent_launch_display": None})
                 self._agent_launch_pending = True
-                patch_live({"_agent_launch_display": None})
                 if self._needs_session_zero():
                     self._sz_pending_launch = True
                     self._sz_safety_open = True
@@ -1790,6 +1792,7 @@ class ControlPanelImGui:
         if self._vr_mode:
             args.append("--vr")
         self._display_proc = subprocess.Popen(args, cwd=str(self._root))
+        self._agent_launch_pending = False  # Launch complete — allow future launches
 
     def _stop_display(self) -> None:
         # Write audio_muted BEFORE terminating — the timeline runner inside the
@@ -1797,7 +1800,6 @@ class ControlPanelImGui:
         # tick.  If we only write True after terminate(), a stale in-flight runner
         # write can arrive at the state server later and overwrite it.
         patch_live({"audio_muted": True})
-        self._user_stop_ts = time.time()
         if self._display_proc and self._display_proc.poll() is None:
             self._display_proc.terminate()
         self._display_proc = None

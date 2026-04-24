@@ -19,13 +19,10 @@ IPC: all coordination with audio_engine.py goes through live_control.json
 
 from __future__ import annotations
 
-import json
 import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from ipc import patch_live
-
-_LIVE = Path(__file__).parent.parent / "live_control.json"
+from ipc import patch_live, read_live
 
 # Replay budget
 _MAX_CUES_PER_HOUR: int = 20
@@ -123,9 +120,7 @@ class TMREngine:
 
     def _read_live(self) -> Dict[str, Any]:
         try:
-            return (
-                json.loads(_LIVE.read_text(encoding="utf-8")) if _LIVE.exists() else {}
-            )
+            return read_live()
         except Exception:
             return {}
 

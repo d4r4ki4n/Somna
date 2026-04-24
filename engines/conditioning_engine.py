@@ -30,158 +30,175 @@ from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
-from ipc import patch_live
+from ipc import patch_live, read_live
 
-_ROOT      = Path(__file__).parent.parent
-_LIVE_PATH = _ROOT / "live_control.json"
+_ROOT = Path(__file__).parent.parent
 
 # ── IPC helpers ───────────────────────────────────────────────────────────────
 
+
 def _read_live() -> dict:
     try:
-        return json.loads(_LIVE_PATH.read_text(encoding="utf-8"))
+        return read_live()
     except Exception:
         return {}
+
+
 def _db():
     from content_tools import somna_db
+
     return somna_db
 
 
 # ── Rescorla-Wagner parameters ────────────────────────────────────────────────
 
-_LAMBDA          = 1.0    # asymptote
-_BETA_EXT_RATIO  = 0.3    # extinction rate = _BETA_EXT_RATIO * beta_us
+_LAMBDA = 1.0  # asymptote
+_BETA_EXT_RATIO = 0.3  # extinction rate = _BETA_EXT_RATIO * beta_us
 
 # ── Shaping constants ─────────────────────────────────────────────────────────
 
 _INITIAL_PERCENTILE = 70
-_FINAL_PERCENTILE   = 30
-_SHAPING_SESSIONS   = 20
+_FINAL_PERCENTILE = 30
+_SHAPING_SESSIONS = 20
 
 # ── Second-order conditioning constants ──────────────────────────────────────
 
 SOC_MIN_FIRST_ORDER_STRENGTH = 0.6
-SOC_PAIRS_PER_SESSION        = 5
-SOC_CS2_LEAD_MS              = 500
-SOC_PAIR_DURATION_MS         = 2000
+SOC_PAIRS_PER_SESSION = 5
+SOC_CS2_LEAD_MS = 500
+SOC_PAIR_DURATION_MS = 2000
 
 # ── Portable Response Evaluator constants ─────────────────────────────────────
 
-PRE_BASELINE_S          = 60.0
-PRE_INTER_STIMULUS_S    = 10.0
-PRE_POST_CUE_WINDOW_S   = 10.0
-PRE_CR_THETA_INCREASE   = 0.15
-PRE_CR_RMSSD_INCREASE   = 0.10
-PRE_CR_TRANCE_INCREASE  = 0.08
+PRE_BASELINE_S = 60.0
+PRE_INTER_STIMULUS_S = 10.0
+PRE_POST_CUE_WINDOW_S = 10.0
+PRE_CR_THETA_INCREASE = 0.15
+PRE_CR_RMSSD_INCREASE = 0.10
+PRE_CR_TRANCE_INCREASE = 0.08
 
 # ── Graduation criteria ───────────────────────────────────────────────────────
 
-GRAD_MIN_STRENGTH   = 0.7
-GRAD_MIN_TRIALS     = 30
-GRAD_MIN_CR_RATE    = 0.60
+GRAD_MIN_STRENGTH = 0.7
+GRAD_MIN_TRIALS = 30
+GRAD_MIN_CR_RATE = 0.60
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Dataclasses
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 @dataclass
 class NeuralStateFingerprint:
     """Six-dimensional encoding of the subject's neural state at delivery time."""
-    faa:              float = 0.0
-    trance_score:     float = 0.0
+
+    faa: float = 0.0
+    trance_score: float = 0.0
     theta_alpha_ratio: float = 0.0
-    spectral_slope:   float = 0.0
-    coherence:        float = 0.0
-    autonomic_depth:  float = 0.0
+    spectral_slope: float = 0.0
+    coherence: float = 0.0
+    autonomic_depth: float = 0.0
 
     def distance(self, other: "NeuralStateFingerprint") -> float:
         """Euclidean distance in normalised 6-D space (all dims in [0,1] range)."""
-        dims_self  = [self.faa, self.trance_score, self.theta_alpha_ratio,
-                      min(abs(self.spectral_slope) / 3.0, 1.0),
-                      self.coherence, self.autonomic_depth]
-        dims_other = [other.faa, other.trance_score, other.theta_alpha_ratio,
-                      min(abs(other.spectral_slope) / 3.0, 1.0),
-                      other.coherence, other.autonomic_depth]
+        dims_self = [
+            self.faa,
+            self.trance_score,
+            self.theta_alpha_ratio,
+            min(abs(self.spectral_slope) / 3.0, 1.0),
+            self.coherence,
+            self.autonomic_depth,
+        ]
+        dims_other = [
+            other.faa,
+            other.trance_score,
+            other.theta_alpha_ratio,
+            min(abs(other.spectral_slope) / 3.0, 1.0),
+            other.coherence,
+            other.autonomic_depth,
+        ]
         return math.sqrt(sum((a - b) ** 2 for a, b in zip(dims_self, dims_other)))
 
     @classmethod
     def from_live(cls, live: dict) -> "NeuralStateFingerprint":
         return cls(
-            faa              = float(live.get("eeg_faa_value",       0.0) or 0.0),
-            trance_score     = float(live.get("eeg_trance_score_v2", 0.0) or 0.0),
-            theta_alpha_ratio= float(live.get("eeg_theta_alpha_ratio",0.0) or 0.0),
-            spectral_slope   = float(live.get("eeg_spectral_slope",  0.0) or 0.0),
-            coherence        = float(live.get("eeg_frontal_alpha_coh",0.0) or 0.0),
-            autonomic_depth  = float(live.get("autonomic_depth",     0.0) or 0.0),
+            faa=float(live.get("eeg_faa_value", 0.0) or 0.0),
+            trance_score=float(live.get("eeg_trance_score_v2", 0.0) or 0.0),
+            theta_alpha_ratio=float(live.get("eeg_theta_alpha_ratio", 0.0) or 0.0),
+            spectral_slope=float(live.get("eeg_spectral_slope", 0.0) or 0.0),
+            coherence=float(live.get("eeg_frontal_alpha_coh", 0.0) or 0.0),
+            autonomic_depth=float(live.get("autonomic_depth", 0.0) or 0.0),
         )
 
     def to_dict(self) -> dict:
         return {
-            "faa":              round(self.faa, 4),
-            "trance_score":     round(self.trance_score, 4),
-            "theta_alpha_ratio":round(self.theta_alpha_ratio, 4),
-            "spectral_slope":   round(self.spectral_slope, 4),
-            "coherence":        round(self.coherence, 4),
-            "autonomic_depth":  round(self.autonomic_depth, 4),
+            "faa": round(self.faa, 4),
+            "trance_score": round(self.trance_score, 4),
+            "theta_alpha_ratio": round(self.theta_alpha_ratio, 4),
+            "spectral_slope": round(self.spectral_slope, 4),
+            "coherence": round(self.coherence, 4),
+            "autonomic_depth": round(self.autonomic_depth, 4),
         }
 
 
 @dataclass
 class InteroceptiveContext:
     """Cardiac/respiratory context at delivery — for CS profile tracking."""
-    cardiac_phase:    float = 0.0
+
+    cardiac_phase: float = 0.0
     respiratory_phase: float = 0.0
-    hrv_rmssd:        float = 0.0
-    autonomic_depth:  float = 0.0
-    stillness_index:  float = 1.0
+    hrv_rmssd: float = 0.0
+    autonomic_depth: float = 0.0
+    stillness_index: float = 1.0
 
     @classmethod
     def from_live(cls, live: dict) -> "InteroceptiveContext":
         return cls(
-            cardiac_phase    = float(live.get("ppg_cardiac_phase",    0.0) or 0.0),
-            respiratory_phase= float(live.get("respiratory_phase",    0.0) or 0.0),
-            hrv_rmssd        = float(live.get("ppg_hrv_rmssd",        0.0) or 0.0),
-            autonomic_depth  = float(live.get("autonomic_depth",      0.0) or 0.0),
-            stillness_index  = float(live.get("imu_stillness_index",  1.0) or 1.0),
+            cardiac_phase=float(live.get("ppg_cardiac_phase", 0.0) or 0.0),
+            respiratory_phase=float(live.get("respiratory_phase", 0.0) or 0.0),
+            hrv_rmssd=float(live.get("ppg_hrv_rmssd", 0.0) or 0.0),
+            autonomic_depth=float(live.get("autonomic_depth", 0.0) or 0.0),
+            stillness_index=float(live.get("imu_stillness_index", 1.0) or 1.0),
         )
 
 
 @dataclass
 class ConditioningStrength:
     """Per (cs_identity, us_type, conductor_phase) associative strength state."""
-    cs_identity:             str
-    cs_pool:                 str
-    us_type:                 str
-    conductor_phase:         str  = ""
-    strength:                float = 0.0
-    trial_count:             int   = 0
-    last_pairing_ts:         int   = 0      # epoch ms
-    last_extinction_check_ts: int  = 0
-    salience:                float = 1.0
-    extinction_rate:         float = 0.02
-    is_second_order:         bool  = False
+
+    cs_identity: str
+    cs_pool: str
+    us_type: str
+    conductor_phase: str = ""
+    strength: float = 0.0
+    trial_count: int = 0
+    last_pairing_ts: int = 0  # epoch ms
+    last_extinction_check_ts: int = 0
+    salience: float = 1.0
+    extinction_rate: float = 0.02
+    is_second_order: bool = False
 
 
 @dataclass
 class CueTone:
-    pool:       str
-    tone_hz:    float  = 200.0
-    duration_ms: int   = 500
+    pool: str
+    tone_hz: float = 200.0
+    duration_ms: int = 500
 
 
 @dataclass
 class CueTestTrialResult:
-    pool:          str
-    cr_detected:   bool
-    theta_delta:   float
-    rmssd_delta:   float
-    trance_delta:  float
+    pool: str
+    cr_detected: bool
+    theta_delta: float
+    rmssd_delta: float
+    trance_delta: float
 
 
 @dataclass
 class CueTestResult:
-    trials:        list[CueTestTrialResult]
+    trials: list[CueTestTrialResult]
     overall_cr_rate: float
     graduated_pools: list[str]
 
@@ -189,6 +206,7 @@ class CueTestResult:
 # ═══════════════════════════════════════════════════════════════════════════════
 # StrengthTracker
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class StrengthTracker:
     """Rescorla-Wagner acquisition / extinction updates."""
@@ -203,36 +221,41 @@ class StrengthTracker:
         for r in rows:
             key = (r["cs_identity"], r["us_type"], r.get("conductor_phase", ""))
             self._cache[key] = ConditioningStrength(
-                cs_identity             = r["cs_identity"],
-                cs_pool                 = r.get("cs_pool", ""),
-                us_type                 = r["us_type"],
-                conductor_phase         = r.get("conductor_phase", ""),
-                strength                = r["strength"],
-                trial_count             = r["trial_count"],
-                last_pairing_ts         = r.get("last_pairing_ts", 0),
-                last_extinction_check_ts= r.get("last_extinction_check_ts", 0),
-                salience                = r.get("salience", 1.0),
-                extinction_rate         = r.get("extinction_rate", 0.02),
-                is_second_order         = bool(r.get("is_second_order", False)),
+                cs_identity=r["cs_identity"],
+                cs_pool=r.get("cs_pool", ""),
+                us_type=r["us_type"],
+                conductor_phase=r.get("conductor_phase", ""),
+                strength=r["strength"],
+                trial_count=r["trial_count"],
+                last_pairing_ts=r.get("last_pairing_ts", 0),
+                last_extinction_check_ts=r.get("last_extinction_check_ts", 0),
+                salience=r.get("salience", 1.0),
+                extinction_rate=r.get("extinction_rate", 0.02),
+                is_second_order=bool(r.get("is_second_order", False)),
             )
 
-    def get(self, cs_identity: str, us_type: str,
-            conductor_phase: str = "") -> ConditioningStrength:
+    def get(
+        self, cs_identity: str, us_type: str, conductor_phase: str = ""
+    ) -> ConditioningStrength:
         key = (cs_identity, us_type, conductor_phase)
         if key not in self._cache:
             self._cache[key] = ConditioningStrength(
-                cs_identity=cs_identity, cs_pool="", us_type=us_type,
+                cs_identity=cs_identity,
+                cs_pool="",
+                us_type=us_type,
                 conductor_phase=conductor_phase,
             )
         return self._cache[key]
 
     def compute_salience(self, cs: ConditioningStrength) -> float:
         """Salience decays with repeated exposure; recovers with gap between sessions."""
-        exposure_decay  = 1.0 / (1.0 + 0.05 * cs.trial_count)
-        context_bonus   = 0.3 if self._in_trance_context() else 0.0
-        now_ms          = int(time.time() * 1000)
-        days_since      = (now_ms - cs.last_pairing_ts) / 86_400_000 if cs.last_pairing_ts else 0.0
-        recency_bonus   = min(0.2, days_since * 0.02)
+        exposure_decay = 1.0 / (1.0 + 0.05 * cs.trial_count)
+        context_bonus = 0.3 if self._in_trance_context() else 0.0
+        now_ms = int(time.time() * 1000)
+        days_since = (
+            (now_ms - cs.last_pairing_ts) / 86_400_000 if cs.last_pairing_ts else 0.0
+        )
+        recency_bonus = min(0.2, days_since * 0.02)
         return min(1.0, exposure_decay + context_bonus + recency_bonus)
 
     def _in_trance_context(self) -> bool:
@@ -245,12 +268,12 @@ class StrengthTracker:
         cs_pool: str,
         us_type: str,
         conductor_phase: str,
-        us_magnitude: float,   # β_us — measured UCR intensity 0–1
+        us_magnitude: float,  # β_us — measured UCR intensity 0–1
         is_second_order: bool = False,
     ) -> float:
         """Rescorla-Wagner acquisition: ΔV = α_cs × β_us × (λ – V_total)."""
         cs = self.get(cs_identity, us_type, conductor_phase)
-        cs.cs_pool       = cs_pool
+        cs.cs_pool = cs_pool
         cs.is_second_order = is_second_order
 
         alpha = self.compute_salience(cs)
@@ -260,21 +283,24 @@ class StrengthTracker:
         # during verified GENUS entrainment (sub_phase=ACTIVE, ratio >= 1.5).
         try:
             _live_snap = _read_live()
-            if (_live_snap.get("genus_sub_phase") == "ACTIVE"
-                    and float(_live_snap.get("eeg_genus_ratio", 0.0) or 0.0) >= 1.5):
+            if (
+                _live_snap.get("genus_sub_phase") == "ACTIVE"
+                and float(_live_snap.get("eeg_genus_ratio", 0.0) or 0.0) >= 1.5
+            ):
                 alpha = alpha * 1.15
         except Exception:
             pass
 
         # V_total = sum of all active CS strengths for this US type
         v_total = sum(
-            s.strength for (ci, ut, cp), s in self._cache.items()
+            s.strength
+            for (ci, ut, cp), s in self._cache.items()
             if ut == us_type and cp == conductor_phase
         )
         delta_v = alpha * us_magnitude * (_LAMBDA - v_total)
         delta_v = max(0.0, delta_v)  # acquisition never decreases strength
 
-        cs.strength     = min(1.0, cs.strength + delta_v)
+        cs.strength = min(1.0, cs.strength + delta_v)
         cs.trial_count += 1
         cs.last_pairing_ts = int(time.time() * 1000)
 
@@ -291,8 +317,8 @@ class StrengthTracker:
         """Extinction: ΔV = -α_cs × β_extinction × V."""
         cs = self.get(cs_identity, us_type, conductor_phase)
         beta_ext = _BETA_EXT_RATIO * beta_us
-        alpha    = self.compute_salience(cs)
-        delta    = -alpha * beta_ext * cs.strength
+        alpha = self.compute_salience(cs)
+        delta = -alpha * beta_ext * cs.strength
         cs.strength = max(0.0, cs.strength + delta)
         cs.last_extinction_check_ts = int(time.time() * 1000)
         self._persist(cs)
@@ -301,34 +327,44 @@ class StrengthTracker:
     def _persist(self, cs: ConditioningStrength) -> None:
         try:
             _db().upsert_conditioning_strength(
-                cs_identity    = cs.cs_identity,
-                cs_pool        = cs.cs_pool,
-                us_type        = cs.us_type,
-                conductor_phase= cs.conductor_phase,
-                strength_delta = 0.0,   # we manage strength externally
-                salience       = cs.salience,
-                extinction_rate= cs.extinction_rate,
-                is_second_order= cs.is_second_order,
+                cs_identity=cs.cs_identity,
+                cs_pool=cs.cs_pool,
+                us_type=cs.us_type,
+                conductor_phase=cs.conductor_phase,
+                strength_delta=0.0,  # we manage strength externally
+                salience=cs.salience,
+                extinction_rate=cs.extinction_rate,
+                is_second_order=cs.is_second_order,
             )
             # Override strength directly since upsert_conditioning_strength uses delta
             from content_tools import somna_db as _db_mod
             import sqlite3
+
             with sqlite3.connect(_db_mod._DB_PATH, timeout=5) as conn:
                 conn.execute(
                     "UPDATE conditioning_strengths SET strength=?, trial_count=?, "
                     "last_pairing_ts=?, last_extinction_check_ts=? "
                     "WHERE cs_identity=? AND us_type=? AND conductor_phase=?",
-                    (round(cs.strength, 4), cs.trial_count,
-                     cs.last_pairing_ts, cs.last_extinction_check_ts,
-                     cs.cs_identity, cs.us_type, cs.conductor_phase),
+                    (
+                        round(cs.strength, 4),
+                        cs.trial_count,
+                        cs.last_pairing_ts,
+                        cs.last_extinction_check_ts,
+                        cs.cs_identity,
+                        cs.us_type,
+                        cs.conductor_phase,
+                    ),
                 )
         except Exception:
             pass
 
     def get_pool_mean_strength(self, cs_pool: str, us_type: str = "trance") -> float:
         """Mean strength across all CS in a pool for a given US type."""
-        vals = [s.strength for (ci, ut, cp), s in self._cache.items()
-                if s.cs_pool == cs_pool and ut == us_type]
+        vals = [
+            s.strength
+            for (ci, ut, cp), s in self._cache.items()
+            if s.cs_pool == cs_pool and ut == us_type
+        ]
         return sum(vals) / len(vals) if vals else 0.0
 
     def get_strongest_pools(self, us_type: str = "trance", top_n: int = 3) -> list[str]:
@@ -344,20 +380,21 @@ class StrengthTracker:
 # ReinforcementScheduler
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class ReinforcementScheduler:
     """Variable-ratio delivery schedule — adapts from continuous to VR-6 as strength grows."""
 
     # Strength → (vr_mean, vr_min, vr_max)
     _VR_TABLE = [
-        (0.0, 0.3,  None),    # continuous
-        (0.3, 0.6,  (2, 1, 3)),
-        (0.6, 0.8,  (4, 2, 6)),
+        (0.0, 0.3, None),  # continuous
+        (0.3, 0.6, (2, 1, 3)),
+        (0.6, 0.8, (4, 2, 6)),
         (0.8, 1.01, (6, 3, 9)),
     ]
 
     def __init__(self):
         self._gate_count = 0
-        self._next_fire  = 1
+        self._next_fire = 1
 
     def should_deliver(self, cs_strength: float) -> bool:
         """Return True if the current gate-count is at or past the next scheduled fire."""
@@ -377,7 +414,7 @@ class ReinforcementScheduler:
         for lo, hi, rng in self._VR_TABLE:
             if lo <= strength < hi:
                 if rng is None:
-                    return (1, 1)   # continuous — always fire
+                    return (1, 1)  # continuous — always fire
                 _, vr_min, vr_max = rng
                 return vr_min, vr_max
         return (3, 6)
@@ -389,20 +426,21 @@ class ReinforcementScheduler:
 
     @property
     def vr_mean(self) -> int:
-        return 3   # nominal for status reporting
+        return 3  # nominal for status reporting
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ShapingEngine
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class ShapingEngine:
     """Progressive percentile target shaping for operant neurofeedback."""
 
     def __init__(self, user_id: str = "default"):
-        self.user_id        = user_id
+        self.user_id = user_id
         self._sessions_done = 0
-        self.reward_history : deque[float] = deque(maxlen=1000)
+        self.reward_history: deque[float] = deque(maxlen=1000)
         self._load_progress()
 
     def _load_progress(self) -> None:
@@ -423,7 +461,8 @@ class ShapingEngine:
         self._sessions_done = min(self._sessions_done + 1, _SHAPING_SESSIONS)
         try:
             _db().upsert_shaping_progress(
-                self.user_id, "shaping_sessions",
+                self.user_id,
+                "shaping_sessions",
                 float(self._sessions_done),
                 self.current_percentile,
             )
@@ -436,7 +475,9 @@ class ShapingEngine:
     @property
     def current_percentile(self) -> int:
         frac = min(self._sessions_done / _SHAPING_SESSIONS, 1.0)
-        return round(_INITIAL_PERCENTILE - frac * (_INITIAL_PERCENTILE - _FINAL_PERCENTILE))
+        return round(
+            _INITIAL_PERCENTILE - frac * (_INITIAL_PERCENTILE - _FINAL_PERCENTILE)
+        )
 
     @property
     def session_count(self) -> int:
@@ -447,6 +488,7 @@ class ShapingEngine:
 # SecondOrderTrainer
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class SecondOrderTrainer:
     """CS2–CS1 pairings in MAINTENANCE phase without full US (opt-in)."""
 
@@ -454,8 +496,10 @@ class SecondOrderTrainer:
         self._pairs_this_session = 0
 
     def eligible(self, cs1_strength: float) -> bool:
-        return (cs1_strength >= SOC_MIN_FIRST_ORDER_STRENGTH
-                and self._pairs_this_session < SOC_PAIRS_PER_SESSION)
+        return (
+            cs1_strength >= SOC_MIN_FIRST_ORDER_STRENGTH
+            and self._pairs_this_session < SOC_PAIRS_PER_SESSION
+        )
 
     def run_soc_pair(
         self,
@@ -473,17 +517,17 @@ class SecondOrderTrainer:
         record_id = str(uuid.uuid4())
         try:
             _db().log_conditioning_association(
-                record_id       = record_id,
-                session_id      = session_id,
-                timestamp_ms    = int(time.time() * 1000),
-                cs_class        = "second_order",
-                cs_identity     = cs2_identity,
-                cs_pool         = "",
-                us_type         = f"cs1:{cs1_tone_pool}",
-                us_magnitude    = 0.0,
-                conductor_phase = conductor_phase,
-                modality        = "soc",
-                contiguity_ms   = SOC_CS2_LEAD_MS,
+                record_id=record_id,
+                session_id=session_id,
+                timestamp_ms=int(time.time() * 1000),
+                cs_class="second_order",
+                cs_identity=cs2_identity,
+                cs_pool="",
+                us_type=f"cs1:{cs1_tone_pool}",
+                us_magnitude=0.0,
+                conductor_phase=conductor_phase,
+                modality="soc",
+                contiguity_ms=SOC_CS2_LEAD_MS,
             )
         except Exception:
             pass
@@ -498,13 +542,14 @@ class SecondOrderTrainer:
 # AssociationRegistry
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class AssociationRegistry:
     """Batched write adapter for conditioning_associations table."""
 
     def __init__(self, session_id: str):
         self.session_id = session_id
         self._pending: list[dict] = []
-        self._BATCH  = 20
+        self._BATCH = 20
 
     def record(self, **kwargs) -> None:
         self._pending.append(kwargs)
@@ -526,6 +571,7 @@ class AssociationRegistry:
 # PortableResponseEvaluator
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 class PortableResponseEvaluator:
     """
     External cue-test: plays TMR tones and measures conditioned responses.
@@ -537,22 +583,25 @@ class PortableResponseEvaluator:
     def _snapshot(self) -> dict:
         live = _read_live()
         return {
-            "trance":          float(live.get("eeg_trance_score_v2", 0.0) or 0.0),
-            "theta_alpha":     float(live.get("eeg_theta_alpha_ratio", 0.0) or 0.0),
-            "rmssd":           float(live.get("ppg_hrv_rmssd", 0.0) or 0.0),
+            "trance": float(live.get("eeg_trance_score_v2", 0.0) or 0.0),
+            "theta_alpha": float(live.get("eeg_theta_alpha_ratio", 0.0) or 0.0),
+            "rmssd": float(live.get("ppg_hrv_rmssd", 0.0) or 0.0),
         }
 
     def _detect_cr(self, baseline: dict, post: dict) -> CueTestTrialResult:
         """Return True CR if ≥ 2 of 3 metrics exceed threshold."""
-        theta_delta  = post["theta_alpha"] - baseline["theta_alpha"]
-        rmssd_delta  = post["rmssd"]       - baseline["rmssd"] * PRE_CR_RMSSD_INCREASE
-        trance_delta = post["trance"]      - baseline["trance"]
+        theta_delta = post["theta_alpha"] - baseline["theta_alpha"]
+        rmssd_delta = post["rmssd"] - baseline["rmssd"] * PRE_CR_RMSSD_INCREASE
+        trance_delta = post["trance"] - baseline["trance"]
 
-        hits = sum([
-            theta_delta  >= PRE_CR_THETA_INCREASE  * max(baseline["theta_alpha"], 0.01),
-            rmssd_delta  >= 0,   # any positive shift counts since baseline may be 0
-            trance_delta >= PRE_CR_TRANCE_INCREASE,
-        ])
+        hits = sum(
+            [
+                theta_delta
+                >= PRE_CR_THETA_INCREASE * max(baseline["theta_alpha"], 0.01),
+                rmssd_delta >= 0,  # any positive shift counts since baseline may be 0
+                trance_delta >= PRE_CR_TRANCE_INCREASE,
+            ]
+        )
         return CueTestTrialResult(
             pool="",
             cr_detected=hits >= 2,
@@ -577,35 +626,37 @@ class PortableResponseEvaluator:
         random.shuffle(shuffled)
 
         for tone in shuffled:
-            patch_live({"conditioning_cue_tone_pool": tone.pool,
-                         "conditioning_cue_tone_hz":  tone.tone_hz,
-                         "conditioning_cue_active":   True})
+            patch_live(
+                {
+                    "conditioning_cue_tone_pool": tone.pool,
+                    "conditioning_cue_tone_hz": tone.tone_hz,
+                    "conditioning_cue_active": True,
+                }
+            )
             time.sleep(tone.duration_ms / 1000.0)
             patch_live({"conditioning_cue_active": False})
             time.sleep(PRE_POST_CUE_WINDOW_S)
 
-            post   = self._snapshot()
+            post = self._snapshot()
             result = self._detect_cr(baseline, post)
             result.pool = tone.pool
             trials.append(result)
             time.sleep(PRE_INTER_STIMULUS_S)
 
         cr_rate = sum(t.cr_detected for t in trials) / len(trials) if trials else 0.0
-        graduated = [
-            t.pool for t in trials
-            if t.cr_detected
-        ]
+        graduated = [t.pool for t in trials if t.cr_detected]
 
         return CueTestResult(
-            trials          = trials,
-            overall_cr_rate = cr_rate,
-            graduated_pools = graduated,
+            trials=trials,
+            overall_cr_rate=cr_rate,
+            graduated_pools=graduated,
         )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # ConditioningEngine  (central coordinator)
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class ConditioningEngine:
     """
@@ -634,16 +685,16 @@ class ConditioningEngine:
 
     def __init__(self, session_id: str, user_id: str = "default"):
         self.session_id = session_id
-        self.user_id    = user_id
+        self.user_id = user_id
 
-        self._tracker   = StrengthTracker()
+        self._tracker = StrengthTracker()
         self._scheduler = ReinforcementScheduler()
-        self._shaping   = ShapingEngine(user_id)
-        self._soc       = SecondOrderTrainer()
-        self._registry  = AssociationRegistry(session_id)
-        self._pre        = PortableResponseEvaluator()
+        self._shaping = ShapingEngine(user_id)
+        self._soc = SecondOrderTrainer()
+        self._registry = AssociationRegistry(session_id)
+        self._pre = PortableResponseEvaluator()
 
-        self._enabled   = True
+        self._enabled = True
         self._session_pairings = 0
 
         # Neural state fingerprint history for SDL matching
@@ -656,15 +707,15 @@ class ConditioningEngine:
 
     def on_delivery(
         self,
-        cs_class:       str,
-        cs_identity:    str,
-        cs_pool:        str,
-        neural_state:   NeuralStateFingerprint,
-        delivery_gate:  dict,
+        cs_class: str,
+        cs_identity: str,
+        cs_pool: str,
+        neural_state: NeuralStateFingerprint,
+        delivery_gate: dict,
         conductor_phase: str,
-        cardiac_phase:  float = 0.0,
+        cardiac_phase: float = 0.0,
         respiratory_phase: float = 0.0,
-        us_magnitude:   float = 0.0,
+        us_magnitude: float = 0.0,
     ) -> None:
         """Call after every confirmed affirmation delivery."""
         if not self._enabled:
@@ -684,30 +735,30 @@ class ConditioningEngine:
         # Log to DB
         record_id = str(uuid.uuid4())
         self._registry.record(
-            record_id            = record_id,
-            session_id           = self.session_id,
-            timestamp_ms         = int(time.time() * 1000),
-            cs_class             = cs_class,
-            cs_identity          = cs_identity,
-            cs_pool              = cs_pool,
-            us_type              = "trance",
-            us_magnitude         = us_magnitude,
-            conductor_phase      = conductor_phase,
-            modality             = "multimodal",
-            contiguity_ms        = 0,
-            delivery_gate_state  = delivery_gate,
-            neural_state_fingerprint = neural_state.to_dict(),
-            cardiac_phase        = cardiac_phase,
-            respiratory_phase    = respiratory_phase,
+            record_id=record_id,
+            session_id=self.session_id,
+            timestamp_ms=int(time.time() * 1000),
+            cs_class=cs_class,
+            cs_identity=cs_identity,
+            cs_pool=cs_pool,
+            us_type="trance",
+            us_magnitude=us_magnitude,
+            conductor_phase=conductor_phase,
+            modality="multimodal",
+            contiguity_ms=0,
+            delivery_gate_state=delivery_gate,
+            neural_state_fingerprint=neural_state.to_dict(),
+            cardiac_phase=cardiac_phase,
+            respiratory_phase=respiratory_phase,
         )
 
         # Rescorla-Wagner update
         self._tracker.acquire(
-            cs_identity     = cs_identity,
-            cs_pool         = cs_pool,
-            us_type         = "trance",
-            conductor_phase = conductor_phase,
-            us_magnitude    = us_magnitude,
+            cs_identity=cs_identity,
+            cs_pool=cs_pool,
+            us_type="trance",
+            conductor_phase=conductor_phase,
+            us_magnitude=us_magnitude,
         )
 
         # Track neural fingerprints for SDL
@@ -719,11 +770,12 @@ class ConditioningEngine:
         self._shaping.record_reward(trance)
         self._sync_live()
 
-    def should_deliver(self, cs_identity: str, cs_pool: str,
-                       us_type: str = "trance") -> bool:
+    def should_deliver(
+        self, cs_identity: str, cs_pool: str, us_type: str = "trance"
+    ) -> bool:
         """Return True if the VR schedule approves this delivery opportunity."""
         if not self._enabled:
-            return True   # disabled → don't interfere
+            return True  # disabled → don't interfere
         cs = self._tracker.get(cs_identity, us_type, "")
         return self._scheduler.should_deliver(cs.strength)
 
@@ -740,15 +792,21 @@ class ConditioningEngine:
         are ranked first — they were encoded under similar conditions and are
         most likely to fire strongly now.
         """
-        pool_hist = [(ci, ns) for ci, ns in self._fingerprint_history
-                     if any(s.cs_pool == pool for (c, u, p), s in self._tracker._cache.items()
-                            if c == ci)]
+        pool_hist = [
+            (ci, ns)
+            for ci, ns in self._fingerprint_history
+            if any(
+                s.cs_pool == pool
+                for (c, u, p), s in self._tracker._cache.items()
+                if c == ci
+            )
+        ]
         if not pool_hist:
             return []
 
         scored: list[tuple[float, str]] = []
         for ci, ns in pool_hist:
-            dist  = current_state.distance(ns)
+            dist = current_state.distance(ns)
             score = 1.0 / (1.0 + dist)
             scored.append((score, ci))
         scored.sort(reverse=True)
@@ -776,8 +834,9 @@ class ConditioningEngine:
                 flagged.append(ci)
         return list(set(flagged))
 
-    def is_graduated(self, cs_identity: str, cs_pool: str, session_id: str,
-                     us_type: str = "trance") -> bool:
+    def is_graduated(
+        self, cs_identity: str, cs_pool: str, session_id: str, us_type: str = "trance"
+    ) -> bool:
         """Return True if this CS has reached graduation criteria."""
         cs = self._tracker.get(cs_identity, us_type, "")
         if cs.strength < GRAD_MIN_STRENGTH or cs.trial_count < GRAD_MIN_TRIALS:
@@ -792,10 +851,10 @@ class ConditioningEngine:
 
         strongest = self._tracker.get_strongest_pools()
         report = {
-            "session_pairings":    self._session_pairings,
-            "strongest_pools":     strongest,
-            "shaping_percentile":  self._shaping.current_percentile,
-            "overall_strength":    self._get_overall_strength(),
+            "session_pairings": self._session_pairings,
+            "strongest_pools": strongest,
+            "shaping_percentile": self._shaping.current_percentile,
+            "overall_strength": self._get_overall_strength(),
         }
         self._sync_live()
         return report
@@ -809,8 +868,10 @@ class ConditioningEngine:
     def _sync_live(self) -> None:
         """Write status keys to live_control.json."""
         strongest = self._tracker.get_strongest_pools()
-        all_pools = list({s.cs_pool for s in self._tracker._cache.values() if s.cs_pool})
-        weakest   = sorted(
+        all_pools = list(
+            {s.cs_pool for s in self._tracker._cache.values() if s.cs_pool}
+        )
+        weakest = sorted(
             all_pools,
             key=lambda p: self._tracker.get_pool_mean_strength(p),
         )
@@ -818,14 +879,16 @@ class ConditioningEngine:
         for pool in all_pools:
             li_flagged.extend(self.get_li_flagged_items(pool))
 
-        patch_live({
-            "conditioning_session_pairing_count": self._session_pairings,
-            "conditioning_overall_strength":      round(self._get_overall_strength(), 4),
-            "conditioning_strongest_pool":        strongest[0] if strongest else "",
-            "conditioning_weakest_pool":          weakest[0] if weakest else "",
-            "conditioning_shaping_percentile":    self._shaping.current_percentile,
-            "conditioning_current_schedule":      self._scheduler.current_schedule,
-            "conditioning_vr_mean":               self._scheduler.vr_mean,
-            "conditioning_li_flagged_items":      list(set(li_flagged)),
-            "conditioning_soc_pairs_this_session":self._soc._pairs_this_session,
-        })
+        patch_live(
+            {
+                "conditioning_session_pairing_count": self._session_pairings,
+                "conditioning_overall_strength": round(self._get_overall_strength(), 4),
+                "conditioning_strongest_pool": strongest[0] if strongest else "",
+                "conditioning_weakest_pool": weakest[0] if weakest else "",
+                "conditioning_shaping_percentile": self._shaping.current_percentile,
+                "conditioning_current_schedule": self._scheduler.current_schedule,
+                "conditioning_vr_mean": self._scheduler.vr_mean,
+                "conditioning_li_flagged_items": list(set(li_flagged)),
+                "conditioning_soc_pairs_this_session": self._soc._pairs_this_session,
+            }
+        )

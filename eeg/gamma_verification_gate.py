@@ -16,21 +16,19 @@ Artifact disappears instantly at stimulation offset; genuine entrainment persist
 
 from __future__ import annotations
 
-import json
 import time
 from collections import deque
-from pathlib import Path
-from ipc import patch_live
-
-_LIVE = Path(__file__).parent.parent / "live_control.json"
+from ipc import patch_live, read_live
 
 # Entrainment ratio thresholds (vs. pre-GENUS 60-s baseline)
-_STRONG_THRESHOLD   = 2.0   # >2.0 = strong
-_MODERATE_THRESHOLD = 1.5   # 1.5–2.0 = moderate
-_WEAK_THRESHOLD     = 1.2   # 1.2–1.5 = weak
+_STRONG_THRESHOLD = 2.0  # >2.0 = strong
+_MODERATE_THRESHOLD = 1.5  # 1.5–2.0 = moderate
+_WEAK_THRESHOLD = 1.2  # 1.2–1.5 = weak
 
 # Sustain window: ratio must stay above threshold for this many ticks
 _SUSTAIN_TICKS = 5
+
+
 class GammaVerificationGate:
     """
     Real-time GENUS entrainment verifier.
@@ -40,15 +38,15 @@ class GammaVerificationGate:
     window, classifies level, and writes back to live_control.
     """
 
-    _EMA_ALPHA = 0.25   # smoothing weight for incoming ratio
+    _EMA_ALPHA = 0.25  # smoothing weight for incoming ratio
 
     def __init__(self) -> None:
-        self._ema_ratio:         float = 1.0
+        self._ema_ratio: float = 1.0
         self._above_moderate_ticks: int = 0
-        self._verified:          bool  = False
-        self._level:             str   = "absent"
-        self._last_update:       float = 0.0
-        self._ratio_history:     deque[float] = deque(maxlen=30)
+        self._verified: bool = False
+        self._level: str = "absent"
+        self._last_update: float = 0.0
+        self._ratio_history: deque[float] = deque(maxlen=30)
 
     def update(self, live: dict | None = None) -> dict:
         """
@@ -60,14 +58,14 @@ class GammaVerificationGate:
         """
         if live is None:
             try:
-                live = json.loads(_LIVE.read_text(encoding="utf-8"))
+                live = read_live()
             except Exception:
                 live = {}
 
         if not bool(live.get("genus_active", False)):
             # Reset when GENUS is off
             self._verified = False
-            self._level    = "absent"
+            self._level = "absent"
             self._ema_ratio = 1.0
             self._above_moderate_ticks = 0
             return {}
@@ -94,13 +92,13 @@ class GammaVerificationGate:
         else:
             self._above_moderate_ticks = 0
 
-        self._verified = (self._above_moderate_ticks >= _SUSTAIN_TICKS)
+        self._verified = self._above_moderate_ticks >= _SUSTAIN_TICKS
         self._last_update = time.time()
 
         patch = {
             "genus_entrainment_verified": self._verified,
-            "genus_entrainment_level":    self._level,
-            "genus_entrainment_ratio":    round(self._ema_ratio, 3),
+            "genus_entrainment_level": self._level,
+            "genus_entrainment_ratio": round(self._ema_ratio, 3),
         }
         patch_live(patch)
         return patch

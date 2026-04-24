@@ -38,9 +38,9 @@ live_control.json keys written:
   vr_subliminal_plane_counts   dict   delivered count per plane {near, mid, far}
   vr_subliminal_vac_minutes    float  accumulated near-plane exposure minutes
 """
+
 from __future__ import annotations
 
-import json
 import math
 import random
 import time
@@ -48,9 +48,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Optional
-from ipc import patch_live
-
-_LIVE_PATH = Path(__file__).parent.parent / "live_control.json"
+from ipc import patch_live, read_live
 
 # ── Depth plane disparity parameters (in degrees; sign = crossed/uncrossed) ───
 # These map to OpenGL horizontal translation offsets for each eye.
@@ -58,13 +56,13 @@ _LIVE_PATH = Path(__file__).parent.parent / "live_control.json"
 # Negative = crossed (near) — objects appear in front of the screen.
 _DISPARITY_DEG = {
     "near": -2.0,
-    "mid":   0.0,
-    "far":  +1.5,
+    "mid": 0.0,
+    "far": +1.5,
 }
 
 # Disparity to horizontal eye-offset (at ~1 m viewing distance in HMD coords)
 # offset_m ≈ ipd_m * sin(disparity_rad / 2)  ≈ disparity_rad * 0.032  (half-IPD)
-_DEG_TO_OFFSET_SCALE = 0.032 / (180.0 / math.pi)   # m per degree at 0.5 m
+_DEG_TO_OFFSET_SCALE = 0.032 / (180.0 / math.pi)  # m per degree at 0.5 m
 
 # VAC mitigation: near plane limited to 25% of total subliminal time
 _MAX_NEAR_FRACTION = 0.25
@@ -74,40 +72,42 @@ _MAX_SESSION_MINUTES = 20.0
 #   33 ms  — target display (approximately 2 frames @ 60 fps, 3 @ 90 fps)
 #   17 ms  — blank inter-frame
 #   83 ms  — visual noise mask
-_DEFAULT_SOA_MS     = 33.0
-_DEFAULT_MASK_MS    = 83.0
-_DEFAULT_BLANK_MS   = 17.0
+_DEFAULT_SOA_MS = 33.0
+_DEFAULT_MASK_MS = 83.0
+_DEFAULT_BLANK_MS = 17.0
 
 # Only deliver during these phases (from conductor_phase)
 _ACTIVE_PHASES = {"maintenance", "frac_emerge", "frac_emerge_hold", "frac_redrop"}
+
+
 def _read_live() -> dict:
     try:
-        return json.loads(_LIVE_PATH.read_text(encoding="utf-8")) if _LIVE_PATH.exists() else {}
+        return read_live()
     except Exception:
         return {}
 
 
 class PlaneState(Enum):
-    IDLE    = "idle"
-    TARGET  = "target"
-    BLANK   = "blank"
-    MASK    = "mask"
+    IDLE = "idle"
+    TARGET = "target"
+    BLANK = "blank"
+    MASK = "mask"
 
 
 @dataclass
 class DepthPlane:
-    name:       str
-    disparity:  float          # degrees; negative = near
-    phrases:    list[str]      = field(default_factory=list)
-    phrase_idx: int            = 0
+    name: str
+    disparity: float  # degrees; negative = near
+    phrases: list[str] = field(default_factory=list)
+    phrase_idx: int = 0
 
     # Subliminal exposure state
-    state:      PlaneState  = PlaneState.IDLE
-    state_ts:   float       = 0.0
-    current_phrase: str     = ""
-    delivered_count: int    = 0
-    min_frames_gap: int     = 3
-    frames_since_mask: int  = 0
+    state: PlaneState = PlaneState.IDLE
+    state_ts: float = 0.0
+    current_phrase: str = ""
+    delivered_count: int = 0
+    min_frames_gap: int = 3
+    frames_since_mask: int = 0
 
     def next_phrase(self) -> str:
         if not self.phrases:
@@ -134,27 +134,31 @@ class SubLiminalRenderer:
     def __init__(self):
         self._planes: dict[str, DepthPlane] = {
             "near": DepthPlane("near", _DISPARITY_DEG["near"]),
-            "mid":  DepthPlane("mid",  _DISPARITY_DEG["mid"]),
-            "far":  DepthPlane("far",  _DISPARITY_DEG["far"]),
+            "mid": DepthPlane("mid", _DISPARITY_DEG["mid"]),
+            "far": DepthPlane("far", _DISPARITY_DEG["far"]),
         }
-        self._enabled          = False
-        self._session_start    = 0.0
-        self._near_exposure_s  = 0.0
+        self._enabled = False
+        self._session_start = 0.0
+        self._near_exposure_s = 0.0
         self._total_exposure_s = 0.0
-        self._soa_ms           = _DEFAULT_SOA_MS
-        self._mask_ms          = _DEFAULT_MASK_MS
-        self._blank_ms         = _DEFAULT_BLANK_MS
-        self._intensity        = 0.8
-        self._last_cfg_ts      = 0.0
+        self._soa_ms = _DEFAULT_SOA_MS
+        self._mask_ms = _DEFAULT_MASK_MS
+        self._blank_ms = _DEFAULT_BLANK_MS
+        self._intensity = 0.8
+        self._last_cfg_ts = 0.0
         self._delivered_counts = {"near": 0, "mid": 0, "far": 0}
 
     # ── Public interface ───────────────────────────────────────────────────────
 
     def start(self) -> None:
-        self._enabled       = True
+        self._enabled = True
         self._session_start = time.time()
-        patch_live({"vr_subliminal_active": True,
-                     "vr_subliminal_plane_counts": self._delivered_counts})
+        patch_live(
+            {
+                "vr_subliminal_active": True,
+                "vr_subliminal_plane_counts": self._delivered_counts,
+            }
+        )
 
     def stop(self) -> None:
         self._enabled = False
@@ -162,11 +166,11 @@ class SubLiminalRenderer:
 
     def update_cfg(self, cfg: dict) -> None:
         """Pull phrase pools and timing from live_control.json snapshot."""
-        self._soa_ms     = float(cfg.get("vr_subliminal_soa_ms",  _DEFAULT_SOA_MS))
-        self._intensity  = float(cfg.get("vr_subliminal_intensity", 0.8))
+        self._soa_ms = float(cfg.get("vr_subliminal_soa_ms", _DEFAULT_SOA_MS))
+        self._intensity = float(cfg.get("vr_subliminal_intensity", 0.8))
         self._planes["near"].phrases = list(cfg.get("vr_subliminal_near_pool") or [])
-        self._planes["mid"].phrases  = list(cfg.get("vr_subliminal_mid_pool")  or [])
-        self._planes["far"].phrases  = list(cfg.get("vr_subliminal_far_pool")  or [])
+        self._planes["mid"].phrases = list(cfg.get("vr_subliminal_mid_pool") or [])
+        self._planes["far"].phrases = list(cfg.get("vr_subliminal_far_pool") or [])
 
     def should_be_active(self, cfg: dict) -> bool:
         """True if the conductor phase allows subliminal delivery."""
@@ -193,14 +197,13 @@ class SubLiminalRenderer:
             self._last_cfg_ts = now
 
         # Update VAC exposure counters
-        self._total_exposure_s += 1.0 / 90.0   # assume 90 fps
+        self._total_exposure_s += 1.0 / 90.0  # assume 90 fps
         near_plane = self._planes["near"]
         if near_plane.state == PlaneState.TARGET:
             self._near_exposure_s += 1.0 / 90.0
 
         # VAC guard: disable near plane if exposure fraction too high
-        near_fraction = (self._near_exposure_s /
-                         max(self._total_exposure_s, 1.0))
+        near_fraction = self._near_exposure_s / max(self._total_exposure_s, 1.0)
         if near_fraction > _MAX_NEAR_FRACTION:
             near_plane.state = PlaneState.IDLE
 
@@ -220,15 +223,16 @@ class SubLiminalRenderer:
 
         # Periodically report counts
         if int(now) % 10 == 0:
-            patch_live({
-                "vr_subliminal_plane_counts": self._delivered_counts,
-                "vr_subliminal_vac_minutes":  round(self._near_exposure_s / 60.0, 3),
-            })
+            patch_live(
+                {
+                    "vr_subliminal_plane_counts": self._delivered_counts,
+                    "vr_subliminal_vac_minutes": round(self._near_exposure_s / 60.0, 3),
+                }
+            )
 
     # ── Private ────────────────────────────────────────────────────────────────
 
-    def _render_plane(self, plane: DepthPlane, eye_index: int,
-                      now: float, GL) -> None:
+    def _render_plane(self, plane: DepthPlane, eye_index: int, now: float, GL) -> None:
         """Advance SOA state machine and draw text or mask for this plane."""
         if not plane.phrases:
             return
@@ -240,23 +244,23 @@ class SubLiminalRenderer:
         if plane.state == PlaneState.IDLE:
             if plane.frames_since_mask >= plane.min_frames_gap:
                 plane.current_phrase = plane.next_phrase()
-                plane.state    = PlaneState.TARGET
+                plane.state = PlaneState.TARGET
                 plane.state_ts = now
                 plane.frames_since_mask = 0
 
         elif plane.state == PlaneState.TARGET:
             if dt_ms >= self._soa_ms:
-                plane.state    = PlaneState.BLANK
+                plane.state = PlaneState.BLANK
                 plane.state_ts = now
 
         elif plane.state == PlaneState.BLANK:
             if dt_ms >= self._blank_ms:
-                plane.state    = PlaneState.MASK
+                plane.state = PlaneState.MASK
                 plane.state_ts = now
 
         elif plane.state == PlaneState.MASK:
             if dt_ms >= self._mask_ms:
-                plane.state    = PlaneState.IDLE
+                plane.state = PlaneState.IDLE
                 plane.state_ts = now
                 plane.delivered_count += 1
                 self._delivered_counts[plane.name] = plane.delivered_count
@@ -267,8 +271,14 @@ class SubLiminalRenderer:
         elif plane.state == PlaneState.MASK:
             self._draw_text(plane, eye_index, self._intensity * 0.6, GL, mask=True)
 
-    def _draw_text(self, plane: DepthPlane, eye_index: int,
-                   intensity: float, GL, mask: bool = False) -> None:
+    def _draw_text(
+        self,
+        plane: DepthPlane,
+        eye_index: int,
+        intensity: float,
+        GL,
+        mask: bool = False,
+    ) -> None:
         """Draw text at the stereo depth position for this plane and eye."""
         # Compute horizontal disparity shift for this eye
         # Left eye (-1): positive disparity → move right (uncrossed/far)
@@ -286,9 +296,10 @@ class SubLiminalRenderer:
 
         # Position text in the centre of the field at the plane's virtual depth
         # Negative Z = in front of the camera in OpenGL convention
-        z_depth = -1.5 if plane.name == "near" else (-3.0 if plane.name == "mid" else -6.0)
-        GL.glTranslatef(x_offset - 0.15 * len(text) * 0.01,
-                        -0.02, z_depth)
+        z_depth = (
+            -1.5 if plane.name == "near" else (-3.0 if plane.name == "mid" else -6.0)
+        )
+        GL.glTranslatef(x_offset - 0.15 * len(text) * 0.01, -0.02, z_depth)
 
         GL.glDisable(GL.GL_DEPTH_TEST)
         GL.glColor4f(intensity, intensity, intensity, 0.9)
@@ -299,7 +310,7 @@ class SubLiminalRenderer:
         GL.glPopMatrix()
 
 
-_GLUT_AVAILABLE: bool | None = None   # None = untested, True = ok, False = unavailable
+_GLUT_AVAILABLE: bool | None = None  # None = untested, True = ok, False = unavailable
 
 
 def _gl_draw_string(text: str, GL) -> None:
@@ -314,6 +325,7 @@ def _gl_draw_string(text: str, GL) -> None:
         return
     try:
         from OpenGL import GLUT
+
         if _GLUT_AVAILABLE is None:
             GLUT.glutInit()
             _GLUT_AVAILABLE = True
@@ -321,8 +333,10 @@ def _gl_draw_string(text: str, GL) -> None:
             GLUT.glutBitmapCharacter(GLUT.GLUT_BITMAP_HELVETICA_18, ord(ch))
     except Exception as e:
         if _GLUT_AVAILABLE is None:
-            print(f"[VR Subliminal] GLUT unavailable ({e}) — text rendering disabled. "
-                  f"Install freeglut or upgrade to SDF font rendering for production.")
+            print(
+                f"[VR Subliminal] GLUT unavailable ({e}) — text rendering disabled. "
+                f"Install freeglut or upgrade to SDF font rendering for production."
+            )
         _GLUT_AVAILABLE = False
 
 
@@ -335,5 +349,3 @@ def _noise_mask(text: str) -> str:
     """
     _mask_chars = "XOZR#@%&*+=-~|<>[]{}^"
     return "".join(random.choice(_mask_chars) for _ in text)
-
-

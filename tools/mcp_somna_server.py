@@ -346,6 +346,7 @@ VALID_SPIRAL_STYLES = frozenset(
         "tunnel_warp",
         "ganzflicker",
         "galaxy_morph",
+        "descent",
     }
 )
 

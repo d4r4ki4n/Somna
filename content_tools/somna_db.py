@@ -2586,6 +2586,35 @@ def upsert_conditioning_strength(
         conn.commit()
 
 
+def set_conditioning_strength(
+    cs_identity: str,
+    us_type: str,
+    conductor_phase: str,
+    strength: float,
+    trial_count: int,
+    last_pairing_ts: int,
+    last_extinction_check_ts: int,
+) -> None:
+    """Set absolute values for a conditioning strength row."""
+    with _connect() as conn:
+        conn.execute(
+            """UPDATE conditioning_strengths
+               SET strength=?, trial_count=?, last_pairing_ts=?,
+                   last_extinction_check_ts=?
+               WHERE cs_identity=? AND us_type=? AND conductor_phase=?""",
+            (
+                round(strength, 4),
+                trial_count,
+                last_pairing_ts,
+                last_extinction_check_ts,
+                cs_identity,
+                us_type,
+                conductor_phase,
+            ),
+        )
+        conn.commit()
+
+
 def get_conditioning_strengths(cs_pool: str = None) -> list[dict]:
     """Return all (or pool-filtered) conditioning strength rows."""
     with _connect() as conn:

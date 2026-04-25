@@ -937,6 +937,42 @@ async def list_tools() -> list[Tool]:
                 "required": ["key", "value"],
             },
         ),
+        Tool(
+            name="somna_prompt_user",
+            description=(
+                "Display a prompt to the user via the control panel and block until "
+                "they respond or timeout. Writes agent_message with needs_response=true, "
+                "then polls for user_response. The prompt is shown in the console input "
+                "dialog and optionally spoken via TTS. Returns the user's response text "
+                "or timed_out=true. This is the MCP equivalent of somna_agent's _say() "
+                "with needs_response=True — the blocking primitive for interactive sessions."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "prompt": {
+                        "type": "string",
+                        "description": "The question or message to display to the user",
+                    },
+                    "voice_mode": {
+                        "type": "string",
+                        "enum": ["tts", "subliminal", "both", "silent"],
+                        "default": "tts",
+                        "description": "How to deliver the prompt. 'tts' speaks it, 'subliminal' flashes it, 'both' does both, 'silent' shows in console only.",
+                    },
+                    "timeout_s": {
+                        "type": "number",
+                        "description": "Max seconds to wait for response (5-300, default 60)",
+                        "default": 60,
+                    },
+                    "style": {
+                        "type": "object",
+                        "description": "Optional style overrides (zoom_speed, intensity, etc.)",
+                    },
+                },
+                "required": ["prompt"],
+            },
+        ),
     ]
 
 
@@ -1092,6 +1128,64 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         keys = arguments.get("keys")
         await asyncio.sleep(duration)
         data = _inject_temporal(_read_live(keys))
+        return [TextContent(type="text", text=json.dumps(data, indent=2))]
+
+    if name == "somna_prompt_user":
+        prompt_text = arguments.get("prompt", "").strip()
+        if not prompt_text:
+            return [
+                TextContent(
+                    type="text", text=json.dumps({"error": "prompt is required"})
+                )
+            ]
+        voice_mode = arguments.get("voice_mode", "tts")
+        timeout_s = min(max(float(arguments.get("timeout_s", 60)), 5.0), 300.0)
+        style = arguments.get("style") or {}
+        style["needs_response"] = True
+        style.setdefault("voice_mode", voice_mode)
+
+        msg_ts = time.time()
+        via = ["console"]
+        if voice_mode in ("tts", "both"):
+            via.append("tts")
+
+        _patch_live(
+            {
+                "agent_message": {
+                    "text": prompt_text,
+                    "ts": msg_ts,
+                    "needs_response": True,
+                    "via": via,
+                    "style": style,
+                    "timeout_s": timeout_s,
+                },
+                "user_response": None,
+                "response_timestamp": None,
+            }
+        )
+
+        await asyncio.sleep(0.5)
+        deadline = time.time() + timeout_s + 5.0
+        while time.time() < deadline:
+            live = _read_live()
+            resp_ts = live.get("response_timestamp")
+            if resp_ts is not None and resp_ts >= msg_ts:
+                user_text = live.get("user_response")
+                _patch_live({"user_response": None, "response_timestamp": None})
+                data = _inject_temporal(live)
+                data["_prompt_result"] = {
+                    "response": user_text,
+                    "timed_out": False,
+                }
+                return [TextContent(type="text", text=json.dumps(data, indent=2))]
+            await asyncio.sleep(0.25)
+
+        _patch_live({"user_response": None, "response_timestamp": None})
+        data = _inject_temporal(_read_live())
+        data["_prompt_result"] = {
+            "response": None,
+            "timed_out": True,
+        }
         return [TextContent(type="text", text=json.dumps(data, indent=2))]
 
     if name == "somna_wait_for":

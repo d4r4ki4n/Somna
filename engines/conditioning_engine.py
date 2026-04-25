@@ -331,30 +331,20 @@ class StrengthTracker:
                 cs_pool=cs.cs_pool,
                 us_type=cs.us_type,
                 conductor_phase=cs.conductor_phase,
-                strength_delta=0.0,  # we manage strength externally
+                strength_delta=0.0,
                 salience=cs.salience,
                 extinction_rate=cs.extinction_rate,
                 is_second_order=cs.is_second_order,
             )
-            # Override strength directly since upsert_conditioning_strength uses delta
-            from content_tools import somna_db as _db_mod
-            import sqlite3
-
-            with sqlite3.connect(_db_mod._DB_PATH, timeout=5) as conn:
-                conn.execute(
-                    "UPDATE conditioning_strengths SET strength=?, trial_count=?, "
-                    "last_pairing_ts=?, last_extinction_check_ts=? "
-                    "WHERE cs_identity=? AND us_type=? AND conductor_phase=?",
-                    (
-                        round(cs.strength, 4),
-                        cs.trial_count,
-                        cs.last_pairing_ts,
-                        cs.last_extinction_check_ts,
-                        cs.cs_identity,
-                        cs.us_type,
-                        cs.conductor_phase,
-                    ),
-                )
+            _db().set_conditioning_strength(
+                cs_identity=cs.cs_identity,
+                us_type=cs.us_type,
+                conductor_phase=cs.conductor_phase,
+                strength=cs.strength,
+                trial_count=cs.trial_count,
+                last_pairing_ts=cs.last_pairing_ts,
+                last_extinction_check_ts=cs.last_extinction_check_ts,
+            )
         except Exception:
             pass
 

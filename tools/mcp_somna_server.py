@@ -41,6 +41,48 @@ _lc_mtime: float = 0.0
 _lc_size: int = 0
 _lc_data: dict[str, Any] = {}
 
+# ── Temporal perception metadata (Reese's "moments" architecture) ─────────────
+_session_start: float = 0.0
+_call_count: int = 0
+_last_call_ts: float = 0.0
+
+
+def _temporal_meta() -> dict[str, Any]:
+    global _session_start, _call_count, _last_call_ts
+    now = time.time()
+    if _session_start == 0.0:
+        _session_start = now
+    elapsed = now - _session_start
+    since_last = (now - _last_call_ts) if _last_call_ts > 0 else 0.0
+    _call_count += 1
+    _last_call_ts = now
+    calls_per_min = (_call_count / max(elapsed / 60.0, 0.01)) if elapsed > 1.0 else 0.0
+
+    live = _read_live()
+    session_time = live.get("session_time", 0) or 0
+    cond = live.get("conductor_state") or {}
+    phase = cond.get("phase", "") if isinstance(cond, dict) else ""
+    phase_ts = cond.get("ts", 0) if isinstance(cond, dict) else 0
+    phase_elapsed = (now - phase_ts) if phase_ts else 0.0
+
+    return {
+        "session_elapsed_sec": round(elapsed, 1),
+        "since_last_call_sec": round(since_last, 1),
+        "calls_this_session": _call_count,
+        "calls_per_minute_rolling": round(calls_per_min, 1),
+        "conductor_phase": phase,
+        "conductor_phase_elapsed_sec": round(phase_elapsed, 1),
+        "session_playback_sec": round(float(session_time), 1),
+    }
+
+
+def _inject_temporal(response: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(response, dict):
+        return response
+    response["_temporal"] = _temporal_meta()
+    return response
+
+
 # MCP may run from another cwd / venv; if ``ipc.read_live`` is unavailable, fall back to file.
 _ipc_read_live: Any = None
 
@@ -817,17 +859,17 @@ async def list_tools() -> list[Tool]:
 async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     if name == "somna_read_live":
         keys = arguments.get("keys")
-        data = _read_live(keys)
+        data = _inject_temporal(_read_live(keys))
         return [TextContent(type="text", text=json.dumps(data, indent=2))]
 
     if name == "somna_read_conductor":
         live = _read_live()
-        data = _build_conductor_state(live)
+        data = _inject_temporal(_build_conductor_state(live))
         return [TextContent(type="text", text=json.dumps(data, indent=2))]
 
     if name == "somna_read_eeg":
         live = _read_live()
-        data = _build_eeg_snapshot(live)
+        data = _inject_temporal(_build_eeg_snapshot(live))
         return [TextContent(type="text", text=json.dumps(data, indent=2))]
 
     if name == "somna_query_db":
@@ -836,11 +878,11 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         return [TextContent(type="text", text=json.dumps(data, indent=2))]
 
     if name == "somna_list_sessions":
-        data = {"sessions": _list_sessions()}
+        data = _inject_temporal({"sessions": _list_sessions()})
         return [TextContent(type="text", text=json.dumps(data, indent=2))]
 
     if name == "somna_read_profile":
-        data = _read_profile()
+        data = _inject_temporal(_read_profile())
         return [TextContent(type="text", text=json.dumps(data, indent=2))]
 
     if name == "somna_tail_decisions":
@@ -877,7 +919,11 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         if errors:
             return [TextContent(type="text", text=json.dumps({"errors": errors}))]
         result = _patch_live(patches)
-        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+        return [
+            TextContent(
+                type="text", text=json.dumps(_inject_temporal(result), indent=2)
+            )
+        ]
 
     if name == "somna_update_profile":
         path = arguments.get("path", "")
@@ -915,7 +961,11 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
                 )
             ]
         result = _write_conductor_hint(hints)
-        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+        return [
+            TextContent(
+                type="text", text=json.dumps(_inject_temporal(result), indent=2)
+            )
+        ]
 
     if name == "somna_write_agent_response":
         response_dict = {k: v for k, v in arguments.items() if v is not None}
@@ -928,7 +978,11 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
             ]
         response_dict["_ts"] = time.time()
         result = _patch_live({"agent_ext_response": response_dict})
-        return [TextContent(type="text", text=json.dumps(result, indent=2))]
+        return [
+            TextContent(
+                type="text", text=json.dumps(_inject_temporal(result), indent=2)
+            )
+        ]
 
     if name == "somna_launch_session":
         session = arguments.get("session", "live")

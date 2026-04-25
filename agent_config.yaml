@@ -14,8 +14,9 @@ mode:           "interactive"  # "observe" | "interactive"
 interval:       20             # seconds between agent ticks
 prompt_timeout: 120            # seconds user has to answer before dialog skips
 max_history:    20             # max past exchanges kept in LLM context
-startup_delay_s: 30            # seconds before first agent tick (180 for real sessions)
+startup_delay_s: 180            # seconds before first agent tick (30 for testing, 180 for real sessions)
 external_channel: true
+external_only:    true        # when true, no fallback to local LLM — Resonance drives via MCP
 
 # Optional extra instructions appended to the system prompt.
 # Use this to set the persona, focus area, or safety boundaries.

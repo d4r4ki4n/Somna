@@ -1557,6 +1557,9 @@ class SomnaAgent:
         # ── Habituation Engine (Bible Ch.10 §10.3) — instantiated per session ──────────────
         self._habituation: "HabituationEngine | None" = None
         self._habituation_last_tick: float = 0.0
+        self._hab_prev_spiral: str | None = None
+        self._hab_prev_veil: str | None = None
+        self._hab_prev_beat_hz: float | None = None
 
         # ── Session Director / Planner / Evaluator (Bible Ch.5 §5.5) ─────────────────────
         self._director: "SessionDirector | None" = None
@@ -3541,6 +3544,33 @@ class SomnaAgent:
                     patch = self._habituation.tick()
                     if patch:
                         self._write_live(patch)
+
+                    # Track non-word stimulus changes for habituation
+                    cur_spiral = state.get("spiral_style")
+                    cur_veil = state.get("veil_mode")
+                    cur_beat = state.get("beat_frequency")
+
+                    if cur_spiral and cur_spiral != self._hab_prev_spiral:
+                        self._habituation.on_stimulus_presented(
+                            cur_spiral, "spiral", "visual", 1.0
+                        )
+                        self._hab_prev_spiral = cur_spiral
+
+                    if cur_veil and cur_veil != self._hab_prev_veil:
+                        self._habituation.on_stimulus_presented(
+                            cur_veil, "visual", "visual", 1.0
+                        )
+                        self._hab_prev_veil = cur_veil
+
+                    if cur_beat is not None and self._hab_prev_beat_hz is not None:
+                        if abs(cur_beat - self._hab_prev_beat_hz) >= 1.0:
+                            self._habituation.on_stimulus_presented(
+                                f"{cur_beat:.0f}hz", "beat", "audio", 1.0
+                            )
+                            self._hab_prev_beat_hz = cur_beat
+                    elif cur_beat is not None and self._hab_prev_beat_hz is None:
+                        self._hab_prev_beat_hz = cur_beat
+
                     self._habituation_last_tick = now_ht
                 except Exception as _hte:
                     pass  # non-critical
@@ -4516,6 +4546,9 @@ class SomnaAgent:
         if _HABITUATION_AVAILABLE and self._habituation is None:
             try:
                 self._habituation = HabituationEngine(session_id=session)
+                self._hab_prev_spiral = None
+                self._hab_prev_veil = None
+                self._hab_prev_beat_hz = None
                 print("[Agent] HabituationEngine active.")
             except Exception as _he:
                 print(f"[Agent] HabituationEngine init failed: {_he}")
@@ -6417,6 +6450,9 @@ class SomnaAgent:
                         except Exception:
                             pass
                         self._habituation = None
+                        self._hab_prev_spiral = None
+                        self._hab_prev_veil = None
+                        self._hab_prev_beat_hz = None
                     # ── Session Director teardown (Bible Ch.5 §5.5) ──────────────────
                     if self._director is not None and self._session_plan is not None:
                         try:

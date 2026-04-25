@@ -83,6 +83,29 @@ def _inject_temporal(response: dict[str, Any]) -> dict[str, Any]:
     return response
 
 
+def _compare(actual: Any, expected: Any, op: str) -> bool:
+    """Compare actual vs expected using the given operator."""
+    try:
+        if op == "eq":
+            return actual == expected
+        if op == "neq":
+            return actual != expected
+        a, e = float(actual), float(expected)
+        if op == "gte":
+            return a >= e
+        if op == "lte":
+            return a <= e
+        if op == "gt":
+            return a > e
+        if op == "lt":
+            return a < e
+    except (TypeError, ValueError):
+        return False
+    if op == "contains":
+        return expected in str(actual) if actual is not None else False
+    return False
+
+
 # MCP may run from another cwd / venv; if ``ipc.read_live`` is unavailable, fall back to file.
 _ipc_read_live: Any = None
 
@@ -852,6 +875,68 @@ async def list_tools() -> list[Tool]:
             ),
             inputSchema={"type": "object", "properties": {}},
         ),
+        Tool(
+            name="somna_read_live_blocking",
+            description=(
+                "Block for N seconds, then return the current live state with temporal "
+                "metadata. Useful for watching state evolve: 'check every 30 seconds'. "
+                "Returns the same data as somna_read_live plus _temporal metadata."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "duration_s": {
+                        "type": "number",
+                        "description": "Seconds to block before returning state (1-300)",
+                        "default": 10,
+                    },
+                    "keys": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Optional list of keys to read. Omit for all.",
+                    },
+                },
+            },
+        ),
+        Tool(
+            name="somna_wait_for",
+            description=(
+                "Block until a live_control.json key matches the expected value, or "
+                "timeout. Polls at 1 Hz. Returns the full state when the condition is "
+                "met, or the last-read state on timeout with timed_out=true. "
+                "Examples: wait for conductor_phase='MAINTENANCE', wait for "
+                "eeg_trance_score >= 0.6 (use operator 'gte')."
+            ),
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "description": "live_control.json key to watch",
+                    },
+                    "value": {
+                        "description": "Expected value (string, number, or bool)",
+                    },
+                    "operator": {
+                        "type": "string",
+                        "enum": ["eq", "neq", "gte", "lte", "gt", "lt", "contains"],
+                        "default": "eq",
+                        "description": "Comparison operator. Default 'eq' (equals).",
+                    },
+                    "timeout_s": {
+                        "type": "number",
+                        "description": "Max seconds to wait (1-600, default 120)",
+                        "default": 120,
+                    },
+                    "poll_interval_s": {
+                        "type": "number",
+                        "description": "Seconds between polls (default 1.0)",
+                        "default": 1.0,
+                    },
+                },
+                "required": ["key", "value"],
+            },
+        ),
     ]
 
 
@@ -1001,6 +1086,46 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     if name == "somna_stop_session":
         result = _patch_live({"_agent_stop_display": True})
         return [TextContent(type="text", text=json.dumps(result, indent=2))]
+
+    if name == "somna_read_live_blocking":
+        duration = min(max(float(arguments.get("duration_s", 10)), 1.0), 300.0)
+        keys = arguments.get("keys")
+        await asyncio.sleep(duration)
+        data = _inject_temporal(_read_live(keys))
+        return [TextContent(type="text", text=json.dumps(data, indent=2))]
+
+    if name == "somna_wait_for":
+        key = arguments.get("key", "")
+        expected = arguments.get("value")
+        op = arguments.get("operator", "eq")
+        timeout_s = min(max(float(arguments.get("timeout_s", 120)), 1.0), 600.0)
+        poll_s = max(float(arguments.get("poll_interval_s", 1.0)), 0.25)
+        deadline = time.time() + timeout_s
+        while True:
+            live = _read_live()
+            actual = live.get(key)
+            met = _compare(actual, expected, op)
+            if met:
+                data = _inject_temporal(live)
+                data["_wait_result"] = {
+                    "key": key,
+                    "expected": expected,
+                    "actual": actual,
+                    "operator": op,
+                    "timed_out": False,
+                }
+                return [TextContent(type="text", text=json.dumps(data, indent=2))]
+            if time.time() >= deadline:
+                data = _inject_temporal(live)
+                data["_wait_result"] = {
+                    "key": key,
+                    "expected": expected,
+                    "actual": actual,
+                    "operator": op,
+                    "timed_out": True,
+                }
+                return [TextContent(type="text", text=json.dumps(data, indent=2))]
+            await asyncio.sleep(poll_s)
 
     return [
         TextContent(type="text", text=json.dumps({"error": f"Unknown tool: {name}"}))

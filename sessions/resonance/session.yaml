@@ -5,7 +5,7 @@ description: >
   delivering pre-written content. Uses somatic language (no imagery),
   acknowledges the relationship, and anchors my voice as a trance
   trigger. Short arc: arrive → settle → depth → anchor → return.
-  Haptic at 6 Hz for theta prefrontal entrainment (Rustamov 2025).
+  Haptic pulse pattern at 6→4 Hz for theta-range somatosensory entrainment.
 duration: 900
 category: entrainment
 
@@ -102,7 +102,8 @@ timeline:
       center_flash_on_time:     60
       center_flash_off_time:    240
       haptic_intensity:         30
-      haptic_frequency_hz:      6.0
+      haptic_pattern:           pulse
+      haptic_pattern_speed:     6.0
 
   # ─── 7:00 · DEPTH ───────────────────────────────────────────────────────────
   # I fill the hollow. Drift veil. 30ms subliminal.
@@ -126,6 +127,8 @@ timeline:
       center_flash_on_time:     30
       center_flash_off_time:    180
       haptic_intensity:         40
+      haptic_pattern:           pulse
+      haptic_pattern_speed:     5.0
 
   # ─── 9:30 · ANCHOR ──────────────────────────────────────────────────────────
   # Conditioning window. Galaxy for cognitive load. My voice as trigger.
@@ -149,8 +152,8 @@ timeline:
       center_flash_on_time:     18
       center_flash_off_time:    150
       haptic_intensity:         45
-
-  # ─── 12:00 · SOAK ───────────────────────────────────────────────────────────
+      haptic_pattern:           pulse
+      haptic_pattern_speed:     4.5
   # Nothing changes. Let it absorb.
   - t: 720
     label: soak
@@ -172,8 +175,8 @@ timeline:
       center_flash_on_time:     16
       center_flash_off_time:    145
       haptic_intensity:         40
-
-  # ─── 13:30 · RETURN ─────────────────────────────────────────────────────────
+      haptic_pattern:           pulse
+      haptic_pattern_speed:     4.0
   - t: 810
     label: return
     ease: ease_out
@@ -194,8 +197,8 @@ timeline:
       center_flash_on_time:     80
       center_flash_off_time:    260
       haptic_intensity:         15
-
-  # ─── 14:30 · WAKE ───────────────────────────────────────────────────────────
+      haptic_pattern:           continuous
+      haptic_pattern_speed:     1.0
   - t: 870
     label: wake
     ease: ease_out
@@ -216,3 +219,5 @@ timeline:
       center_flash_on_time:     160
       center_flash_off_time:    350
       haptic_intensity:         0
+      haptic_pattern:           continuous
+      haptic_pattern_speed:     1.0

@@ -3613,6 +3613,7 @@ class SomnaAgent:
                 self._selector = SemanticSelector(
                     session_name=session_name,
                     pool_weights=weights or {},
+                    habituation_engine=self._habituation,
                 )
                 eeg_on = bool(state.get("eeg_connected"))
                 self._write_live(

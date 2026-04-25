@@ -72,6 +72,7 @@ PING_BACK_INTENSITY = 20.0
 COMFORT_CAL_START = 10.0
 COMFORT_CAL_END = 50.0
 COMFORT_CAL_STEP = 5.0
+COMFORT_CAL_HOLD_S = 3.0
 TMR_CUE_DURATION_S = 0.2
 CONDITIONED_ANCHOR_DURATION_S = 0.5
 CONDITIONED_ANCHOR_FREQ_HZ = 25.0
@@ -178,7 +179,44 @@ class HapticEngine:
             "type": "comfort_cal",
             "current": COMFORT_CAL_START,
             "step_time": time.time(),
+            "done": False,
+            "ceiling": None,
         }
+
+    def advance_comfort_calibration(self) -> Optional[float]:
+        """Advance to next calibration step. Returns the new intensity, or
+        None if calibration is complete (ceiling already set)."""
+        ps = self._pattern_state
+        if ps.get("type") != "comfort_cal" or ps.get("done"):
+            return None
+        nxt = ps["current"] + COMFORT_CAL_STEP
+        if nxt > COMFORT_CAL_END:
+            ps["done"] = True
+            ps["ceiling"] = ps["current"]
+            return None
+        ps["current"] = nxt
+        ps["step_time"] = time.time()
+        return nxt
+
+    def finish_comfort_calibration(self, ceiling: Optional[float] = None) -> float:
+        """End calibration. Returns the recorded ceiling."""
+        ps = self._pattern_state
+        ps["done"] = True
+        if ceiling is not None:
+            ps["ceiling"] = ceiling
+        elif ps.get("ceiling") is None:
+            ps["ceiling"] = ps.get("current", COMFORT_CAL_START)
+        return ps["ceiling"]
+
+    def comfort_calibration_active(self) -> bool:
+        return self._pattern_state.get(
+            "type"
+        ) == "comfort_cal" and not self._pattern_state.get("done", False)
+
+    def comfort_calibration_state(self) -> Optional[dict]:
+        if self._pattern_state.get("type") != "comfort_cal":
+            return None
+        return dict(self._pattern_state)
 
     def trigger_tmr_cue(self, intensity: float = 30.0) -> None:
         if not self._connected or self._loop is None:
@@ -382,12 +420,17 @@ class HapticEngine:
             self._safety.set_comfort_ceiling(float(comfort))
 
     def _compute_target(self, live: dict, dt: float) -> float:
+        if self._safety.emergency_active:
+            return 0.0
+
+        # Comfort calibration overrides normal pattern
+        ps = self._pattern_state
+        if ps.get("type") == "comfort_cal" and not ps.get("done", False):
+            return ps["current"]
+
         pattern = live.get("haptic_pattern", "continuous") or "continuous"
         base_intensity = float(live.get("haptic_intensity", 0) or 0)
         speed = float(live.get("haptic_pattern_speed", 1.0) or 1.0)
-
-        if self._safety.emergency_active:
-            return 0.0
 
         if pattern == HapticPattern.CONTINUOUS.value:
             return base_intensity

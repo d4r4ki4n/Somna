@@ -1155,8 +1155,9 @@ Live key: `feedback_mode` (str, one of the above or `none`). Live key: `feedback
 - `tunnel_warp` (23) — time-bent radial interference
 - `ganzflicker` (24) — ganzfeld-compatible flicker pattern
 - `galaxy_morph` (25) — FBM-based morphing galaxy
+- `descent` (26) — concentric rings collapsing inward with warm center glow; designed for depth phases
 
-**26 styles total** (vogel_spiral dropped). Indices 0–25 contiguous (no gaps).
+**27 styles total** (vogel_spiral dropped). Indices 0–26 contiguous (no gaps).
 
 **PP pipeline vertex shader** — PP passes use `_PP_VERT` (straight UV, no Y-flip). `copy_framebuffer` preserves GL orientation, so using `_BLIT_VERT` (which flips Y) caused a double-flip. `pp_composite.glsl` also passes scene alpha through instead of forcing 1.0, preserving desktop transparency.
 

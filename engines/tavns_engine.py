@@ -325,6 +325,8 @@ class TavnsEngine:
         self._safety.set_sleep_stage(sleep_stage)
 
         session_count = live.get("total_sessions", 0)
+        if live.get("display_active"):
+            session_count += 1
         if session_count >= 7:
             tier = UnlockTier.TIER_4
         elif session_count >= 5:

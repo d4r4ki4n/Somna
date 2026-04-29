@@ -3224,15 +3224,28 @@ class ControlPanelImGui:
 
             imgui.spacing()
 
-            if imgui.button(
-                "Start Comfort Calibration##haptic_cal", imgui.ImVec2(-1, 0)
-            ):
-                self._haptic_engine.start_comfort_calibration()
-                self._console.system(
-                    "Comfort calibration started. Intensity will ramp up. "
-                    "Tap Stop when uncomfortable.",
-                    src="Haptic",
-                )
+            if self._haptic_engine.comfort_calibration_active():
+                cal_state = self._haptic_engine.comfort_calibration_state()
+                cal_pct = cal_state["current"] if cal_state else 0
+                imgui.text(f"Calibrating: {cal_pct:.0f}%")
+                imgui.same_line()
+                if imgui.button("Stop##haptic_cal_stop", imgui.ImVec2(-1, 0)):
+                    ceiling = self._haptic_engine.finish_comfort_calibration()
+                    patch_live({"haptic_comfort_ceiling": ceiling})
+                    self._console.system(
+                        f"Comfort calibration complete. Ceiling: {ceiling:.0f}%",
+                        src="Haptic",
+                    )
+            else:
+                if imgui.button(
+                    "Start Comfort Calibration##haptic_cal", imgui.ImVec2(-1, 0)
+                ):
+                    self._haptic_engine.start_comfort_calibration()
+                    self._console.system(
+                        "Comfort calibration started. Intensity will ramp up. "
+                        "Tap Stop when uncomfortable.",
+                        src="Haptic",
+                    )
 
     def _connect_haptic(self) -> None:
         try:

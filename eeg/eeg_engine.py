@@ -1441,6 +1441,7 @@ class EEGEngine:
                 if self._sqi_tracker.should_headband_prompt():
                     cur = state.get("agent_message") or {}
                     if not (isinstance(cur, dict) and cur.get("needs_response")):
+                        in_session = state.get("display_active", False)
                         patch_live(
                             {
                                 "agent_message": {
@@ -1449,9 +1450,9 @@ class EEGEngine:
                                     "against your forehead.",
                                     "ts": time.time(),
                                     "needs_response": False,
-                                    "via": ["console"],
+                                    "via": ["console"] if in_session else ["console"],
                                     "style": {
-                                        "voice_mode": "tts",
+                                        "voice_mode": "silent" if in_session else "tts",
                                         "intensity": "soft",
                                         "needs_response": False,
                                     },
@@ -1476,12 +1477,11 @@ class EEGEngine:
                 self._stop.wait(timeout=5.0)
                 if self._stop.is_set():
                     break
-                # Release the dead session and re-establish BLE connection
                 self._release_board()
                 reconnected = False
-                for attempt in range(3):
-                    if self._stop.is_set():
-                        break
+                attempt = 0
+                while not reconnected and not self._stop.is_set():
+                    attempt += 1
                     try:
                         self.board = self._BoardShim(self.board_id, self.params)
                         self.board.prepare_session()
@@ -1502,7 +1502,7 @@ class EEGEngine:
                             self._ppg.reset()
                         if self._imu is not None:
                             self._imu.reset()
-                        print(f"[EEG] Reconnected on attempt {attempt + 1}.")
+                        print(f"[EEG] Reconnected on attempt {attempt}.")
                         patch_live(
                             {
                                 "eeg_connected": True,
@@ -1510,14 +1510,13 @@ class EEGEngine:
                                 "ppg_available": False,
                             }
                         )
-                        break
                     except Exception as re:
-                        print(f"[EEG] Reconnect attempt {attempt + 1}/3 failed: {re}")
+                        print(f"[EEG] Reconnect attempt {attempt} failed: {re}")
                         self._release_board()
-                        self._stop.wait(timeout=5.0)
+                        wait = min(5.0 + attempt * 2.0, 30.0)
+                        self._stop.wait(timeout=wait)
                 if not reconnected and not self._stop.is_set():
-                    print("[EEG] Could not reconnect — giving up.")
-                    patch_live({"eeg_connected": False, "eeg_quality": "unusable"})
+                    print("[EEG] All reconnect attempts interrupted by stop.")
                     break
 
         self._release_board()

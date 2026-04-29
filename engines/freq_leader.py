@@ -187,7 +187,7 @@ class AdaptiveFrequencyLeader:
                                 "freq_lead_phase": self.state.phase.value,
                                 "freq_lead_current": round(self.state.current_freq, 2),
                                 "freq_lead_steps": self.state.steps_completed,
-                                "freq_lead_holds": self.state.holds_completed,
+                                "freq_lead_holds": self.state.holds_total,
                             }
                         )
                     self._stop_evt.wait(timeout=_POLL_INTERVAL)

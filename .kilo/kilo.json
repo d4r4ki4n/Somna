@@ -150,4 +150,12 @@
       }
     }
   },
+{
+  "compaction": {
+    "auto": true,
+    "reserved": 8000,
+    "overflowOutputReserveCap": 8192,
+    "prune": true
+  }
+},
 }

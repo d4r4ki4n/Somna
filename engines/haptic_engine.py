@@ -428,6 +428,17 @@ class HapticEngine:
         # Comfort calibration overrides normal pattern
         ps = self._pattern_state
         if ps.get("type") == "comfort_cal" and not ps.get("done", False):
+            if time.time() - ps["step_time"] >= COMFORT_CAL_HOLD_S:
+                nxt = ps["current"] + COMFORT_CAL_STEP
+                if nxt > COMFORT_CAL_END:
+                    ps["done"] = True
+                    ps["ceiling"] = ps["current"]
+                    from ipc import patch_live as _pl
+
+                    _pl({"haptic_comfort_ceiling": ps["ceiling"]})
+                else:
+                    ps["current"] = nxt
+                    ps["step_time"] = time.time()
             return ps["current"]
 
         pattern = live.get("haptic_pattern", "continuous") or "continuous"

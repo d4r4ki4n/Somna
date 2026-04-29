@@ -43,14 +43,14 @@ class UnlockTier(IntEnum):
 
 
 UNLOCK_GATES = {
-    "haptic": UnlockTier.TIER_3,
+    "haptic": UnlockTier.TIER_1,
     "tavns": UnlockTier.TIER_4,
 }
 
 INTENSITY_CEILINGS_BY_TIER = {
     UnlockTier.TIER_0: 0.0,
-    UnlockTier.TIER_1: 0.0,
-    UnlockTier.TIER_2: 0.0,
+    UnlockTier.TIER_1: 0.50,
+    UnlockTier.TIER_2: 0.60,
     UnlockTier.TIER_3: 0.70,
     UnlockTier.TIER_4: 1.00,
 }
@@ -97,6 +97,7 @@ class DeviceSafetyEnforcer:
         self._unlock_tier: UnlockTier = UnlockTier.TIER_1
         self._haptic_sleep_enabled_n1n2: bool = False
         self._last_tick_time: float = time.time()
+        self._consecutive_sleep_gate_ticks: int = 0
 
     @property
     def emergency_active(self) -> bool:
@@ -161,14 +162,18 @@ class DeviceSafetyEnforcer:
         if not self._sleep_stage_allows():
             return self.emergency_off_intensity
 
-        if self.channel == "haptic" and not self._haptic_sleep_allows():
-            return self.emergency_off_intensity
-
         tier_gate = UNLOCK_GATES.get(self.channel, UnlockTier.TIER_1)
         if self._unlock_tier < tier_gate:
             return self.emergency_off_intensity
 
         ceiling = self.effective_ceiling
+        if self.channel == "haptic" and not self._haptic_sleep_allows():
+            self._consecutive_sleep_gate_ticks += 1
+            if self._consecutive_sleep_gate_ticks >= 5:
+                return self.emergency_off_intensity
+            ceiling = ceiling * 0.5
+        else:
+            self._consecutive_sleep_gate_ticks = 0
 
         now = time.time()
         if dt_s is None:

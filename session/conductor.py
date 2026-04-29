@@ -27,6 +27,7 @@ import time
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 from ipc import patch_live, read_live
+
 _DB_AVAILABLE = False
 try:
     from content_tools.somna_db import write_conductor_decisions_batch
@@ -762,6 +763,11 @@ class Conductor:
             live_snap = read_live()
             hints_raw = live_snap.get("agent_conductor_hints") or {}
             self._hints = hints_raw if isinstance(hints_raw, dict) else {}
+            if self._hints.get("passthrough") and not getattr(
+                self, "_timer_mode", False
+            ):
+                self._timer_mode = True
+                print("[Conductor] Passthrough active — timer-based phase advancement")
             # Bible Ch.5 §5.5 — Director gain ceiling; store for downstream use
             self._director_gain_ceiling = float(
                 live_snap.get("director_gain_ceiling", 1.0) or 1.0
@@ -2409,7 +2415,17 @@ class Conductor:
         if not self._degraded:
             self._degraded = True
             self._degraded_since = time.time()
-            self._say("Signal lost — holding position. Check headband contact.")
+            patch_live(
+                {
+                    "agent_message": {
+                        "text": "Signal lost — holding position.",
+                        "ts": time.time(),
+                        "needs_response": False,
+                        "via": ["console"],
+                        "style": {"voice_mode": "silent"},
+                    }
+                }
+            )
             print("[Conductor] Entering degraded mode — SQI NONE all channels")
 
             # Safety-critical: halt all phase-locked stimulation immediately.

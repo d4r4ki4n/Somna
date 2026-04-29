@@ -1479,9 +1479,10 @@ class EEGEngine:
                     break
                 self._release_board()
                 reconnected = False
-                attempt = 0
-                while not reconnected and not self._stop.is_set():
-                    attempt += 1
+                max_reconnect = 10
+                for attempt in range(1, max_reconnect + 1):
+                    if self._stop.is_set():
+                        break
                     try:
                         self.board = self._BoardShim(self.board_id, self.params)
                         self.board.prepare_session()
@@ -1510,14 +1511,28 @@ class EEGEngine:
                                 "ppg_available": False,
                             }
                         )
+                        break
                     except Exception as re:
-                        print(f"[EEG] Reconnect attempt {attempt} failed: {re}")
+                        print(
+                            f"[EEG] Reconnect attempt {attempt}/{max_reconnect} failed: {re}"
+                        )
                         self._release_board()
-                        wait = min(5.0 + attempt * 2.0, 30.0)
-                        self._stop.wait(timeout=wait)
-                if not reconnected and not self._stop.is_set():
-                    print("[EEG] All reconnect attempts interrupted by stop.")
-                    break
+                        if attempt < max_reconnect:
+                            wait = min(5.0 + attempt * 2.0, 30.0)
+                            self._stop.wait(timeout=wait)
+                if not reconnected:
+                    if not self._stop.is_set():
+                        print(
+                            f"[EEG] Gave up after {max_reconnect} reconnect attempts. Thread continuing as listener."
+                        )
+                    patch_live(
+                        {
+                            "eeg_connected": False,
+                            "eeg_quality": "unusable",
+                            "eeg_signal_lost": True,
+                        }
+                    )
+                    self._stop.wait(timeout=30.0)
 
         self._release_board()
 

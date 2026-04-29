@@ -72,6 +72,9 @@ INTERPOLATABLE = {
     # Bilateral panning
     "bilateral_rate",
     "bilateral_depth",
+    # Haptics — must be lockable so agent writes aren't clobbered
+    "haptic_intensity",
+    "haptic_frequency_hz",
 }
 
 INSTANT_ONLY = {
@@ -100,6 +103,9 @@ INSTANT_ONLY = {
     "pp_bloom_threshold",
     "pp_blur_radius",
     "pp_vignette_sigma",
+    # Haptics — discrete switches
+    "haptic_pattern",
+    "haptic_pattern_speed",
 }
 
 # Application-level fallbacks — used if not set in session defaults or timeline
@@ -341,6 +347,7 @@ class TimelineRunner(threading.Thread):
             False  # opt-in; default off protects integration window
         )
         self._session_ended: bool = False  # one-shot flag
+        self._last_kf_id: int = 0  # track keyframe transitions for lock expiry
 
         # Fractionation state machine — None when inactive
         # Keys: cycles_total, cycle_idx, phase, phase_wall, depth_hz,
@@ -358,6 +365,7 @@ class TimelineRunner(threading.Thread):
             self._user_locks = {}
             self._last_written = {}
             self._loop_counters = {}
+            self._last_kf_id = 0
             # Seed loop counters from session
             for i, loop in enumerate(self._session.loops):
                 if loop.get("count", 1) != 0:
@@ -632,6 +640,9 @@ class TimelineRunner(threading.Thread):
 
         # Compute target values at current elapsed time
         values = self._compute_values(self._elapsed)
+
+        # Expire locks for params the timeline explicitly sets at the current keyframe
+        self._expire_locks(values)
 
         # Fractionation overrides beat_frequency + spiral_speed_multiplier
         # for the duration of the technique; all other params are unaffected.
@@ -1063,14 +1074,13 @@ class TimelineRunner(threading.Thread):
 
     def _expire_locks(self, computed_values: Dict[str, Any]):
         """
-        Remove a lock when the timeline has crossed a keyframe that
-        explicitly sets that parameter. The timeline will reassert from
-        the keyframe's value on the next tick.
+        Remove a lock when the timeline crosses into a new keyframe that
+        explicitly sets that parameter. Only fires on transitions — not
+        every tick — so agent/MCP writes within a segment are preserved.
         """
         if not self._session or not self._session.keyframes:
             return
 
-        # Find the keyframe we most recently crossed
         just_crossed = None
         for kf in self._session.keyframes:
             if kf["t"] <= self._elapsed:
@@ -1079,11 +1089,18 @@ class TimelineRunner(threading.Thread):
         if just_crossed is None:
             return
 
+        kf_id = id(just_crossed)
+        if kf_id == self._last_kf_id:
+            return
+        self._last_kf_id = kf_id
+
         expired = [
             param for param in list(self._user_locks) if param in just_crossed["params"]
         ]
         for param in expired:
-            print(f"[Timeline] Lock expired: {param} → resuming from keyframe value")
+            print(
+                f"[Timeline] Lock expired at keyframe transition: {param} → resuming from keyframe value"
+            )
             del self._user_locks[param]
 
     # ── live_control.json I/O ─────────────────────────────────────────────────

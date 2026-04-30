@@ -266,6 +266,12 @@ class HapticEngine:
             log.error("haptic engine loop crashed: %s", e)
         finally:
             self._connected = False
+            try:
+                from ipc import patch_live
+
+                patch_live({"haptic_connected": False, "haptic_actual_intensity": 0.0})
+            except Exception:
+                pass
             self._loop.close()
 
     async def _async_run(self, connector_url: str) -> None:

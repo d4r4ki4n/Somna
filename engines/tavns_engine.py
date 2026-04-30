@@ -320,6 +320,8 @@ class TavnsEngine:
                 )
                 time.sleep(1.0)
 
+        patch_live({"tavns_connected": False, "tavns_actual_current_ua": 0.0})
+
     def _update_safety_state(self, live: dict) -> None:
         sleep_stage = live.get("eeg_sleep_stage", "WAKE") or "WAKE"
         self._safety.set_sleep_stage(sleep_stage)

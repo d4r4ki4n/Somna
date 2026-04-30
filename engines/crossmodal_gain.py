@@ -225,17 +225,25 @@ class CrossmodalGainEngine:
         locked = set(live_state.get("timeline_locked_params") or [])
         gain_mode = live_state.get("gain_mode", "normal")
 
+        # When conductor passthrough is active, the external agent owns
+        # hardware channels directly. Skip them to avoid overwriting MCP writes.
+        passthrough = bool(
+            live_state.get("agent_conductor_hints", {}).get("passthrough")
+        )
+
         # ── Sleep gain profile shortcut (Bible Ch.7 §7.x) ────────────────────
         # When gain_mode is a sleep profile, apply ceiling multipliers directly
         # and skip the SR coupling (no crossmodal enhancement during sleep).
         sleep_profile = SLEEP_GAIN_PROFILES.get(gain_mode)
 
         # Hardware channels (haptic, tavns) are only active when explicitly connected.
+        # During passthrough, skip them entirely — the agent writes directly via MCP.
         connected_hw = set(live_state.get("hardware_channels_connected") or [])
         active_channels = {
             ch: key
             for ch, key in self.GAIN_KEYS.items()
-            if ch not in self.HARDWARE_CHANNELS or ch in connected_hw
+            if (ch not in self.HARDWARE_CHANNELS or ch in connected_hw)
+            and not (passthrough and ch in self.HARDWARE_CHANNELS)
         }
 
         # ── Step 1: Raw values ────────────────────────────────────────────────

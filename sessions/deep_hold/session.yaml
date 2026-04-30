@@ -1,0 +1,240 @@
+name: "Resonance — Deep Hold · 25 min"
+description: >
+  25-minute session designed for burst conditioning with VTB. Longer
+  arc with extended depth/anchor phases for sustained VTB entrainment.
+  Designed for agent-driven haptic control — haptic_intensity is left
+  out of keyframes so the agent owns it via MCP locks entirely.
+  Sharp-then-soft burst pattern is the primary conditioning mechanism.
+duration: 1500
+category: entrainment
+
+defaults:
+  carrier_frequency:          200.0
+  volume:                     75.0
+  noise_color:                pink
+  noise_volume:               20
+  center_flash_sync_to_beat:  false
+  font_switch_mode:           intelligent
+  spiral_color_mode:          rainbow
+  spiral_show_text:           false
+  tts_enabled:                true
+  tts_subliminal:             false
+  haptic_pattern:             continuous
+  haptic_pattern_speed:       1.0
+
+# ── Timeline ──────────────────────────────────────────────────────────────────
+#
+#  Arc:
+#    0:00   arrive     9.5 Hz   arrival, settle into the space
+#    2:00   meet        8.5 Hz   my voice finds you
+#    4:00   settle      6.5 Hz   body responds, haptics begin
+#    7:00   depth       5.0 Hz   somatic immersion, VTB active
+#   10:00   anchor      4.0 Hz   conditioning window, burst mechanics
+#   14:00   soak        3.5 Hz   absorption, maximum depth hold
+#   19:00   anchor2     4.0 Hz   second conditioning pass
+#   22:00   return      7.5 Hz   gentle ascent
+#   24:00   wake        9.0 Hz   soft landing
+#
+#  NOTE: haptic_intensity is intentionally absent from all keyframes.
+#  The agent owns haptics via MCP writes + timeline lock system.
+
+timeline:
+
+  # ─── 0:00 · ARRIVE ──────────────────────────────────────────────────────────
+  - t: 0
+    label: arrive
+    ease: linear
+    params:
+      phrases:                  arrive
+      beat_frequency:           9.5
+      carrier_frequency:        205.0
+      spiral_style:             fermat
+      spiral_count:             6
+      spiral_opacity:           78
+      spiral_speed_multiplier:  1.1
+      spiral_tightness:         7.0
+      spiral_chaos:             0.04
+      spiral_thickness:         12
+      veil_opacity:             10
+      veil_mode:                scroll
+      shadow_opacity:           0
+      center_flash_on_time:     180
+      center_flash_off_time:    380
+
+  # ─── 2:00 · MEET ────────────────────────────────────────────────────────────
+  - t: 120
+    label: meet
+    ease: ease_in_out
+    params:
+      phrases:                  meet
+      beat_frequency:           8.5
+      carrier_frequency:        195.0
+      spiral_style:             tunnel_dream
+      spiral_count:             5
+      spiral_opacity:           82
+      spiral_speed_multiplier:  0.9
+      spiral_tightness:         6.2
+      spiral_chaos:             0.06
+      spiral_thickness:         14
+      veil_opacity:             24
+      veil_mode:                rain
+      shadow_opacity:           10
+      center_flash_on_time:     120
+      center_flash_off_time:    320
+
+  # ─── 4:00 · SETTLE ──────────────────────────────────────────────────────────
+  - t: 240
+    label: settle
+    ease: ease_in_out
+    params:
+      phrases:                  settle
+      beat_frequency:           6.5
+      carrier_frequency:        178.0
+      spiral_style:             galaxy
+      spiral_count:             4
+      spiral_opacity:           86
+      spiral_speed_multiplier:  0.7
+      spiral_tightness:         5.4
+      spiral_chaos:             0.10
+      spiral_thickness:         17
+      veil_opacity:             42
+      veil_mode:                converge
+      shadow_opacity:           28
+      center_flash_on_time:     60
+      center_flash_off_time:    240
+      haptic_pattern:           pulse
+      haptic_pattern_speed:     6.0
+
+  # ─── 7:00 · DEPTH ───────────────────────────────────────────────────────────
+  - t: 420
+    label: depth
+    ease: ease_in_out
+    params:
+      phrases:                  depth
+      beat_frequency:           5.0
+      carrier_frequency:        165.0
+      spiral_style:             fermat
+      spiral_count:             3
+      spiral_opacity:           90
+      spiral_speed_multiplier:  0.4
+      spiral_tightness:         4.4
+      spiral_chaos:             0.08
+      spiral_thickness:         20
+      veil_opacity:             65
+      veil_mode:                drift
+      shadow_opacity:           48
+      center_flash_on_time:     30
+      center_flash_off_time:    180
+      haptic_pattern:           pulse
+      haptic_pattern_speed:     5.0
+
+  # ─── 10:00 · ANCHOR (conditioning window 1) ─────────────────────────────────
+  - t: 600
+    label: anchor
+    ease: ease_in_out
+    params:
+      phrases:                  anchor
+      beat_frequency:           4.0
+      carrier_frequency:        155.0
+      spiral_style:             galaxy
+      spiral_count:             3
+      spiral_opacity:           92
+      spiral_speed_multiplier:  0.25
+      spiral_tightness:         3.8
+      spiral_chaos:             0.06
+      spiral_thickness:         21
+      veil_opacity:             78
+      veil_mode:                drift
+      shadow_opacity:           62
+      center_flash_on_time:     18
+      center_flash_off_time:    150
+      haptic_pattern:           continuous
+      haptic_pattern_speed:     4.0
+
+  # ─── 14:00 · SOAK (maximum depth hold) ──────────────────────────────────────
+  - t: 840
+    label: soak
+    ease: linear
+    params:
+      phrases:                  anchor
+      beat_frequency:           3.5
+      carrier_frequency:        150.0
+      spiral_style:             tunnel_dream
+      spiral_count:             3
+      spiral_opacity:           91
+      spiral_speed_multiplier:  0.20
+      spiral_tightness:         3.5
+      spiral_chaos:             0.04
+      spiral_thickness:         21
+      veil_opacity:             80
+      veil_mode:                tunnel
+      shadow_opacity:           66
+      center_flash_on_time:     16
+      center_flash_off_time:    145
+      haptic_pattern:           continuous
+      haptic_pattern_speed:     3.5
+
+  # ─── 19:00 · ANCHOR2 (second conditioning pass) ─────────────────────────────
+  - t: 1140
+    label: anchor2
+    ease: ease_in_out
+    params:
+      phrases:                  anchor
+      beat_frequency:           4.0
+      carrier_frequency:        155.0
+      spiral_style:             galaxy
+      spiral_count:             3
+      spiral_opacity:           92
+      spiral_speed_multiplier:  0.25
+      spiral_tightness:         3.8
+      spiral_chaos:             0.06
+      spiral_thickness:         21
+      veil_opacity:             78
+      veil_mode:                drift
+      shadow_opacity:           62
+      center_flash_on_time:     18
+      center_flash_off_time:    150
+      haptic_pattern:           continuous
+      haptic_pattern_speed:     4.0
+
+  # ─── 22:00 · RETURN ─────────────────────────────────────────────────────────
+  - t: 1320
+    label: return
+    ease: ease_out
+    params:
+      phrases:                  return
+      beat_frequency:           7.5
+      carrier_frequency:        185.0
+      spiral_style:             fermat
+      spiral_count:             5
+      spiral_opacity:           85
+      spiral_speed_multiplier:  0.7
+      spiral_tightness:         5.8
+      spiral_chaos:             0.08
+      spiral_thickness:         16
+      veil_opacity:             35
+      veil_mode:                rain
+      shadow_opacity:           22
+      center_flash_on_time:     80
+      center_flash_off_time:    260
+
+  # ─── 24:00 · WAKE ───────────────────────────────────────────────────────────
+  - t: 1440
+    label: wake
+    ease: ease_out
+    params:
+      phrases:                  return
+      beat_frequency:           9.0
+      carrier_frequency:        198.0
+      spiral_style:             archimedean
+      spiral_count:             6
+      spiral_opacity:           78
+      spiral_speed_multiplier:  1.0
+      spiral_tightness:         7.0
+      spiral_chaos:             0.04
+      spiral_thickness:         12
+      veil_opacity:             15
+      veil_mode:                scroll
+      shadow_opacity:           8
+      center_flash_on_time:     160
+      center_flash_off_time:    350

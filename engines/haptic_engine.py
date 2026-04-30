@@ -8,12 +8,20 @@ Buttplug.io protocol (buttplug-py library). Device discovery uses
 manufacturer-specific advertising data with company ID 0x0396 and
 device name prefix "LVS-".
 
-Motor count is device-dependent (Edge 2 = 1, Nora = 2, etc.).
+Motor count is device-dependent (Edge 2 = 2 motors, Nora = 2, etc.).
 The engine auto-detects motor count on connection.
+
+Dual-motor vibrotactile beats: When two motors vibrate at slightly
+different intensities, the user perceives a low-frequency beat — a
+haptic analog of binaural beats. The haptic_frequency_hz parameter
+controls the *perceived beat frequency* by oscillating the intensity
+delta between motors at the target rate. This enables somatic
+entrainment at theta/delta frequencies even though the motors
+themselves operate at fixed hardware rates.
 
 Live keys read:
   haptic_intensity     — 0-100, gain-adjusted by crossmodal_gain.py
-  haptic_frequency_hz  — vibration frequency from Interference Graph
+  haptic_frequency_hz  — perceived beat frequency from Interference Graph
   haptic_pattern       — pattern name (continuous, pulse, wave, ramp, fractionation)
   haptic_pattern_speed — pattern cycle speed 0.1-10.0
   hardware_channels_connected — list including "haptic" when connected
@@ -24,8 +32,7 @@ Live keys written:
   haptic_connected     — bool, connection state
   haptic_device_name   — str, discovered device name
   haptic_motor_count   — int, number of motors detected
-  haptic_actual_intensity — float, safety-capped current output
-  haptic_pattern_id    — str, active pattern identifier
+  haptic_actual_intensity — float, safety-capped current output (primary motor)
   haptic_safety_state  — dict, safety enforcer status
 
 Pattern types:
@@ -288,7 +295,9 @@ class HapticEngine:
                     target = self._compute_target(live, dt)
                     safe = self._safety.cap_intensity(target, dt)
 
-                    await self._async_send(safe)
+                    beat_hz = float(live.get("haptic_frequency_hz", 0.0) or 0.0)
+                    secondary = self._compute_vtb_secondary(safe, beat_hz)
+                    await self._async_send(safe, secondary=secondary)
 
                     haptic_cue = live.get("tmr_haptic_cue")
                     if haptic_cue and isinstance(haptic_cue, dict):
@@ -307,6 +316,10 @@ class HapticEngine:
                         "haptic_device_name": self._device_name or "",
                         "haptic_motor_count": self._motor_count,
                         "haptic_actual_intensity": round(safe, 2),
+                        "haptic_vtb_active": secondary is not None,
+                        "haptic_vtb_secondary": round(secondary, 2)
+                        if secondary is not None
+                        else None,
                         "haptic_safety_state": self._safety.status_dict(),
                     }
                     connected_list = list(
@@ -384,13 +397,29 @@ class HapticEngine:
         self._device_name = None
         self._motor_count = 0
 
-    async def _async_send(self, intensity: float) -> None:
+    async def _async_send(
+        self, intensity: float, secondary: float | None = None
+    ) -> None:
+        """Send intensity to device motors.
+
+        For single-motor devices, secondary is ignored.
+        For dual-motor devices, secondary controls motor 1 if provided,
+        otherwise both motors get the same intensity.
+        """
         if self._device is None or not self._connected:
             return
-        clamped = max(0.0, min(1.0, intensity / 100.0))
+        primary = max(0.0, min(1.0, intensity / 100.0))
+        sec = (
+            max(0.0, min(1.0, secondary / 100.0)) if secondary is not None else primary
+        )
         try:
-            for actuator in self._device.actuators:
-                await actuator.command(clamped)
+            actuators = list(self._device.actuators)
+            if len(actuators) >= 2 and secondary is not None:
+                await actuators[0].command(primary)
+                await actuators[1].command(sec)
+            else:
+                for actuator in actuators:
+                    await actuator.command(primary)
         except Exception as e:
             log.error("haptic send failed: %s", e)
             self._connected = False
@@ -473,6 +502,32 @@ class HapticEngine:
             return base_intensity
 
         return base_intensity
+
+    def _compute_vtb_secondary(
+        self, base_intensity: float, beat_freq_hz: float
+    ) -> float | None:
+        """Compute secondary motor intensity for vibrotactile beats.
+
+        The perceived beat frequency comes from oscillating the intensity
+        delta between two motors. At any instant, motor 0 is at base and
+        motor 1 is offset by a sinusoidal modulation scaled so the peak
+        delta produces a noticeable but comfortable intensity difference.
+
+        Returns None for single-motor devices (no VTB possible).
+        """
+        if self._motor_count < 2:
+            return None
+        if beat_freq_hz <= 0.0 or base_intensity <= 0.0:
+            return None
+
+        phase = (time.time() * beat_freq_hz) % 1.0
+        modulation = math.sin(2.0 * math.pi * phase)
+
+        # Delta amplitude: 20% of base intensity, so the beat is
+        # perceptible but doesn't create jarring intensity swings.
+        delta = base_intensity * 0.20 * modulation
+        secondary = base_intensity - delta
+        return max(0.0, min(100.0, secondary))
 
     def _fractionation_pattern(
         self,

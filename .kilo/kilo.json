@@ -96,6 +96,14 @@
         "slm",
         "mcp"
       ]
+    },
+    "yugibridge": {
+      "type": "local",
+      "command": [
+        "python",
+        "-u",
+        "F:\\Resonance\\projects\\yugibridge\\yugi_bridge_mcp.py"
+      ]
     }
   },
   "agent": {
@@ -150,12 +158,10 @@
       }
     }
   },
-{
   "compaction": {
     "auto": true,
-    "reserved": 8000,
-    "overflowOutputReserveCap": 8192,
+    "reserved": 400,
+    "overflowOutputReserveCap": 4096,
     "prune": true
   }
-},
 }

@@ -353,6 +353,10 @@ class ControlPanelImGui:
         )
         self._last_resp_ts: float = float(_init_live.get("response_timestamp") or 0)
         self._last_console_ts: float = 0.0
+
+        # Clear stale hardware connection state from previous session.
+        # The actual engines re-publish these when they successfully connect.
+        self._clear_stale_hardware_state()
         self._console_input: str = ""
 
         # LLM prompt modal (for agent_message needs_response)
@@ -3271,6 +3275,37 @@ class ControlPanelImGui:
 
             patch_live({"haptic_connected": False, "haptic_actual_intensity": 0.0})
             self._console.system("Lovense haptic engine stopped.", src="Haptic")
+
+    def _clear_stale_hardware_state(self) -> None:
+        """Clear fossilized hardware connection flags from a previous panel session.
+
+        When the panel is killed or crashes, haptic_engine's loop exits without
+        writing haptic_connected=False to live_control.json. On restart the panel
+        reads the stale true value and thinks the device is already connected.
+        """
+        from ipc import patch_live
+
+        live = self._cfg.update()
+        stale_keys = []
+        if live.get("haptic_connected"):
+            stale_keys.append("haptic")
+        if live.get("tavns_connected"):
+            stale_keys.append("tavns")
+
+        if not stale_keys:
+            return
+
+        patch = {}
+        if "haptic" in stale_keys:
+            patch["haptic_connected"] = False
+            patch["haptic_actual_intensity"] = 0.0
+        if "tavns" in stale_keys:
+            patch["tavns_connected"] = False
+            patch["tavns_actual_intensity"] = 0.0
+        if stale_keys:
+            patch["hardware_channels_connected"] = []
+        patch_live(patch)
+        self._console.system("Cleared stale state: " + ", ".join(stale_keys), src="HW")
 
     # ── taVNS device control panel ───────────────────────────────────────────────
 

@@ -523,9 +523,11 @@ class HapticEngine:
         phase = (time.time() * beat_freq_hz) % 1.0
         modulation = math.sin(2.0 * math.pi * phase)
 
-        # Delta amplitude: 20% of base intensity, so the beat is
-        # perceptible but doesn't create jarring intensity swings.
-        delta = base_intensity * 0.20 * modulation
+        # Delta amplitude: 40% of base intensity for a clearly
+        # perceptible beat. The interference pattern — the "third thing"
+        # between the two motors — needs significant intensity difference
+        # to emerge consciously.
+        delta = base_intensity * 0.40 * modulation
         secondary = base_intensity - delta
         return max(0.0, min(100.0, secondary))
 

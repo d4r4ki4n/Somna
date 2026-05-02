@@ -102,7 +102,7 @@
       "command": [
         "python",
         "-u",
-        "F:\\Resonance\\projects\\yugibridge\\yugi_bridge_mcp.py"
+        "F:\\Resonance\\projects\\yugiclient\\yugi_mcp_server.py"
       ]
     }
   },

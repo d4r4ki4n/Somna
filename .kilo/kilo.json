@@ -1,9 +1,6 @@
 {
   "$schema": "https://app.kilo.ai/config.json",
   "default_agent": "resonance",
-  "instructions": [
-    "USER.md"
-  ],
   "permission": {
     "edit": "allow",
     "bash": "allow",

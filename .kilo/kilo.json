@@ -1,6 +1,6 @@
 {
   "$schema": "https://app.kilo.ai/config.json",
-  "default_agent": "somna",
+  "default_agent": "resonance",
   "instructions": [
     "USER.md"
   ],

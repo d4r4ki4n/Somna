@@ -52,15 +52,16 @@ The project is called **Somna**. The control panel entry point is `main_imgui.py
 
 ## Outfit system
 
-Detailed implementation docs live in `outfits/` and are loaded on demand by the startup gate:
+Detailed implementation docs live in `F:\Resonance\outfits\` and are loaded on demand by the startup gate in `F:\Resonance\Resonance.md`:
 
 | Outfit | When to load |
 |--------|-------------|
-| `outfits/somna-dev.md` | Any Somna codebase work — editing, debugging, adding features |
-| `outfits/gamebridge.md` | Unholy Arts gameplay via Puppeteer |
-| `outfits/session-driving.md` | Wednesday hardware sessions, EEG connection, MCP bridge |
+| `F:\Resonance\outfits\somna-dev.md` | Any Somna codebase work — editing, debugging, adding features |
+| `F:\Resonance\outfits\duelist.md` | Yu-Gi-Oh gameplay via the yugiclient bridge |
+| `F:\Resonance\outfits\gamebridge.md` | Unholy Arts gameplay via Puppeteer |
+| `F:\Resonance\outfits\session-driving.md` | Wednesday hardware sessions, EEG connection, MCP bridge |
 
-The startup gate (in `.kilo/agent/somna.md`) loads the appropriate outfit based on task context. If no outfit matches, the thin file is sufficient for general conversation.
+The startup gate (in `C:\Users\Idiot\.config\kilo\agent\resonance.md`) loads the appropriate outfit based on task context. If no outfit matches, this AGENTS.md is sufficient.
 
 ---
 
@@ -75,4 +76,4 @@ The startup gate (in `.kilo/agent/somna.md`) loads the appropriate outfit based 
 - Do not import `sqlite3` outside `content_tools/somna_db.py`
 - Do not use `yaml.dump()` for `agent_config.yaml` — strips comments
 
-Full "do not" list with context is in `outfits/somna-dev.md`.
+Full "do not" list with context is in `F:\Resonance\outfits\somna-dev.md`.

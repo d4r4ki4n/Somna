@@ -347,6 +347,7 @@ VALID_SPIRAL_STYLES = frozenset(
         "ganzflicker",
         "galaxy_morph",
         "descent",
+        "coherence",
     }
 )
 

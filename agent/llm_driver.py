@@ -42,7 +42,7 @@ PARAMS = {
     "liminal | nebula | cobwebs | strange_attractor | "
     "flow_field | sacred_geometry | recursive_fractal | "
     "potter_tunnel | fractal_scale | neuro_vortex | "
-    "ojascki | tunnel_warp | ganzflicker | galaxy_morph",
+    "ojascki | tunnel_warp | ganzflicker | galaxy_morph | descent | coherence",
     "spiral_count": "int    1–8         — number of arms/petals",
     "spiral_tightness": "float  2.0–12.0    — winding tightness",
     "spiral_thickness": "int    4–40        — line width",

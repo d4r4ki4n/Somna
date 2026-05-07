@@ -866,7 +866,7 @@ _ADJUSTABLE_PARAMS = {
     "nebula|cobwebs|strange_attractor|"
     "flow_field|sacred_geometry|recursive_fractal|"
     "potter_tunnel|fractal_scale|neuro_vortex|"
-    "ojascki|tunnel_warp|ganzflicker|galaxy_morph",
+    "ojascki|tunnel_warp|ganzflicker|galaxy_morph|descent|coherence",
     "spiral_count": "int 1–8 — number of spiral arms",
     "spiral_speed_multiplier": "float 0.1–3.0",
     "spiral_chaos": "float 0.0–0.8",

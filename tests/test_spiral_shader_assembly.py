@@ -58,9 +58,11 @@ STYLE_NAMES = [
     "tunnel_warp",
     "ganzflicker",
     "galaxy_morph",
+    "descent",
+    "coherence",
 ]
 
-STYLE_IDS = list(range(26))
+STYLE_IDS = list(range(28))
 
 TEST_W, TEST_H = 320, 240
 

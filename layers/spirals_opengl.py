@@ -141,6 +141,7 @@ class SpiralsLayer:
             "ganzflicker",
             "galaxy_morph",
             "descent",
+            "coherence",
         ]
 
         for name in style_names:
@@ -181,6 +182,7 @@ class SpiralsLayer:
             "    else if (u_style == 24) result = style_ganzflicker(p);",
             "    else if (u_style == 25) result = style_galaxy_morph(p);",
             "    else if (u_style == 26) result = style_descent(p);",
+            "    else if (u_style == 27) result = style_coherence(p);",
             "    else                    result = style_tunnel(p);",
             "    fragColor = result;",
             "}",

@@ -60,9 +60,10 @@ STYLE_NAMES = [
     "galaxy_morph",
     "descent",
     "coherence",
+    "tether",
 ]
 
-STYLE_IDS = list(range(28))
+STYLE_IDS = list(range(29))
 
 TEST_W, TEST_H = 320, 240
 

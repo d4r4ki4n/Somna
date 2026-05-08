@@ -348,6 +348,7 @@ VALID_SPIRAL_STYLES = frozenset(
         "galaxy_morph",
         "descent",
         "coherence",
+        "tether",
     }
 )
 

@@ -74,6 +74,7 @@ _STR_PARAMS: dict[str, list[str]] = {
         "galaxy_morph",
         "descent",
         "coherence",
+        "tether",
     ],
     "veil_mode": ["scroll", "rain", "drift", "converge", "strobe", "tunnel"],
     "bg_mode": ["slideshow", "none"],

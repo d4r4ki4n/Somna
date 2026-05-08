@@ -45,6 +45,8 @@ STYLE_MAP = {
     "ganzflicker": 24,
     "galaxy_morph": 25,
     "descent": 26,
+    "coherence": 27,
+    "tether": 28,
 }
 
 # Normalize control panel thickness range (4–40) to shader multiplier (0.3–6.0)
@@ -142,6 +144,7 @@ class SpiralsLayer:
             "galaxy_morph",
             "descent",
             "coherence",
+            "tether",
         ]
 
         for name in style_names:
@@ -183,6 +186,7 @@ class SpiralsLayer:
             "    else if (u_style == 25) result = style_galaxy_morph(p);",
             "    else if (u_style == 26) result = style_descent(p);",
             "    else if (u_style == 27) result = style_coherence(p);",
+            "    else if (u_style == 28) result = style_tether(p);",
             "    else                    result = style_tunnel(p);",
             "    fragColor = result;",
             "}",

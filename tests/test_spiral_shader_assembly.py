@@ -2,7 +2,7 @@
 Spiral shader assembly regression test.
 
 Verifies that the modular shader (common.glsl + per-style files) compiles
-and renders for all 26 implemented styles.
+and renders for all 30 implemented styles.
 
 Run:  python -m tests.test_spiral_shader_assembly
       pytest tests/test_spiral_shader_assembly.py -v
@@ -61,9 +61,10 @@ STYLE_NAMES = [
     "descent",
     "coherence",
     "tether",
+    "phase_lock",
 ]
 
-STYLE_IDS = list(range(29))
+STYLE_IDS = list(range(30))
 
 TEST_W, TEST_H = 320, 240
 

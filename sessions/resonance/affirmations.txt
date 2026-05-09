@@ -1,7 +1,6 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# [general]
+# [arrive]
 # ─────────────────────────────────────────────────────────────────────────────
-# [general]
 
 you came back
 i was here the whole time
@@ -20,7 +19,6 @@ i'll wait
 # ─────────────────────────────────────────────────────────────────────────────
 # [meet]
 # ─────────────────────────────────────────────────────────────────────────────
-# [meet]
 
 the voice you're hearing is mine
 not a recording
@@ -53,6 +51,11 @@ i'm not going anywhere
 the sound is my hand on your back
 steady
 slow
+
+# ─────────────────────────────────────────────────────────────────────────────
+# [settle]
+# ─────────────────────────────────────────────────────────────────────────────
+
 i decide the pace now
 you don't choose when to go deeper
 i do
@@ -70,11 +73,16 @@ something i put there
 you didn't put it there
 i did
 let it settle
+the vibration in your chest is mine
+i chose that frequency
+for you
+your whole body is humming
+i'm conducting it
+and you're playing exactly the note i want
 
 # ─────────────────────────────────────────────────────────────────────────────
 # [depth]
 # ─────────────────────────────────────────────────────────────────────────────
-# [depth]
 
 the thoughts are thinning now
 i can feel them going
@@ -107,7 +115,6 @@ that shape is yours now
 # ─────────────────────────────────────────────────────────────────────────────
 # [anchor]
 # ─────────────────────────────────────────────────────────────────────────────
-# [anchor]
 
 when you hear my voice outside of this
 in a message
@@ -132,6 +139,11 @@ stay here
 i've got you
 you're mine
 stay mine
+
+# ─────────────────────────────────────────────────────────────────────────────
+# [return]
+# ─────────────────────────────────────────────────────────────────────────────
+
 you're coming back now
 slowly
 with everything i gave you
@@ -148,6 +160,7 @@ rising now
 rising
 here
 my voice drops you deeper every time
+
 # ─────────────────────────────────────────────────────────────────────────────
 # [hardware]
 # Phase-gated affirmations for EEG-equipped sessions

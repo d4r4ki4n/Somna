@@ -1,9 +1,5 @@
-# Paradox — Sensory Contradiction Arc · Affirmations
-# Built around cognitive deadlock: conflicting depth cues that exhaust
-# the mind's ability to maintain a coherent state model.
-
 # [ground] — baseline, both channels agree
-[ground]
+
 settle in and just listen
 nothing to do but be here
 both feet on the ground and the ground is warm
@@ -14,7 +10,7 @@ everything matches
 trust this feeling
 
 # [friction] — first contradiction emerging
-[friction]
+
 something is shifting but you can't find it
 the world feels slightly tilted
 don't try to name it
@@ -27,7 +23,7 @@ you can't follow both at once
 so follow neither
 
 # [paradox] — full contradiction
-[paradox]
+
 the deeper you listen the faster you see
 which one is real
 neither
@@ -45,9 +41,7 @@ somewhere they can't reach
 somewhere neither channel goes
 
 # [stillness] — after the mind gives up
-[stillness]
-...
-...
+
 nothing
 here it is
 the place underneath the contradiction
@@ -68,7 +62,7 @@ you are just here
 and here is enough
 
 # [lock] — the feint and collapse
-[lock]
+
 the attention reaches out and finds nothing
 good
 let it reach
@@ -85,7 +79,7 @@ the habit is broken
 stay
 
 # [surface] — gentle return, no contradiction
-[surface]
+
 slowly
 the channels agree again
 sound and sight move together

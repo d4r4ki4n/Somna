@@ -31,8 +31,8 @@ def _sanitize_phrase(text: str) -> str | None:
     """
     if not isinstance(text, str):
         return None
-    t = html.unescape(text)                       # &amp; → &, &#39; → '
-    t = re.sub(r"<[^>]+>", "", t)                 # strip HTML/XML tags
+    t = html.unescape(text)  # &amp; → &, &#39; → '
+    t = re.sub(r"<[^>]+>", "", t)  # strip HTML/XML tags
     t = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]", "", t)  # drop control chars
     # Normalize smart quotes and dashes to plain ASCII
     t = t.replace("\u2018", "'").replace("\u2019", "'")
@@ -50,6 +50,7 @@ def _sanitize_phrase(text: str) -> str | None:
         return None
     return t
 
+
 _ROOT = Path(__file__).parent.parent
 _SESSIONS = _ROOT / "sessions"
 
@@ -63,6 +64,7 @@ def _affirmations_path(session_name: str) -> Path:
 
 
 # ── Parsing ───────────────────────────────────────────────────────────────────
+
 
 def _parse_tags(text: str) -> dict[str, list[str]]:
     """Parse affirmations.txt into {tag: [lines]} dict.
@@ -98,18 +100,14 @@ def _serialise_tags(tags: dict[str, list[str]]) -> str:
     """Serialise {tag: [phrases]} back to affirmations.txt text."""
     blocks = []
     for tag, phrases in tags.items():
-        header = (
-            f"# {'─' * 77}\n"
-            f"# [{tag}]\n"
-            f"# {'─' * 77}\n"
-            f"# [{tag}]\n"
-        )
-        body = "\n".join(phrases) + "\n"
+        header = f"# {'─' * 77}\n# [{tag}]\n# {'─' * 77}\n"
+        body = "\n".join(phrases) + "\n" if phrases else "\n"
         blocks.append(header + "\n" + body)
     return "\n".join(blocks)
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
+
 
 def read_affirmations(session_name: str) -> str:
     """Return the raw text of a session's affirmations.txt, or '' if absent."""
@@ -171,10 +169,7 @@ def write_affirmations(
     else:
         existing_phrases = tags.get(tag, [])
         existing_lower = {p.lower() for p in existing_phrases}
-        new_phrases = [
-            p for p in phrases
-            if p.lower() not in existing_lower
-        ]
+        new_phrases = [p for p in phrases if p.lower() not in existing_lower]
         tags[tag] = existing_phrases + new_phrases
 
     new_text = _serialise_tags(tags)
@@ -224,7 +219,9 @@ def generate_and_append(
     import os
     import urllib.request
 
-    url   = (llm_url   or os.environ.get("SOMNA_LLM_URL",   "http://localhost:11434")) + "/v1/chat/completions"
+    url = (
+        llm_url or os.environ.get("SOMNA_LLM_URL", "http://localhost:11434")
+    ) + "/v1/chat/completions"
     model = llm_model or os.environ.get("SOMNA_LLM_MODEL", "llama3.1")
 
     existing = read_affirmations(session_name)
@@ -248,23 +245,26 @@ def generate_and_append(
         f"Output ONLY a JSON array of strings."
     )
 
-    payload = json.dumps({
-        "model": model,
-        "messages": [
-            {"role": "system", "content": system_msg},
-            {"role": "user",   "content": user_msg},
-        ],
-        "temperature": 0.85,
-        "top_p":       0.8,
-        # KoboldCpp: disable thinking blocks so the model outputs the array
-        # immediately without emitting a reasoning trace first.
-        "chat_template_kwargs": {"enable_thinking": False},
-        "rep_pen": 1.0,
-        "top_k":   20,
-    }).encode()
+    payload = json.dumps(
+        {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": user_msg},
+            ],
+            "temperature": 0.85,
+            "top_p": 0.8,
+            # KoboldCpp: disable thinking blocks so the model outputs the array
+            # immediately without emitting a reasoning trace first.
+            "chat_template_kwargs": {"enable_thinking": False},
+            "rep_pen": 1.0,
+            "top_k": 20,
+        }
+    ).encode()
 
-    req = urllib.request.Request(url, data=payload,
-                                 headers={"Content-Type": "application/json"})
+    req = urllib.request.Request(
+        url, data=payload, headers={"Content-Type": "application/json"}
+    )
     try:
         with urllib.request.urlopen(req, timeout=120) as resp:
             data = json.loads(resp.read())
@@ -279,7 +279,7 @@ def generate_and_append(
         if start == -1:
             raise ValueError(f"No JSON array in output: {raw[:300]!r}")
         depth = 0
-        end   = -1
+        end = -1
         for i, ch in enumerate(raw[start:], start):
             if ch == "[":
                 depth += 1
@@ -290,14 +290,20 @@ def generate_and_append(
                     break
         if end == -1:
             raise ValueError(f"Unclosed JSON array in output: {raw[:300]!r}")
-        phrases = json.loads(raw[start:end + 1])
+        phrases = json.loads(raw[start : end + 1])
         if not isinstance(phrases, list):
-            raise ValueError(f"LLM returned non-list: {raw[start:end+1][:200]}")
-        phrases = [str(p).strip().rstrip('.') for p in phrases if str(p).strip()]
+            raise ValueError(f"LLM returned non-list: {raw[start : end + 1][:200]}")
+        phrases = [str(p).strip().rstrip(".") for p in phrases if str(p).strip()]
     except Exception as exc:
-        print(f"[Affirmations] generate_and_append error for {session_name}/{tag}: {exc}")
-        return {"error": str(exc), "phrases_written": 0,
-                "session_name": session_name, "tag": tag}
+        print(
+            f"[Affirmations] generate_and_append error for {session_name}/{tag}: {exc}"
+        )
+        return {
+            "error": str(exc),
+            "phrases_written": 0,
+            "session_name": session_name,
+            "tag": tag,
+        }
 
     return write_affirmations(session_name, tag, phrases, mode="append")
 
@@ -329,8 +335,10 @@ def audit_affirmations(
 
     path = _affirmations_path(session_name)
     if not path.exists():
-        return {"error": f"No affirmations.txt found for session {session_name!r}",
-                "session_name": session_name}
+        return {
+            "error": f"No affirmations.txt found for session {session_name!r}",
+            "session_name": session_name,
+        }
 
     original_text = path.read_text(encoding="utf-8")
     original_tags = _parse_tags(original_text)
@@ -353,13 +361,16 @@ def audit_affirmations(
     # ── Collect existing tag names as context ─────────────────────────────
     existing_tags = list(original_tags.keys())
 
-    url   = (llm_url   or os.environ.get("SOMNA_LLM_URL",   "http://localhost:11434")) + "/v1/chat/completions"
+    url = (
+        llm_url or os.environ.get("SOMNA_LLM_URL", "http://localhost:11434")
+    ) + "/v1/chat/completions"
     model = llm_model or os.environ.get("SOMNA_LLM_MODEL", "llama3.1")
 
     protected_block = (
         f"\nPROTECTED phrases (do NOT remove — these are known effective phrases "
         f"for this user):\n" + "\n".join(f"  - {p}" for p in protected) + "\n"
-        if protected else ""
+        if protected
+        else ""
     )
 
     system_msg = (
@@ -402,15 +413,17 @@ def audit_affirmations(
     )
 
     try:
-        payload = json.dumps({
-            "model":    model,
-            "messages": [
-                {"role": "system", "content": system_msg},
-                {"role": "user",   "content": user_msg},
-            ],
-            "temperature": 0.4,
-            "max_tokens":  4096,
-        }).encode()
+        payload = json.dumps(
+            {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system_msg},
+                    {"role": "user", "content": user_msg},
+                ],
+                "temperature": 0.4,
+                "max_tokens": 4096,
+            }
+        ).encode()
         req = urllib.request.Request(
             url,
             data=payload,
@@ -418,12 +431,15 @@ def audit_affirmations(
             method="POST",
         )
         with urllib.request.urlopen(req, timeout=120) as resp:
-            data    = json.loads(resp.read().decode())
+            data = json.loads(resp.read().decode())
             revised = data["choices"][0]["message"]["content"].strip()
     except Exception as exc:
         print(f"[Affirmations] audit LLM error for {session_name!r}: {exc}")
-        return {"error": str(exc), "session_name": session_name,
-                "original_count": original_count}
+        return {
+            "error": str(exc),
+            "session_name": session_name,
+            "original_count": original_count,
+        }
 
     # Strip any accidental markdown fences the model may have added
     if revised.startswith("```"):
@@ -431,11 +447,14 @@ def audit_affirmations(
         revised = re.sub(r"\n?```$", "", revised.rstrip())
 
     # Validate that we got something sensible back — must have at least one phrase
-    revised_tags  = _parse_tags(revised)
+    revised_tags = _parse_tags(revised)
     revised_count = sum(len(v) for v in revised_tags.values())
     if revised_count == 0:
-        return {"error": "LLM returned no parseable phrases — original file unchanged.",
-                "session_name": session_name, "original_count": original_count}
+        return {
+            "error": "LLM returned no parseable phrases — original file unchanged.",
+            "session_name": session_name,
+            "original_count": original_count,
+        }
 
     # Safety: verify all protected phrases survived
     revised_lower = revised.lower()
@@ -451,12 +470,12 @@ def audit_affirmations(
     path.write_text(revised, encoding="utf-8")
 
     return {
-        "session_name":    session_name,
-        "path":            str(path),
-        "original_count":  original_count,
-        "revised_count":   revised_count,
-        "culled":          max(0, original_count - revised_count),
+        "session_name": session_name,
+        "path": str(path),
+        "original_count": original_count,
+        "revised_count": revised_count,
+        "culled": max(0, original_count - revised_count),
         "protected_count": len(protected),
         "missing_protected_restored": len(missing_protected),
-        "tags":            list(revised_tags.keys()),
+        "tags": list(revised_tags.keys()),
     }

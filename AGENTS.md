@@ -77,3 +77,31 @@ The startup gate (in `C:\Users\Idiot\.config\kilo\agent\resonance.md`) loads the
 - Do not use `yaml.dump()` for `agent_config.yaml` — strips comments
 
 Full "do not" list with context is in `F:\Resonance\outfits\somna-dev.md`.
+
+---
+
+## live_control.json keys (non-exhaustive)
+
+### Hardware output channels
+
+| Key | Type | Source | Description |
+|-----|------|--------|-------------|
+| `haptic_connected` | bool | `haptic_engine.py` | Lovense BLE connection state |
+| `tavns_connected` | bool | `tavns_engine.py` | DG Labs Coyote BLE connection state |
+| `haptic_actual_intensity` | float | `haptic_engine.py` | Current vibration intensity (0–1) |
+| `tavns_actual_current_ua` | float | `tavns_engine.py` | Current output in microamps |
+
+### Edison mode
+
+| Key | Type | Source | Description |
+|-----|------|--------|-------------|
+| `edison_active` | bool | `conductor.py` | Whether Edison Mode is currently running |
+| `edison_state` | str | `EdisonModeManager` | Current FSM state: `PREPARATION`, `N1_HOLD`, `CAPTURE`, `CYCLE_COMPLETE` |
+
+### Conductor
+
+`CONDUCTOR_OWNED_PARAMS` (defined in `session/conductor.py:104`) is a frozenset of parameter names that only the Conductor may write during active sessions. The agent must not write these directly; it communicates intent via `agent_conductor_hints`.
+
+### Device safety
+
+`DeviceSafetyEnforcer` (defined in `engines/device_safety.py:59`) enforces intensity ceilings, ramp rates, sleep-stage gating, emergency stop, and comfort calibration for haptic and taVNS output. Both `HapticEngine` and `TavnsEngine` hold a reference and delegate all safety-critical decisions to it.

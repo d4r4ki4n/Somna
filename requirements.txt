@@ -1,20 +1,34 @@
+# ── Core (required for all sessions) ──────────────────────────────────────────
+# Audio engine, visual rendering, session playback, control panel
 pygame>=2.6.0
 pyyaml
 pillow
 moderngl
 numpy
 opencv-python
-# TTS — core (free, no key required for edge backend)
+
+# ── TTS — core (free, no API key required) ────────────────────────────────────
 edge-tts
-# TTS — silent-subliminal processing (optional, only needed when tts_subliminal=true)
+
+# ── TTS — silent subliminal processing (optional) ────────────────────────────
+# Only needed when tts_subliminal=true in a session
 scipy
 miniaudio
-# LLM session agent (optional, only needed when running somna_agent.py)
+
+# ── LLM session agent (optional) ──────────────────────────────────────────────
+# Only needed when running somna_agent.py
+# Supports any OpenAI-compatible API (OpenAI, Ollama, LM Studio, KoboldCpp, etc.)
 openai
-# EEG / biofeedback (optional, only needed when using the EEG section)
-# Handles Muse 2/S via BLE and provides all signal processing (band powers, IAF, etc.)
+
+# ── EEG / biofeedback (optional) ──────────────────────────────────────────────
+# Only needed when using EEG hardware (Muse 2, Muse S)
+# Handles BLE connection and all signal processing (band powers, IAF, etc.)
 brainflow>=5.20.0
-# Haptic output — Lovense BLE vibrotactile devices (optional, requires Intiface central)
+
+# ── Haptic output (optional) ──────────────────────────────────────────────────
+# Lovense BLE vibrotactile devices — requires Intiface Central running
 buttplug-py>=0.3.0
-# taVNS output — DG Labs Coyote electrode stimulator (optional)
+
+# ── taVNS output (optional) ───────────────────────────────────────────────────
+# DG Labs Coyote electrode stimulator
 pydglab-v3>=0.4.0

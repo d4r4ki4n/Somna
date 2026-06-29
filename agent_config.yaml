@@ -3,20 +3,23 @@
 # Rename or copy this file — it is read automatically from the project root.
 
 # LLM backend
-model:    "HauhauCS_Qwen3.5-35B-A3B-Uncensored-HauhauCS-Aggressive"
-api_key: ""
-base_url: "http://localhost:8000"
+# Leave api_key blank for local servers (Ollama, LM Studio, KoboldCpp).
+# For cloud APIs, put your key here or set SOMNA_LLM_KEY env var.
+model:    "gpt-4o-mini"
+api_key:  ""
+base_url: "https://api.openai.com/v1"
                                         #   http://localhost:11434/v1  (Ollama)
                                         #   http://localhost:1234/v1   (LM Studio)
+                                        #   http://localhost:5001/v1   (KoboldCpp)
 
 # Agent behaviour
 mode:           "interactive"  # "observe" | "interactive"
 interval:       20             # seconds between agent ticks
 prompt_timeout: 120            # seconds user has to answer before dialog skips
 max_history:    20             # max past exchanges kept in LLM context
-startup_delay_s: 180            # seconds before first agent tick (30 for testing, 180 for real sessions)
-external_channel: true
-external_only:    true        # when true, no fallback to local LLM — Resonance drives via MCP
+startup_delay_s: 180           # seconds before first agent tick (30 for testing, 180 for real sessions)
+external_channel: false        # set true to let an external agent drive via MCP
+external_only:    false        # when true, no fallback to local LLM
 
 # Optional extra instructions appended to the system prompt.
 # Use this to set the persona, focus area, or safety boundaries.
@@ -35,7 +38,7 @@ training_target: 0.2    # 0.0 = very simple/regressed, 1.0 = fully alert
 # Phrases flashed when the user's response scores near the training target.
 # Extend or replace this list to match your session's tone.
 praise_phrases:
-  - "good girl"
+  - "good"
   - "yes"
   - "perfect"
   - "that's right"
@@ -52,7 +55,7 @@ top_k:            20
 min_p:            0.0
 repeat_penalty:   1.0
 # null = no cap (server / model decides). Set an int to hard-cap for safety on
-# small-context models. For a 35B local model, leave null.
+# small-context models.
 max_tokens_response: null
 
 knowledge_files:
@@ -71,7 +74,7 @@ knowledge_files:
 # handles nudges, and responds to console input at any time.
 idle_planning_interval_min: 30   # minutes between idle LLM planning cycles
 nudge_after_days:           1.0  # days overdue before a nudge fires
-nudge_session:             "live" # session folder used for the nudge overlay
+nudge_session:             "first_light" # session folder used for the nudge overlay
 nudge_fade_minutes:        20    # minutes to ramp opacity from 5% → 60%
 
 # ── Image generation (KoboldCpp / FLUX) ──────────────────────────────────────
@@ -101,10 +104,10 @@ fractionation:
 #   for lying-down sessions). Change to 38 (MUSE_2_BOARD) for Muse 2.
 #   NEVER use 22 (MUSE_2_BLED_BOARD) — requires a $30 BLED112 dongle.
 eeg:
-  enabled:      true   # master enable; set true to inject EEG context into agent
-  synthetic:    false    # false = real hardware
-  board_id:     38      # 38 = MUSE_2_BOARD (native BLE); 22 = MUSE_2_BLED_BOARD (dongle)
-  auto_connect: true    # auto-start EEG engine when the control panel opens
+  enabled:      false  # master enable; set true to inject EEG context into agent
+  synthetic:    true   # true = synthetic board (no hardware needed for testing)
+  board_id:     38     # 38 = MUSE_2_BOARD (native BLE); 22 = MUSE_2_BLED_BOARD (dongle)
+  auto_connect: false  # auto-start EEG engine when the control panel opens
 
 image_gen:
   steps:             8        # FLUX works well at 8 steps

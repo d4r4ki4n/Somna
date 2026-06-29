@@ -41,3 +41,7 @@ Thumbs.db
 Desktop.ini
 somna_dock_layout.ini
 USER.md
+.kilo/
+notes/
+*.dock_layout_seeded
+visual_sweep_log.json

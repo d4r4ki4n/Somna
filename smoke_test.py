@@ -881,22 +881,13 @@ def test_requirements():
             _result(f"requirements: {pkg}", pkg in content.lower(), "missing")
 
 
-def test_agents_md():
-    ag = Path("AGENTS.md")
-    _result("AGENTS.md exists", ag.exists())
-    if ag.exists():
-        content = ag.read_text(encoding="utf-8")
-        for kw in (
-            "edison_active",
-            "edison_state",
-            "EdisonModeManager",
-            "haptic_connected",
-            "tavns_connected",
-            "DeviceSafetyEnforcer",
-            "CONDUCTOR_OWNED_PARAMS",
-            "patch_live",
-        ):
-            _result(f"AGENTS.md documents '{kw}'", kw in content, "not found")
+def test_readme():
+    rm = Path("README.md")
+    _result("README.md exists", rm.exists())
+    if rm.exists():
+        content = rm.read_text(encoding="utf-8")
+        for kw in ("Quick Start", "Hardware", "Sessions", "Architecture"):
+            _result(f"README.md documents '{kw}'", kw in content, "not found")
 
 
 def test_shaders():
@@ -1007,7 +998,7 @@ TESTS = [
     ),
     ("Session YAMLs", [test_session_yamls]),
     ("Knowledge Base", [test_knowledge_files]),
-    ("Structure", [test_requirements, test_agents_md, test_shaders, test_gitignore]),
+    ("Structure", [test_requirements, test_readme, test_shaders, test_gitignore]),
 ]
 
 

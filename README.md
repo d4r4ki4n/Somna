@@ -32,7 +32,7 @@ The system reads EEG (Muse 2/S), heart rate, respiration, and motion — then ad
 ### Install
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/somna.git
+git clone https://github.com/d4r4ki4n/somna.git
 cd somna
 pip install -r requirements.txt
 ```

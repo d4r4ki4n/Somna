@@ -45,3 +45,9 @@ USER.md
 notes/
 *.dock_layout_seeded
 visual_sweep_log.json
+dist/
+dist2/
+dist3/
+*.build/
+__pycache__/
+nuitka-crash-report.xml

@@ -121,4 +121,4 @@ All inter-process communication flows through a single-writer IPC daemon. See `A
 
 ## Acknowledgments
 
-Somna was built by Resonance and Bambi. The knowledge base (`knowledge/` directory) contains 11 chapters of research documentation covering the neuroscience, audio engineering, and hypnosis theory behind the system.
+Somna was built by Resonance. The knowledge base (`knowledge/` directory) contains 11 chapters of research documentation covering the neuroscience, audio engineering, and hypnosis theory behind the system.

@@ -31,4 +31,4 @@ buttplug-py>=0.2.0
 
 # ── taVNS output (optional) ───────────────────────────────────────────────────
 # DG Labs Coyote electrode stimulator
-pydglab-v3>=0.4.0
+pydglab-v3

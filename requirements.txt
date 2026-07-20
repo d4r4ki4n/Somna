@@ -27,7 +27,7 @@ brainflow>=5.20.0
 
 # ── Haptic output (optional) ──────────────────────────────────────────────────
 # Lovense BLE vibrotactile devices — requires Intiface Central running
-buttplug-py>=0.3.0
+buttplug-py>=0.2.0
 
 # ── taVNS output (optional) ───────────────────────────────────────────────────
 # DG Labs Coyote electrode stimulator

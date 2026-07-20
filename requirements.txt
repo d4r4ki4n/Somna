@@ -10,7 +10,7 @@ opencv-python
 # ── TTS — core (free, no API key required) ────────────────────────────────────
 edge-tts
 
-# ── TTS — silent subliminal processing (optional) ────────────────────────────
+# ── TTS — silent subliminal processing ────────────────────────────
 # Only needed when tts_subliminal=true in a session
 scipy
 miniaudio
@@ -23,12 +23,12 @@ openai
 # ── EEG / biofeedback (optional) ──────────────────────────────────────────────
 # Only needed when using EEG hardware (Muse 2, Muse S)
 # Handles BLE connection and all signal processing (band powers, IAF, etc.)
-brainflow>=5.20.0
+#brainflow>=5.20.0
 
 # ── Haptic output (optional) ──────────────────────────────────────────────────
 # Lovense BLE vibrotactile devices — requires Intiface Central running
-buttplug-py>=0.2.0
+#buttplug-py>=0.2.0
 
 # ── taVNS output (optional) ───────────────────────────────────────────────────
 # DG Labs Coyote electrode stimulator
-pydglab
+#pydglab

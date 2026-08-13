@@ -1220,6 +1220,12 @@ class ControlPanelImGui:
                 else:
                     threading.Timer(3.0, self._connect_eeg).start()
 
+        # Detect crashed display process and clean up stale state
+        if self._display_proc is not None and self._display_proc.poll() is not None:
+            self._display_proc = None
+            self._agent_launch_pending = False
+            patch_live({"display_active": False, "audio_muted": True})
+
         self._player.agent_running = self._is_agent_running()
         self._panel_manager.update(self._live)
 

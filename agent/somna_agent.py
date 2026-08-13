@@ -3186,6 +3186,8 @@ class SomnaAgent:
                 speak = voice_mode in ("tts", "subliminal", "both")
                 log = True
             _needs_response = style.get("needs_response", False)
+            if self._external_only:
+                _needs_response = False
             timeout_s = style.get("timeout_s") or ext.get("timeout_s")
 
             _user_reply = self._say(

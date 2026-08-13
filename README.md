@@ -97,6 +97,22 @@ Somna includes an optional LLM agent (**Vesper**) that runs alongside sessions. 
 
 To use Vesper, point `agent_config.yaml` at any OpenAI-compatible API endpoint. The agent works with cloud APIs (OpenAI, Anthropic via proxy) or local models.
 
+### External Agent (MCP Bridge)
+
+Somna also supports an **external agent channel** — instead of Vesper calling a local LLM, prompts are routed through an MCP (Model Context Protocol) bridge to an external agent. This lets an AI agent running outside Somna drive sessions in real time: reading live state, adjusting parameters, and writing responses back through the MCP tool interface.
+
+To enable:
+
+```yaml
+# agent_config.yaml
+external_channel: true   # route prompts to external agent via MCP bridge
+external_only: true      # disable fallback to local LLM
+```
+
+When `external_channel: true`, the agent connects to a TCP prompt bridge (port 6790) and forwards each prompt as an MCP `sampling/createMessage` request. The external agent responds via `somna_write_agent_response`, which writes a structured response (text, parameter adjustments, transitions, affirmations) to live state. The agent consumes it on the next tick.
+
+The default is `external_channel: false` — Vesper runs its own LLM loop. The MCP bridge is for users who want to integrate Somna with an external AI agent.
+
 ---
 
 ## Architecture

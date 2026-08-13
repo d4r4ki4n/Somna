@@ -52,6 +52,11 @@ import time
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
 from typing import Any
+# Ensure the project root is on sys.path when run as a subprocess or directly.
+_PKG_ROOT = Path(__file__).parent.parent
+if str(_PKG_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PKG_ROOT))
+
 from ipc import patch_live
 
 try:
@@ -60,11 +65,6 @@ try:
     _EXT_CHANNEL_AVAILABLE = True
 except ImportError:
     _EXT_CHANNEL_AVAILABLE = False
-
-# Ensure the project root is on sys.path when run as a subprocess or directly.
-_PKG_ROOT = Path(__file__).parent.parent
-if str(_PKG_ROOT) not in sys.path:
-    sys.path.insert(0, str(_PKG_ROOT))
 
 # Optional scoring / frequency leading — imported lazily to avoid hard deps at startup
 try:

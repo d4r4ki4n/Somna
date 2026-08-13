@@ -7,18 +7,34 @@ moderngl
 numpy
 opencv-python
 
+# ── Control panel GUI ─────────────────────────────────────────────────────────
+# ImGui-based control panel — required for the graphical interface
+imgui-bundle>=1.92.0
+glfw>=2.7.0
+PyOpenGL>=3.1.0
+PyOpenGL-accelerate>=3.1.0
+
 # ── TTS — core (free, no API key required) ────────────────────────────────────
 edge-tts
 
-# ── TTS — silent subliminal processing ────────────────────────────
+# ── TTS — silent subliminal processing ────────────────────────────────────────
 # Only needed when tts_subliminal=true in a session
 scipy
 miniaudio
+
+# ── Audio output (required for TTS playback) ──────────────────────────────────
+sounddevice
 
 # ── LLM session agent (optional) ──────────────────────────────────────────────
 # Only needed when running somna_agent.py
 # Supports any OpenAI-compatible API (OpenAI, Ollama, LM Studio, KoboldCpp, etc.)
 openai
+
+# ── MCP server (optional) ─────────────────────────────────────────────────────
+# Only needed when running tools/mcp_somna_server.py
+# Allows external agents (like Resonance) to drive sessions
+mcp>=1.26.0
+anyio>=4.0.0
 
 # ── EEG / biofeedback (optional) ──────────────────────────────────────────────
 # Only needed when using EEG hardware (Muse 2, Muse S)
@@ -31,4 +47,8 @@ openai
 
 # ── taVNS output (optional) ───────────────────────────────────────────────────
 # DG Labs Coyote electrode stimulator
-#pydglab
+#pydglab-v3>=0.4.0
+
+# ── VR overlay (optional) ─────────────────────────────────────────────────────
+# Only needed when using the VR overlay for head-mounted displays
+openvr

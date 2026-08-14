@@ -762,9 +762,7 @@ imgui[glfw]        # Dear ImGui control panel
 
 | Document | Content |
 |----------|---------|
-| `AGENTS.md` | Complete agent architecture — modes, idle planning, reconsolidation, somatic palette, do-not rules, output schema |
 | `SESSION_AUTHORING.md` | Session YAML format, keyframe specification, tag groups |
 | `SESSION_TIMELINE.md` | Technical timeline specification — interpolation, seek, lock semantics |
 | `TESTING.md` | Test checklist and smoke test procedures |
-| `USER.md` | User-facing guide |
 | `knowledge/` | 32 active Markdown knowledge files + Somna Bible (11 chapters) |

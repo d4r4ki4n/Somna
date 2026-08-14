@@ -221,7 +221,7 @@ class Session:
 
     def _parse_keyframes(self, raw_timeline: list) -> List[Dict]:
         # Reserved keys that are NOT session parameters
-        _meta = {"t", "label", "ease", "params"}
+        _meta = {"t", "label", "ease", "params", "narration"}
         kfs = []
         for entry in raw_timeline:
             # Start from explicit nested params: (default session format)
@@ -234,6 +234,7 @@ class Session:
                 "t": float(entry["t"]),
                 "label": entry.get("label", ""),
                 "ease": entry.get("ease", "linear"),
+                "narration": entry.get("narration"),
                 "params": params,
             }
             kfs.append(kf)
@@ -348,6 +349,7 @@ class TimelineRunner(threading.Thread):
         )
         self._session_ended: bool = False  # one-shot flag
         self._last_kf_id: int = 0  # track keyframe transitions for lock expiry
+        self._last_narration_kf_t: Optional[float] = None  # track narration firing
 
         # Fractionation state machine — None when inactive
         # Keys: cycles_total, cycle_idx, phase, phase_wall, depth_hz,
@@ -366,6 +368,7 @@ class TimelineRunner(threading.Thread):
             self._last_written = {}
             self._loop_counters = {}
             self._last_kf_id = 0
+            self._last_narration_kf_t = None
             # Seed loop counters from session
             for i, loop in enumerate(self._session.loops):
                 if loop.get("count", 1) != 0:
@@ -641,6 +644,9 @@ class TimelineRunner(threading.Thread):
         # Compute target values at current elapsed time
         values = self._compute_values(self._elapsed)
 
+        # Fire narration on keyframe transition
+        self._check_narration()
+
         # Expire locks for params the timeline explicitly sets at the current keyframe
         self._expire_locks(values)
 
@@ -860,6 +866,35 @@ class TimelineRunner(threading.Thread):
             if kf["t"] <= self._elapsed:
                 result = kf
         return result
+
+    def _check_narration(self) -> None:
+        """Fire narration text when entering a new keyframe that has one."""
+        if not self._session or not self._session.keyframes:
+            return
+        kf = self._current_keyframe()
+        if kf is None:
+            return
+        kf_t = kf["t"]
+        if kf_t == self._last_narration_kf_t:
+            return
+        narration = kf.get("narration")
+        if not narration:
+            self._last_narration_kf_t = kf_t
+            return
+        self._last_narration_kf_t = kf_t
+        try:
+            patch_live({
+                "agent_message": {
+                    "text": narration,
+                    "ts": time.time(),
+                    "needs_response": False,
+                    "via": ["tts", "console"],
+                    "style": {"zoom_speed": "slow", "intensity": "soft", "voice_mode": "tts"},
+                    "timeout_s": None,
+                }
+            })
+        except Exception:
+            pass
 
     # ── Fractionation state machine ───────────────────────────────────────
 

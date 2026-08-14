@@ -47,6 +47,7 @@ timeline:
   # Veil barely present — let the attention settle on its own terms.
   - t: 0
     label: arriving
+    narration: "Let your eyes find the center. The sound is already working. Nothing to do but watch."
     ease: linear
     params:
       phrases:                  arriving
@@ -72,6 +73,7 @@ timeline:
   # something you see rather than something you read.
   - t: 120
     label: settling
+    narration: "Your body is heavier now. The sound is changing you. Let it."
     ease: ease_in_out
     params:
       phrases:                  settling
@@ -96,6 +98,7 @@ timeline:
   # Shadows begin to appear. Converge veil draws attention inward.
   - t: 270
     label: softer
+    narration: "Something is different. You don't have to make this happen. It's happening to you."
     ease: ease_in_out
     params:
       phrases:                  settling
@@ -121,6 +124,7 @@ timeline:
   # Flash at 70ms: quick but catchable. Not subliminal.
   - t: 480
     label: the_change
+    narration: "Your thoughts are slower now. There are gaps between them. That's what this feels like."
     ease: ease_in_out
     params:
       phrases:                  the_change
@@ -147,6 +151,7 @@ timeline:
   # Flash at 50ms = 3 frames at 60fps. Right at the perceptual edge.
   - t: 660
     label: threshold
+    narration: "You're below your day now. Below the thinking. This is the place. Rest here."
     ease: ease_in_out
     params:
       phrases:                  threshold
@@ -171,6 +176,7 @@ timeline:
   # The listener is being carried back up, gently and deliberately.
   - t: 810
     label: returning
+    narration: "Coming back up now. Gently. The memory of this depth is yours to keep."
     ease: ease_out
     params:
       phrases:                  returning
@@ -195,6 +201,7 @@ timeline:
   # The listener is fully back. The experience is theirs to keep.
   - t: 960
     label: open
+    narration: "You're back. Alert. A little different than before. Open your eyes when you're ready."
     ease: ease_out
     params:
       phrases:                  returning

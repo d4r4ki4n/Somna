@@ -55,9 +55,13 @@ defaults:
 # Timeline: a sorted list of keyframes
 # Numeric params interpolate smoothly between keyframes.
 # String/bool params cut instantly when the keyframe is reached.
+# Optional "narration" field: text spoken via TTS when the keyframe is entered.
+# Narration lets sessions work without an LLM agent — the timeline itself
+# provides voice guidance at phase transitions.
 timeline:
   - t: 0
     label: "Induction"
+    narration: "Let your eyes find the center. The sound is already working."
     ease: linear
     params:
       beat_frequency:    10.0   # alpha — relaxed awareness

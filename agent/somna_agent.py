@@ -1464,6 +1464,7 @@ class SomnaAgent:
         self._image_library_summary: str = ""  # cached from _check_content_needs
         self._last_affirmation: str = ""  # last phrase injected this session
         self._last_ext_response_ts: float = 0  # dedup for agent_ext_response
+        self._ext_reply_deadline: float = 0  # monotonic deadline for non-blocking reply wait
         # Reconsolidation sequence state — reset per session in _startup_sequence
         self._recon: "_ReconState | None" = None
         self._recon_last_tick: float = 0.0
@@ -3186,40 +3187,65 @@ class SomnaAgent:
                 speak = voice_mode in ("tts", "subliminal", "both")
                 log = True
             _needs_response = style.get("needs_response", False)
-            if self._external_only:
-                _needs_response = False
             timeout_s = style.get("timeout_s") or ext.get("timeout_s")
 
-            _user_reply = self._say(
-                response_text,
-                needs_response=_needs_response,
-                console=log,
-                tts=speak,
-                style=style,
-                timeout_s=timeout_s,
-            )
-            if _needs_response:
-                if _user_reply and self._ext_enabled:
-                    reply_msg = (
-                        f"[User reply] session={state.get('session_folder', 'live')!r}\n"
-                        f"User said: {_user_reply}"
-                    )
-                    try:
-                        self._llm.chat(
-                            [{"role": "user", "content": reply_msg}],
-                            max_tokens=512,
-                        )
-                    except Exception as e:
-                        print(f"[Agent] Reply forward failed: {e}")
-                self._write_live({"last_user_reply": _user_reply})
+            if _needs_response and self._external_only:
+                # Non-blocking delivery: write the message with needs_response
+                # flag so the control panel shows the dialog, but don't block.
+                # The agent loop continues ticking. _check_pending_reply() on
+                # subsequent ticks picks up the user's response and forwards it
+                # to the external agent via the MCP bridge.
+                self._ext_reply_deadline = time.monotonic() + float(
+                    timeout_s or 120
+                ) + 5.0
+                self._write_live(
+                    {
+                        "agent_message": {
+                            "text": response_text,
+                            "ts": time.time(),
+                            "needs_response": True,
+                            "via": (["console"] + (["tts"] if speak else [])),
+                            "style": {**(style or {}), "needs_response": True},
+                            "timeout_s": timeout_s,
+                        },
+                        "user_response": None,
+                        "response_timestamp": None,
+                    }
+                )
                 print(
-                    f"[Agent] Ext response applied (reply={_user_reply!r}): {response_text[:80]}"
+                    f"[Agent] Ext response delivered (non-blocking, awaiting reply): {response_text[:80]}"
                 )
             else:
-                dwell = max(3.0, len(response_text) * 0.070)
-                time.sleep(dwell)
-                self._clear_message()
-                print(f"[Agent] Ext response applied: {response_text[:80]}")
+                _user_reply = self._say(
+                    response_text,
+                    needs_response=_needs_response,
+                    console=log,
+                    tts=speak,
+                    style=style,
+                    timeout_s=timeout_s,
+                )
+                if _needs_response:
+                    if _user_reply and self._ext_enabled:
+                        reply_msg = (
+                            f"[User reply] session={state.get('session_folder', 'live')!r}\n"
+                            f"User said: {_user_reply}"
+                        )
+                        try:
+                            self._llm.chat(
+                                [{"role": "user", "content": reply_msg}],
+                                max_tokens=512,
+                            )
+                        except Exception as e:
+                            print(f"[Agent] Reply forward failed: {e}")
+                    self._write_live({"last_user_reply": _user_reply})
+                    print(
+                        f"[Agent] Ext response applied (reply={_user_reply!r}): {response_text[:80]}"
+                    )
+                else:
+                    dwell = max(3.0, len(response_text) * 0.070)
+                    time.sleep(dwell)
+                    self._clear_message()
+                    print(f"[Agent] Ext response applied: {response_text[:80]}")
 
         # Apply adjustments + transitions the same way _apply does
         result_for_apply = {
@@ -3488,9 +3514,59 @@ class SomnaAgent:
                 self._apply_ext_response(ext, state)
                 self._write_live({"agent_ext_response": None})
 
+    def _check_pending_reply(self, state: dict) -> bool:
+        """Check for a user reply to a non-blocking needs_response prompt.
+
+        Returns True if a reply was handled (so the caller can skip the rest
+        of the tick).  Returns False if no reply is pending or the deadline
+        hasn't been reached yet.
+        """
+        if self._ext_reply_deadline <= 0:
+            return False
+
+        # Check if user has responded
+        ts = state.get("response_timestamp")
+        if ts is not None:
+            reply = state.get("user_response")
+            self._ext_reply_deadline = 0
+            self._clear_message()
+            self._write_live(
+                {"user_response": None, "response_timestamp": None, "last_user_reply": reply}
+            )
+            if reply and self._ext_enabled:
+                reply_msg = (
+                    f"[User reply] session={state.get('session_folder', 'live')!r}\n"
+                    f"User said: {reply}"
+                )
+                try:
+                    self._llm.chat(
+                        [{"role": "user", "content": reply_msg}],
+                        max_tokens=512,
+                    )
+                except Exception as e:
+                    print(f"[Agent] Reply forward failed: {e}")
+            print(f"[Agent] User reply received (non-blocking): {reply!r}")
+            return True
+
+        # Check timeout
+        if time.monotonic() > self._ext_reply_deadline:
+            self._ext_reply_deadline = 0
+            self._clear_message()
+            self._write_live(
+                {"user_response": None, "response_timestamp": None, "last_user_reply": None}
+            )
+            print("[Agent] Non-blocking reply wait timed out")
+            return True
+
+        return False
+
     def _interactive_tick(self, state: dict) -> None:
         # ── Consume external agent response (Resonance via MCP) ────────────────
         self._consume_ext_response(state)
+
+        # ── Check for pending non-blocking reply (external mode) ───────────────
+        if self._check_pending_reply(state):
+            return
 
         # ── Session Zero calibration-in-disguise ──────────────────────────────────
         if self._sz_active:

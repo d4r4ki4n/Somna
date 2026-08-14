@@ -54,6 +54,7 @@ timeline:
   # Veil barely present — we want the mind to settle on its own terms first.
   - t: 0
     label: anchor
+    narration: "Find the center. Let the sound settle around you. This is where it begins."
     ease: linear
     params:
       phrases:                  anchor
@@ -127,6 +128,7 @@ timeline:
   # 55ms flash = right at the perceptual threshold. You might catch it.
   - t: 360
     label: the_split
+    narration: "Your body is heavy. Your mind is floating free of it. Two different things now."
     ease: ease_in_out
     params:
       phrases:                  the_split
@@ -152,6 +154,7 @@ timeline:
   # Drift veil: phrases floating everywhere, ambient and inescapable.
   - t: 600
     label: hollow
+    narration: "Empty. The weight is still there but you are not in it. Let the emptiness grow."
     ease: ease_in_out
     params:
       phrases:                  hollow
@@ -176,6 +179,7 @@ timeline:
   # The body is very far away. The mind is very quiet.
   - t: 840
     label: the_floor
+    narration: "This is the bottom. Weight and emptiness are the same thing here. Stay."
     ease: ease_in_out
     params:
       phrases:                  hollow
@@ -225,6 +229,7 @@ timeline:
   # This alertness is brief and temporary and it knows it.
   - t: 1260
     label: emerge
+    narration: "Coming up for a moment. Just a breath. Then deeper."
     ease: linear
     params:
       phrases:                  emerge
@@ -249,6 +254,7 @@ timeline:
   # 22ms = the threshold. You go through it like water.
   - t: 1350
     label: redrop
+    narration: "Back down. Faster this time. Past where you were before."
     ease: ease_in
     params:
       phrases:                  hollow
@@ -322,6 +328,7 @@ timeline:
   # You carry the hollow outward with you.
   - t: 1920
     label: return
+    narration: "Rising now. The depth comes with you. It's yours."
     ease: ease_out
     params:
       phrases:                  return
@@ -346,6 +353,7 @@ timeline:
   # But the hollow is not gone. It is yours to take with you.
   - t: 2040
     label: wake
+    narration: "Open your eyes. The hollowness stays with you, quiet, underneath everything."
     ease: ease_out
     params:
       phrases:                  return

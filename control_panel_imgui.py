@@ -1225,6 +1225,8 @@ class ControlPanelImGui:
             self._display_proc = None
             self._agent_launch_pending = False
             patch_live({"display_active": False, "audio_muted": True})
+        elif self._display_proc is None and self._live.get("display_active"):
+            patch_live({"display_active": False, "audio_muted": True})
 
         self._player.agent_running = self._is_agent_running()
         self._panel_manager.update(self._live)

@@ -52,6 +52,22 @@ The control panel opens. On first launch, a welcome wizard guides you through:
 
 You can start with zero hardware. Sessions work with headphones and a screen. EEG, haptics, and tAVNS enhance the experience but are not required.
 
+### CLI Mode (Headphone-Only)
+
+For sessions without the visual display or control panel — just binaural beats and voice guidance through headphones:
+
+```bash
+python cli_session.py first_light --volume 0.5
+```
+
+List available sessions:
+
+```bash
+python cli_session.py --list
+```
+
+CLI mode starts the StateServer, binaural audio engine, TTS engine, and timeline runner in a single process. Narration fires at keyframe transitions via Edge TTS (free, no API key). Affirmation phrases play between narration cues. No GUI, no display monitor required.
+
 ---
 
 ## Hardware Support
@@ -59,7 +75,7 @@ You can start with zero hardware. Sessions work with headphones and a screen. EE
 | Hardware | Purpose | Required? |
 |----------|---------|-----------|
 | Headphones / bone conduction | Audio delivery | Yes |
-| Display monitor | Visual spirals and text | Yes |
+| Display monitor | Visual spirals and text | GUI mode only |
 | Muse 2 / Muse S | EEG biofeedback | No |
 | Lovense device | Haptic feedback | No |
 | DG Labs Coyote | tAVNS electrical stimulation | No |

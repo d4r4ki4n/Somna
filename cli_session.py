@@ -126,11 +126,7 @@ def run_session(session_name: str, volume: float) -> None:
     finally:
         runner.stop()
         patch_live({"audio_muted": True, "session_time": 0})
-        time.sleep(1.0)
-        try:
-            pygame.mixer.quit()
-        except Exception:
-            pass
+        time.sleep(0.5)
         server.stop()
         print("[CLI] Session ended.")
 

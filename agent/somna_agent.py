@@ -1485,6 +1485,7 @@ class SomnaAgent:
         self._sz_phase_start: float = 0.0
         self._sz_phase_before_pause: str = ""
         self._sz_samples: list = []  # collected (ts, eeg_dict) snapshots
+        self._sz_timer_mode: bool = False  # True when running without EEG
 
         # ── Idle / planning / nudge / console state ───────────────────────────
         self._idle_last_plan: float = time.time()  # wall time of last planning cycle; init to now so first cycle waits the full interval
@@ -4738,12 +4739,16 @@ class SomnaAgent:
             return
 
         # ── SESSION ZERO: first session, calibration-in-disguise ────────────────
-        if not self._profile.get("eeg_baselines") and state.get("eeg_connected"):
+        if not self._profile.get("eeg_baselines"):
             self._sz_active = True
             self._sz_phase = "orient"
             self._sz_phase_start = time.time()
             self._sz_samples = []
-            print("[Agent] Session Zero active — calibration-in-disguise.")
+            self._sz_timer_mode = not state.get("eeg_connected")
+            if self._sz_timer_mode:
+                print("[Agent] Session Zero active — timer-fallback mode (no EEG).")
+            else:
+                print("[Agent] Session Zero active — calibration-in-disguise.")
             sz_greeting = (
                 f"{'Good, ' + name + '. ' if name else ''}"
                 "Let's just take a moment to settle in. "
@@ -4861,30 +4866,35 @@ class SomnaAgent:
         if self._sz_phase == "complete":
             return
 
-        if not state.get("eeg_connected"):
-            if self._sz_phase not in ("paused", "orient"):
-                print(
-                    f"[Agent] SZ paused — EEG disconnected at phase '{self._sz_phase}'"
-                )
-                self._sz_phase_before_pause = self._sz_phase
-                self._sz_phase = "paused"
-            return
+        eeg_connected = bool(state.get("eeg_connected"))
 
-        if self._sz_phase == "paused":
-            print("[Agent] SZ resumed — EEG reconnected")
-            self._sz_phase = self._sz_phase_before_pause
-            self._sz_phase_start = time.time()
+        if not eeg_connected:
+            if not getattr(self, "_sz_timer_mode", False):
+                if self._sz_phase != "orient":
+                    print(
+                        f"[Agent] SZ — EEG disconnected at phase '{self._sz_phase}', "
+                        f"continuing in timer-fallback mode"
+                    )
+                else:
+                    print("[Agent] SZ — no EEG connected, running in timer-fallback mode")
+                self._sz_timer_mode = True
+        else:
+            if getattr(self, "_sz_timer_mode", False):
+                print("[Agent] SZ — EEG reconnected, resuming calibrated mode")
+                self._sz_timer_mode = False
 
         elapsed = time.time() - self._sz_phase_start
-        eeg = {
-            "delta": float(state.get("eeg_delta") or 0),
-            "theta": float(state.get("eeg_theta") or 0),
-            "alpha": float(state.get("eeg_alpha") or 0),
-            "beta": float(state.get("eeg_beta") or 0),
-            "trance_score": float(state.get("eeg_trance_score") or 0),
-            "sef95": float(state.get("eeg_sef95") or 0),
-        }
-        self._sz_samples.append((time.time(), self._sz_phase, eeg))
+
+        if eeg_connected:
+            eeg = {
+                "delta": float(state.get("eeg_delta") or 0),
+                "theta": float(state.get("eeg_theta") or 0),
+                "alpha": float(state.get("eeg_alpha") or 0),
+                "beta": float(state.get("eeg_beta") or 0),
+                "trance_score": float(state.get("eeg_trance_score") or 0),
+                "sef95": float(state.get("eeg_sef95") or 0),
+            }
+            self._sz_samples.append((time.time(), self._sz_phase, eeg))
 
         if self._sz_phase == "orient" and elapsed >= 60:
             self._sz_phase = "eyes_open"
@@ -4944,6 +4954,35 @@ class SomnaAgent:
 
     def _finalize_session_zero(self) -> None:
         print(f"[Agent] Session Zero baselines — {len(self._sz_samples)} samples.")
+
+        if not self._sz_samples:
+            baselines = {
+                "mode": "minimal",
+                "calibrated_utc": datetime.datetime.now(
+                    datetime.timezone.utc
+                ).isoformat(timespec="seconds"),
+                "sample_count": 0,
+                "note": "No EEG connected — ran in timer-fallback mode. "
+                        "Baselines will be calibrated when EEG is available.",
+            }
+            self._update_profile({
+                "eeg_baselines": baselines,
+                "session_zero_status": "complete_minimal",
+            })
+            self._write_live({"breath_mod_enabled": False})
+            self._say(
+                "Good. I have what I need. Let's continue.",
+                needs_response=False,
+                console=True,
+                tts=True,
+                style={"zoom_speed": "slow", "intensity": "soft", "voice_mode": "tts"},
+                timeout_s=10,
+            )
+            self._clear_message()
+            self._sz_active = False
+            self._sz_phase = ""
+            self._sz_timer_mode = False
+            return
 
         eo = [s for s in self._sz_samples if s[1] == "eyes_open"]
         ec = [s for s in self._sz_samples if s[1] == "eyes_closed"]
@@ -5027,6 +5066,7 @@ class SomnaAgent:
         self._sz_active = False
         self._sz_phase = ""
         self._sz_samples = []
+        self._sz_timer_mode = False
 
     # ── Idle / planning / nudge helpers ───────────────────────────────────────
 

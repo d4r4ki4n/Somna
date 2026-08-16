@@ -250,12 +250,17 @@ class SessionPlayer:
     # ── Filter / Sort row ──────────────────────────────────────────────────────
 
     def _draw_filter_sort(self, w: float) -> None:
-        half = (w - 12) / 2
-
         imgui.push_style_color(imgui.Col_.frame_bg, _OVERLAY)
         imgui.push_style_color(imgui.Col_.popup_bg, _SURFACE)
         imgui.push_style_color(imgui.Col_.text, _SUBTLE)
 
+        imgui.set_next_item_width(w)
+        _sc, self._search = imgui.input_text_with_hint(
+            "##search", "Search sessions...", self._search, 64
+        )
+        imgui.spacing()
+
+        half = (w - 12) / 2
         imgui.set_next_item_width(half)
         cats = ["All"] + self._unique_categories()
         cat_idx = cats.index(self._filter_cat) if self._filter_cat in cats else 0
@@ -673,6 +678,7 @@ class SessionPlayer:
                 query
                 and query not in s.name.lower()
                 and query not in s.category.lower()
+                and query not in (s.description or "").lower()
             ):
                 continue
             result.append((i, s))

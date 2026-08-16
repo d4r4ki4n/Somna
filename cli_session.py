@@ -57,6 +57,18 @@ def run_session(session_name: str, volume: float) -> None:
     from engines.tts_engine import TTSEngine
 
     live_path = ROOT / "live_control.json"
+
+    # Clear stale state from previous runs directly in the file
+    import json
+    with open(live_path, "r") as f:
+        state = json.load(f)
+    state["agent_message"] = None
+    state["session_time"] = 0
+    state["timeline_label"] = ""
+    state["_timeline_cmd"] = ""
+    with open(live_path, "w") as f:
+        json.dump(state, f, indent=2)
+
     server = StateServer(live_path)
     server.start()
     time.sleep(0.3)

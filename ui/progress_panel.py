@@ -67,22 +67,30 @@ class ProgressPanel:
         profile = {
             "sessions": 0,
             "total_time_s": 0,
-            "avg_peak_depth": 0.0,
+            "avg_depth": 0.0,
             "max_depth": 0.0,
         }
         try:
             c.execute(
-                "SELECT sessions_completed, total_session_time_s, "
-                "avg_peak_depth, max_achieved_depth FROM director_profile"
+                "SELECT sessions_completed, total_session_time_s "
+                "FROM director_profile"
             )
             row = c.fetchone()
             if row:
-                profile = {
-                    "sessions": row[0] or 0,
-                    "total_time_s": row[1] or 0,
-                    "avg_peak_depth": row[2] or 0.0,
-                    "max_depth": row[3] or 0.0,
-                }
+                profile["sessions"] = row[0] or 0
+                profile["total_time_s"] = row[1] or 0
+        except Exception:
+            pass
+
+        try:
+            c.execute(
+                "SELECT AVG(depth_min_sef95), MAX(depth_min_sef95) "
+                "FROM session_metrics WHERE depth_min_sef95 IS NOT NULL"
+            )
+            row = c.fetchone()
+            if row and row[0] is not None:
+                profile["avg_depth"] = row[0]
+                profile["max_depth"] = row[1] or 0.0
         except Exception:
             pass
 
@@ -161,7 +169,7 @@ class ProgressPanel:
         stats = [
             ("Sessions", str(p["sessions"]), _FOAM),
             ("Total Time", _fmt_duration(p["total_time_s"]), _GOLD),
-            ("Avg Depth", _fmt_depth(p["avg_peak_depth"]), _IRIS),
+            ("Avg Depth", _fmt_depth(p["avg_depth"]), _IRIS),
             ("Max Depth", _fmt_depth(p["max_depth"]), _LOVE),
         ]
 

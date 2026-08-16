@@ -50,6 +50,7 @@ from ui.session_player import SessionPlayer, SessionEntry, SessionState
 from ui.session_editor_imgui import SessionEditorModal
 from ui.interference_graph_integration import install_interference_graph
 from ui.biosignal_dashboard import BiosignalDashboard
+from ui.progress_panel import ProgressPanel
 
 PANEL_WIDTH = 420
 
@@ -74,7 +75,7 @@ _PANEL_GROUPS = [
         "sections": {"Veil & BG", "Overlay", "Visual/Audio"},
         "cols": 3,
     },
-    {"label": "Biosignal", "sections": {"EEG", "Director", "Biosignal"}, "cols": 3},
+    {"label": "Biosignal", "sections": {"EEG", "Director", "Biosignal", "Progress"}, "cols": 4},
     {"label": "Sleep", "sections": {"Sleep", "TMR", "HTW"}, "cols": 3},
     {"label": "Hardware", "sections": {"Haptic", "taVNS", "OpenXR"}, "cols": 3},
     {
@@ -441,6 +442,7 @@ class ControlPanelImGui:
         self._ig, self._ig_panel = install_interference_graph(self._panel_manager)
 
         self._biosignal_dashboard = BiosignalDashboard()
+        self._progress_panel = ProgressPanel(self._root / "somna.db")
         self._last_poll_frame: int = -1
 
         # Restore persisted UI state
@@ -1176,6 +1178,16 @@ class ControlPanelImGui:
         dw_dash.include_in_view_menu = True
         windows.append(dw_dash)
 
+        dw_prog = hello_imgui.DockableWindow()
+        dw_prog.label = "Progress"
+        dw_prog.dock_space_name = "MainDockSpace"
+        dw_prog.gui_function = self._render_progress
+        dw_prog.is_visible = False
+        dw_prog.remember_is_visible = True
+        dw_prog.can_be_closed = False
+        dw_prog.include_in_view_menu = True
+        windows.append(dw_prog)
+
         dw_welcome = hello_imgui.DockableWindow()
         dw_welcome.label = "Welcome"
         dw_welcome.dock_space_name = "MainDockSpace"
@@ -1369,6 +1381,9 @@ class ControlPanelImGui:
         self._poll_live()
         self._biosignal_dashboard.update(self._live)
         self._biosignal_dashboard.render()
+
+    def _render_progress(self) -> None:
+        self._progress_panel.render()
 
     # ── Transport / session controls ─────────────────────────────────────────
 

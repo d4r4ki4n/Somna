@@ -330,6 +330,7 @@ class SessionPlanner:
             analysis.depth_trend is not None
             and analysis.depth_trend < 0.001
             and profile.sessions_completed > 10
+            and profile.avg_peak_depth > 0.0
         ):
             return "deepening_practice"
         if self._is_evening_session() and profile.sleep_fork_success_rate > 0.5:
@@ -522,7 +523,7 @@ class SessionPlanner:
         trend = analysis.depth_trend or 0.0
         stretch = 0.02 + 0.03 * _clamp(trend, 0.0, 1.0)
         target = profile.avg_peak_depth + stretch
-        ceiling = profile.max_achieved_depth + 0.1
+        ceiling = max(0.3, profile.max_achieved_depth + 0.1)
         return _clamp(target, 0.3, min(ceiling, 0.95))
 
     def _estimate_duration(self, profile: UserProfile, arc: str) -> int:
@@ -536,7 +537,11 @@ class SessionPlanner:
         if profile.sessions_completed > 5 and profile.total_session_time_s > 0:
             avg_s = profile.total_session_time_s / profile.sessions_completed
             avg_min = avg_s / 60.0
-            if avg_min > 0 and profile.avg_peak_depth / avg_min < 0.01:
+            if (
+                avg_min > 0
+                and profile.avg_peak_depth > 0.0
+                and profile.avg_peak_depth / avg_min < 0.01
+            ):
                 base = int(base * 1.2)
 
         return _clamp(int(base), 600, 7200)

@@ -133,8 +133,10 @@ class SessionEvaluator:
     # ── Component scorers ─────────────────────────────────────────────────────
 
     def _score_depth(self, log: SessionLog) -> float:
-        ts    = log.trance_score_timeseries or []
-        total = len(ts) or 1
+        ts = log.trance_score_timeseries or []
+        if not ts or all(t == 0.0 for t in ts):
+            return 0.5
+        total = len(ts)
         time_light  = sum(1 for t in ts if 0.2 <= t < 0.4)
         time_medium = sum(1 for t in ts if 0.4 <= t < 0.6)
         time_deep   = sum(1 for t in ts if t >= 0.6)
@@ -177,9 +179,12 @@ class SessionEvaluator:
 
     def _score_emergence(self, log: SessionLog) -> float:
         hr_ok   = log.emergence_hr_deviation < 0.10
+        no_data = log.final_trance_score == 0.0
         depth_ok = log.final_trance_score < 0.1
         planned  = max(1, log.planned_emergence_duration_s)
         timely   = log.emergence_duration_s <= planned * 1.5
+        if no_data:
+            return 0.5
         return 0.4 * float(hr_ok) + 0.4 * float(depth_ok) + 0.2 * float(timely)
 
     # ── Decision evaluation ───────────────────────────────────────────────────
@@ -241,12 +246,13 @@ class SessionEvaluator:
         profile.total_session_time_s += log.duration_s
         profile.last_session_at       = log.started_at
 
-        profile.avg_peak_depth = (
-            a * log.achieved_peak_depth + (1 - a) * profile.avg_peak_depth
-        )
-        profile.max_achieved_depth = max(
-            profile.max_achieved_depth, log.achieved_peak_depth
-        )
+        if log.achieved_peak_depth > 0.0:
+            profile.avg_peak_depth = (
+                a * log.achieved_peak_depth + (1 - a) * profile.avg_peak_depth
+            )
+            profile.max_achieved_depth = max(
+                profile.max_achieved_depth, log.achieved_peak_depth
+            )
 
         # Update preferred arc if this one scored better
         last_preferred_score = getattr(profile, "_last_preferred_arc_score", 0.0)
